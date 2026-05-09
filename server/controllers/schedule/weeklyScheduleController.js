@@ -32,7 +32,7 @@ const getWeeklySchedules = async (req, res) => {
   try {
     console.log('Fetching weekly schedules...');
     const { startDate, endDate, branch } = req.query;
-    
+
     let filter = {};
     if (startDate && endDate) {
       filter.startDate = { $gte: new Date(startDate) };
@@ -239,7 +239,7 @@ const removeBatchFromSubDetails = async (req, res) => {
 
     const batchArray = weeklySchedule.schedule.sub_details.batch;
     const batchIndex = batchArray.findIndex(batch => batch.toString() === batchId);
-    
+
     if (batchIndex === -1) {
       return res.status(404).json({ message: "Batch not found in sub details" });
     }
@@ -334,12 +334,12 @@ const getAllMentorsWithBatches = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const branch = req.query.branch;
-    
+
     let filter = {};
     if (branch) {
       filter['schedule.sub_details.branch'] = branch;
     }
-    
+
     // Get all weekly schedules with populated data
     const weeklySchedules = await WeeklySchedule.find(filter)
       .populate({
@@ -390,7 +390,7 @@ const getAllMentorsWithBatches = async (req, res) => {
       if (!mentor) return;
 
       const mentorId = mentor._id.toString();
-      
+
       // Initialize mentor if not exists
       if (!mentorMap.has(mentorId)) {
         mentorMap.set(mentorId, {
@@ -427,7 +427,7 @@ const getAllMentorsWithBatches = async (req, res) => {
             subDetail.batch.forEach(batch => {
               if (batch) {
                 mentorData.batches.add(batch._id.toString());
-                
+
                 const courses = new Set();
                 if (batch.interns && batch.interns.length > 0) {
                   batch.interns.forEach(intern => {

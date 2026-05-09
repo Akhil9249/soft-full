@@ -106,10 +106,10 @@ export const MentorBatches = () => {
   const visibleMentors = mentorsWithBatches.filter((mentor) => {
     const matchesSearch = searchTerm
       ? (
-          mentor.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          mentor.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          mentor.batches?.some(b => b.batchName?.toLowerCase().includes(searchTerm.toLowerCase()))
-        )
+        mentor.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        mentor.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        mentor.batches?.some(b => b.batchName?.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
       : true;
 
     if (!selectedBranchId) return matchesSearch;
@@ -140,10 +140,10 @@ export const MentorBatches = () => {
       const filteredAllMentors = allMentors.filter((mentor) => {
         const matchesSearch = searchTerm
           ? (
-              mentor.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              mentor.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              mentor.batches?.some(b => b.batchName?.toLowerCase().includes(searchTerm.toLowerCase()))
-            )
+            mentor.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            mentor.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            mentor.batches?.some(b => b.batchName?.toLowerCase().includes(searchTerm.toLowerCase()))
+          )
           : true;
 
         if (!selectedBranchId) return matchesSearch;
@@ -270,7 +270,7 @@ export const MentorBatches = () => {
   return (
     <div className="min-h-screen">
       <Navbar headData={headData} activeTab={activeTab} />
-      
+
       <div className="w-full min-h-screen max-w-[1250px]">
         <div className="bg-white rounded-lg overflow-x-auto p-4 sm:p-6 lg:p-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
@@ -332,381 +332,375 @@ export const MentorBatches = () => {
               {/* Desktop Table View */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Mentor
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Assigned Batches
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Schedule Details
-                    </th>
-                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {visibleMentors.map((mentor) => (
-                    <React.Fragment key={mentor._id}>
-                      {/* Main Mentor Row */}
-                      <tr className="hover:bg-gray-50">
-                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 rounded-full flex items-center justify-center mr-2 sm:mr-4">
-                              <svg className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                              </svg>
-                            </div>
-                            <div>
-                              <div className="text-xs sm:text-sm font-medium text-gray-900">{mentor.fullName}</div>
-                              <div className="text-xs sm:text-sm text-gray-500">{mentor.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(mentor.role)}`}>
-                            {mentor.role}
-                          </span>
-                        </td>
-                        <td className="px-4 lg:px-6 py-4">
-                          <div className="text-xs sm:text-sm text-gray-900">
-                            {mentor.batches.length} batch{mentor.batches.length !== 1 ? 'es' : ''}
-                          </div>
-                          {mentor.batches.length > 0 && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              {mentor.batches.slice(0, 2).map(batch => batch.batchName).join(', ')}
-                              {mentor.batches.length > 2 && ` +${mentor.batches.length - 2} more`}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 lg:px-6 py-4">
-                          <div className="text-xs sm:text-sm text-gray-900">
-                            {mentor.scheduleDetails.length} time slot{mentor.scheduleDetails.length !== 1 ? 's' : ''}
-                          </div>
-                          {mentor.scheduleDetails.length > 0 && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              {mentor.scheduleDetails.slice(0, 1).map(slot => slot.timeSlot).join(', ')}
-                              {mentor.scheduleDetails.length > 1 && ` +${mentor.scheduleDetails.length - 1} more`}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
-                          <button
-                            onClick={() => toggleMentorExpansion(mentor._id)}
-                            className="text-orange-600 hover:text-orange-900 transition-colors"
-                          >
-                            {expandedMentors.has(mentor._id) ? 'Hide Details' : 'View Details'}
-                          </button>
-                        </td>
-                      </tr>
-
-                      {/* Expanded Details Row */}
-                      {expandedMentors.has(mentor._id) && (
-                        <tr>
-                          <td colSpan="5" className="px-4 sm:px-6 py-4 bg-gray-50">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                              {/* Assigned Batches */}
-                              <div>
-                                <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                                  <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                                  </svg>
-                                  Assigned Batches ({mentor.batches.length})
-                                </h4>
-                                {mentor.batches.length === 0 ? (
-                                  <p className="text-gray-500 text-sm">No batches assigned</p>
-                                ) : (
-                                  <div className="space-y-2">
-                                    {mentor.batches.map((batch) => (
-                                      <div key={batch._id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                        <div className="flex items-center justify-between">
-                                          <div>
-                                            <h5 className="font-medium text-gray-800">{batch.batchName}</h5>
-                                            <div className="flex items-center space-x-2 mt-1">
-                                              <span className="text-xs text-gray-600">{batch.courseName}</span>
-                                              <span className="text-xs text-gray-400">•</span>
-                                              <span className="text-xs text-gray-600">{batch.branchName}</span>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Mentor
+                      </th>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Role
+                      </th>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Assigned Batches
+                      </th>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Schedule Details
+                      </th>
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {visibleMentors.map((mentor) => (
+                      <React.Fragment key={mentor._id}>
+                        {/* Main Mentor Row */}
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-orange-100 rounded-full flex items-center justify-center mr-2 sm:mr-4">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                                </svg>
                               </div>
-
-                              {/* Schedule Details */}
                               <div>
-                                <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
-                                  <svg className="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                  </svg>
-                                  Schedule Details
-                                </h4>
-                                {mentor.scheduleDetails.length === 0 ? (
-                                  <p className="text-gray-500 text-sm">No schedule details available</p>
-                                ) : (
-                                  <div className="space-y-3">
-                                    {mentor.scheduleDetails.map((timeSlot, index) => (
-                                      <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-3">
-                                        <div className="font-medium text-gray-800 mb-2">{timeSlot.timeSlot}</div>
-                                        <div className="space-y-2">
-                                          {timeSlot.subDetails.map((subDetail, subIndex) => (
-                                            <div key={subIndex} className="text-sm">
-                                              <div className="flex items-center space-x-2">
-                                                <span className="font-medium text-gray-700">{subDetail.days}</span>
-                                                <span className="text-gray-400">•</span>
-                                                <span className="text-gray-600">
-                                                  {/* {subDetail.batches.length > 0 
-                                                    ? (subDetail.subject || 'Subject not specified')
-                                                    : 'No class assigned'
-                                                  } */}
-                                                  {subDetail.batches.length > 0 
-                                                    ? 'Assigned Batches'
-                                                    : 'No batches assigned'
-                                                  }
-                                                </span>
-                                              </div>
-                                              {subDetail.batches.length > 0 && (
-                                                <div className="mt-1 text-xs text-gray-500">
-                                                  Batches: {subDetail.batches.map(b => b.batchName).join(', ')}
-                                                </div>
-                                              )}
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
+                                <div className="text-xs sm:text-sm font-medium text-gray-900">{mentor.fullName}</div>
+                                <div className="text-xs sm:text-sm text-gray-500">{mentor.email}</div>
                               </div>
                             </div>
                           </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(mentor.role)}`}>
+                              {mentor.role}
+                            </span>
+                          </td>
+                          <td className="px-4 lg:px-6 py-4">
+                            <div className="text-xs sm:text-sm text-gray-900">
+                              {mentor.batches.length} batch{mentor.batches.length !== 1 ? 'es' : ''}
+                            </div>
+                            {mentor.batches.length > 0 && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {mentor.batches.slice(0, 2).map(batch => batch.batchName).join(', ')}
+                                {mentor.batches.length > 2 && ` +${mentor.batches.length - 2} more`}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 lg:px-6 py-4">
+                            <div className="text-xs sm:text-sm text-gray-900">
+                              {mentor.scheduleDetails.length} time slot{mentor.scheduleDetails.length !== 1 ? 's' : ''}
+                            </div>
+                            {mentor.scheduleDetails.length > 0 && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {mentor.scheduleDetails.slice(0, 1).map(slot => slot.timeSlot).join(', ')}
+                                {mentor.scheduleDetails.length > 1 && ` +${mentor.scheduleDetails.length - 1} more`}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                            <button
+                              onClick={() => toggleMentorExpansion(mentor._id)}
+                              className="text-orange-600 hover:text-orange-900 transition-colors"
+                            >
+                              {expandedMentors.has(mentor._id) ? 'Hide Details' : 'View Details'}
+                            </button>
+                          </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-              {/* Pagination Controls */}
-              {pagination.totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 px-2 sm:px-4 py-3 bg-white border-t border-gray-200">
-                  <div className="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                    <span>
-                      {pagination.displayInfo?.showing} of {pagination.displayInfo?.total} mentors
-                    </span>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={!pagination.hasPrevPage || loading}
-                      className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${
-                        pagination.hasPrevPage && !loading
-                          ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                          : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
-                      }`}
-                    >
-                      Previous
-                    </button>
-
-                    <div className="flex items-center gap-1">
-                      {pagination.pageNumbers?.map((num) => (
-                        <button
-                          key={num}
-                          onClick={() => handlePageChange(num)}
-                          className={`px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors ${
-                            pagination.currentPage === num
-                              ? 'bg-orange-500 text-white'
-                              : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                          }`}
-                        >
-                          {num}
-                        </button>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={!pagination.hasNextPage || loading}
-                      className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${
-                        pagination.hasNextPage && !loading
-                          ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                          : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
-                      }`}
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-4">
-              {visibleMentors.map((mentor) => (
-                <div key={mentor._id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center flex-1">
-                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-3">
-                        <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-gray-900 truncate">{mentor.fullName}</div>
-                        <div className="text-xs text-gray-500 truncate">{mentor.email}</div>
-                      </div>
-                    </div>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(mentor.role)} flex-shrink-0`}>
-                      {mentor.role}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 mb-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-600">Assigned Batches:</span>
-                      <span className="font-medium text-gray-900">{mentor.batches.length}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-600">Schedule Slots:</span>
-                      <span className="font-medium text-gray-900">{mentor.scheduleDetails.length}</span>
-                    </div>
-                  </div>
-
-                  {expandedMentors.has(mentor._id) && (
-                    <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-800 mb-2 flex items-center">
-                          <svg className="w-3 h-3 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                          </svg>
-                          Assigned Batches ({mentor.batches.length})
-                        </h4>
-                        {mentor.batches.length === 0 ? (
-                          <p className="text-xs text-gray-500">No batches assigned</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {mentor.batches.map((batch) => (
-                              <div key={batch._id} className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-                                <h5 className="text-xs font-medium text-gray-800">{batch.batchName}</h5>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-xs text-gray-600">{batch.courseName}</span>
-                                  <span className="text-xs text-gray-400">•</span>
-                                  <span className="text-xs text-gray-600">{batch.branchName}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <h4 className="text-xs font-semibold text-gray-800 mb-2 flex items-center">
-                          <svg className="w-3 h-3 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                          </svg>
-                          Schedule Details
-                        </h4>
-                        {mentor.scheduleDetails.length === 0 ? (
-                          <p className="text-xs text-gray-500">No schedule details available</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {mentor.scheduleDetails.map((timeSlot, index) => (
-                              <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-2">
-                                <div className="text-xs font-medium text-gray-800 mb-1">{timeSlot.timeSlot}</div>
-                                <div className="space-y-1">
-                                  {timeSlot.subDetails.map((subDetail, subIndex) => (
-                                    <div key={subIndex} className="text-xs">
-                                      <div className="flex items-center gap-1">
-                                        <span className="font-medium text-gray-700">{subDetail.days}</span>
-                                        <span className="text-gray-400">•</span>
-                                        <span className="text-gray-600">
-                                          {subDetail.batches.length > 0 ? 'Assigned Batches' : 'No batches assigned'}
-                                        </span>
-                                      </div>
-                                      {subDetail.batches.length > 0 && (
-                                        <div className="mt-1 text-xs text-gray-500">
-                                          Batches: {subDetail.batches.map(b => b.batchName).join(', ')}
+                        {/* Expanded Details Row */}
+                        {expandedMentors.has(mentor._id) && (
+                          <tr>
+                            <td colSpan="5" className="px-4 sm:px-6 py-4 bg-gray-50">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                                {/* Assigned Batches */}
+                                <div>
+                                  <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                                    <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                    </svg>
+                                    Assigned Batches ({mentor.batches.length})
+                                  </h4>
+                                  {mentor.batches.length === 0 ? (
+                                    <p className="text-gray-500 text-sm">No batches assigned</p>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      {mentor.batches.map((batch) => (
+                                        <div key={batch._id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                          <div className="flex items-center justify-between">
+                                            <div>
+                                              <h5 className="font-medium text-gray-800">{batch.batchName}</h5>
+                                              <div className="flex items-center space-x-2 mt-1">
+                                                <span className="text-xs text-gray-600">{batch.courseName}</span>
+                                                <span className="text-xs text-gray-400">•</span>
+                                                <span className="text-xs text-gray-600">{batch.branchName}</span>
+                                              </div>
+                                            </div>
+                                          </div>
                                         </div>
-                                      )}
+                                      ))}
                                     </div>
-                                  ))}
+                                  )}
+                                </div>
+
+                                {/* Schedule Details */}
+                                <div>
+                                  <h4 className="text-sm font-semibold text-gray-800 mb-3 flex items-center">
+                                    <svg className="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    Schedule Details
+                                  </h4>
+                                  {mentor.scheduleDetails.length === 0 ? (
+                                    <p className="text-gray-500 text-sm">No schedule details available</p>
+                                  ) : (
+                                    <div className="space-y-3">
+                                      {mentor.scheduleDetails.map((timeSlot, index) => (
+                                        <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                          <div className="font-medium text-gray-800 mb-2">{timeSlot.timeSlot}</div>
+                                          <div className="space-y-2">
+                                            {timeSlot.subDetails.map((subDetail, subIndex) => (
+                                              <div key={subIndex} className="text-sm">
+                                                <div className="flex items-center space-x-2">
+                                                  <span className="font-medium text-gray-700">{subDetail.days}</span>
+                                                  <span className="text-gray-400">•</span>
+                                                  <span className="text-gray-600">
+                                                    {/* {subDetail.batches.length > 0 
+                                                    ? (subDetail.subject || 'Subject not specified')
+                                                    : 'No class assigned'
+                                                  } */}
+                                                    {subDetail.batches.length > 0
+                                                      ? 'Assigned Batches'
+                                                      : 'No batches assigned'
+                                                    }
+                                                  </span>
+                                                </div>
+                                                {subDetail.batches.length > 0 && (
+                                                  <div className="mt-1 text-xs text-gray-500">
+                                                    Batches: {subDetail.batches.map(b => b.batchName).join(', ')}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                            ))}
-                          </div>
+                            </td>
+                          </tr>
                         )}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+                {/* Pagination Controls */}
+                {pagination.totalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 px-2 sm:px-4 py-3 bg-white border-t border-gray-200">
+                    <div className="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
+                      <span>
+                        {pagination.displayInfo?.showing} of {pagination.displayInfo?.total} mentors
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePageChange(pagination.currentPage - 1)}
+                        disabled={!pagination.hasPrevPage || loading}
+                        className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasPrevPage && !loading
+                            ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                            : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                          }`}
+                      >
+                        Previous
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {pagination.pageNumbers?.map((num) => (
+                          <button
+                            key={num}
+                            onClick={() => handlePageChange(num)}
+                            className={`px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors ${pagination.currentPage === num
+                                ? 'bg-orange-500 text-white'
+                                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                              }`}
+                          >
+                            {num}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        onClick={() => handlePageChange(pagination.currentPage + 1)}
+                        disabled={!pagination.hasNextPage || loading}
+                        className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasNextPage && !loading
+                            ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                            : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                          }`}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-4">
+                {visibleMentors.map((mentor) => (
+                  <div key={mentor._id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center flex-1">
+                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+                          <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate">{mentor.fullName}</div>
+                          <div className="text-xs text-gray-500 truncate">{mentor.email}</div>
+                        </div>
+                      </div>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(mentor.role)} flex-shrink-0`}>
+                        {mentor.role}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 mb-3">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600">Assigned Batches:</span>
+                        <span className="font-medium text-gray-900">{mentor.batches.length}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-600">Schedule Slots:</span>
+                        <span className="font-medium text-gray-900">{mentor.scheduleDetails.length}</span>
                       </div>
                     </div>
-                  )}
 
-                  <button
-                    onClick={() => toggleMentorExpansion(mentor._id)}
-                    className="w-full mt-3 text-xs font-medium text-orange-600 hover:text-orange-900 transition-colors py-2 border border-orange-200 rounded-lg hover:bg-orange-50"
-                  >
-                    {expandedMentors.has(mentor._id) ? 'Hide Details' : 'View Details'}
-                  </button>
-                </div>
-              ))}
+                    {expandedMentors.has(mentor._id) && (
+                      <div className="mt-4 pt-4 border-t border-gray-200 space-y-4">
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-800 mb-2 flex items-center">
+                            <svg className="w-3 h-3 mr-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                            Assigned Batches ({mentor.batches.length})
+                          </h4>
+                          {mentor.batches.length === 0 ? (
+                            <p className="text-xs text-gray-500">No batches assigned</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {mentor.batches.map((batch) => (
+                                <div key={batch._id} className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                                  <h5 className="text-xs font-medium text-gray-800">{batch.batchName}</h5>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-xs text-gray-600">{batch.courseName}</span>
+                                    <span className="text-xs text-gray-400">•</span>
+                                    <span className="text-xs text-gray-600">{batch.branchName}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
 
-              {/* Pagination Controls for Mobile */}
-              {pagination.totalPages > 1 && (
-                <div className="flex flex-col items-center gap-4 mt-6 px-2 py-3 bg-white border-t border-gray-200">
-                  <div className="text-xs text-gray-700 text-center">
-                    <span>
-                      {pagination.displayInfo?.showing} of {pagination.displayInfo?.total} mentors
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
+                        <div>
+                          <h4 className="text-xs font-semibold text-gray-800 mb-2 flex items-center">
+                            <svg className="w-3 h-3 mr-1 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            Schedule Details
+                          </h4>
+                          {mentor.scheduleDetails.length === 0 ? (
+                            <p className="text-xs text-gray-500">No schedule details available</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {mentor.scheduleDetails.map((timeSlot, index) => (
+                                <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-2">
+                                  <div className="text-xs font-medium text-gray-800 mb-1">{timeSlot.timeSlot}</div>
+                                  <div className="space-y-1">
+                                    {timeSlot.subDetails.map((subDetail, subIndex) => (
+                                      <div key={subIndex} className="text-xs">
+                                        <div className="flex items-center gap-1">
+                                          <span className="font-medium text-gray-700">{subDetail.days}</span>
+                                          <span className="text-gray-400">•</span>
+                                          <span className="text-gray-600">
+                                            {subDetail.batches.length > 0 ? 'Assigned Batches' : 'No batches assigned'}
+                                          </span>
+                                        </div>
+                                        {subDetail.batches.length > 0 && (
+                                          <div className="mt-1 text-xs text-gray-500">
+                                            Batches: {subDetail.batches.map(b => b.batchName).join(', ')}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <button
-                      onClick={() => handlePageChange(pagination.currentPage - 1)}
-                      disabled={!pagination.hasPrevPage || loading}
-                      className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
-                        pagination.hasPrevPage && !loading
-                          ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                          : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
-                      }`}
+                      onClick={() => toggleMentorExpansion(mentor._id)}
+                      className="w-full mt-3 text-xs font-medium text-orange-600 hover:text-orange-900 transition-colors py-2 border border-orange-200 rounded-lg hover:bg-orange-50"
                     >
-                      Prev
+                      {expandedMentors.has(mentor._id) ? 'Hide Details' : 'View Details'}
                     </button>
-                    <div className="flex items-center gap-1">
-                      {pagination.pageNumbers?.map((num) => (
-                        <button
-                          key={num}
-                          onClick={() => handlePageChange(num)}
-                          className={`px-2 py-2 text-xs font-medium rounded-md transition-colors ${
-                            pagination.currentPage === num
-                              ? 'bg-orange-500 text-white'
-                              : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                          }`}
-                        >
-                          {num}
-                        </button>
-                      ))}
+                  </div>
+                ))}
+
+                {/* Pagination Controls for Mobile */}
+                {pagination.totalPages > 1 && (
+                  <div className="flex flex-col items-center gap-4 mt-6 px-2 py-3 bg-white border-t border-gray-200">
+                    <div className="text-xs text-gray-700 text-center">
+                      <span>
+                        {pagination.displayInfo?.showing} of {pagination.displayInfo?.total} mentors
+                      </span>
                     </div>
-                    <button
-                      onClick={() => handlePageChange(pagination.currentPage + 1)}
-                      disabled={!pagination.hasNextPage || loading}
-                      className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${
-                        pagination.hasNextPage && !loading
-                          ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                          : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
-                      }`}
-                    >
-                      Next
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePageChange(pagination.currentPage - 1)}
+                        disabled={!pagination.hasPrevPage || loading}
+                        className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${pagination.hasPrevPage && !loading
+                            ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                            : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                          }`}
+                      >
+                        Prev
+                      </button>
+                      <div className="flex items-center gap-1">
+                        {pagination.pageNumbers?.map((num) => (
+                          <button
+                            key={num}
+                            onClick={() => handlePageChange(num)}
+                            className={`px-2 py-2 text-xs font-medium rounded-md transition-colors ${pagination.currentPage === num
+                                ? 'bg-orange-500 text-white'
+                                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                              }`}
+                          >
+                            {num}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => handlePageChange(pagination.currentPage + 1)}
+                        disabled={!pagination.hasNextPage || loading}
+                        className={`px-3 py-2 text-xs font-medium rounded-md border transition-colors ${pagination.hasNextPage && !loading
+                            ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                            : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                          }`}
+                      >
+                        Next
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>

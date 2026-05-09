@@ -28,6 +28,7 @@ export const StaffManagement = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deletingStaff, setDeletingStaff] = useState(null);
     const [showViewModal, setShowViewModal] = useState(false);
+    const [photoPreview, setPhotoPreview] = useState(null);
     const [viewingStaff, setViewingStaff] = useState(null);
     const [notification, setNotification] = useState({
         show: false,
@@ -208,6 +209,15 @@ export const StaffManagement = () => {
         fetchRoles();
     }, []);
 
+    // Cleanup object URLs for photo preview
+    useEffect(() => {
+        return () => {
+            if (photoPreview && photoPreview.startsWith('blob:')) {
+                URL.revokeObjectURL(photoPreview);
+            }
+        };
+    }, [photoPreview]);
+
     // Handle search and filter changes with debounce
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -278,6 +288,7 @@ export const StaffManagement = () => {
             password: "",
             confirmPassword: "",
         });
+        setPhotoPreview(staffMember.photo || null);
         setActiveTab('newStaff');
     };
 
@@ -308,6 +319,7 @@ export const StaffManagement = () => {
             password: "",
             confirmPassword: "",
         });
+        setPhotoPreview(null);
         setActiveTab('staffList');
     };
 
@@ -563,6 +575,7 @@ export const StaffManagement = () => {
                 password: "",
                 confirmPassword: "",
             });
+            setPhotoPreview(null);
         } catch (err) {
             console.error('Staff operation error:', err);
             console.error('Error response:', err?.response?.data);
@@ -911,6 +924,7 @@ export const StaffManagement = () => {
                                         return;
                                     }
                                     setFormData((p) => ({ ...p, photo: file }));
+                                    setPhotoPreview(URL.createObjectURL(file));
                                     setError(''); // Clear any previous errors
                                 }
                             }} 
@@ -926,6 +940,28 @@ export const StaffManagement = () => {
                             </svg>
                         </div>
                     </div>
+                    {photoPreview && (
+                        <div className="mt-3 relative w-32 h-32 group">
+                            <img 
+                                src={photoPreview} 
+                                alt="Profile Preview" 
+                                className="w-full h-full object-cover rounded-md border border-gray-200"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setFormData(p => ({ ...p, photo: null }));
+                                    setPhotoPreview(null);
+                                }}
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                title="Remove photo"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 

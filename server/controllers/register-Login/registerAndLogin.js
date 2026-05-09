@@ -28,7 +28,7 @@ const signup = async (req, res, next) => {
     } = req.body;
 
     console.log("req.body", req.body);
-    
+
 
     // Validate input
     if (!password || !name || !phone || !email || !role) {
@@ -38,8 +38,8 @@ const signup = async (req, res, next) => {
     // Find the role by name
     const roleDoc = await Role.findOne({ _id: role });
     if (!roleDoc) {
-      return res.status(400).json({ 
-        message: "Invalid role. Role not found in system." 
+      return res.status(400).json({
+        message: "Invalid role. Role not found in system."
       });
     }
 
@@ -141,9 +141,9 @@ const login = async (req, res, next) => {
     //       };
     //     }
     //     break;
-        
+
     //   default:
-        
+
     //     user = await internModel.findOne({ email, isActive: true });
     //     userTypeName = 'Intern';
     //     if (user) {
@@ -161,39 +161,39 @@ const login = async (req, res, next) => {
 
     if (role === 'Intern') {
 
-          user = await internModel.findOne({ email, isActive: true });
-        userTypeName = 'Intern';
-        if (user) {
-          userData = {
-            fullName: user?.fullName,
-            role: user?.role,
-            email: user?.email,
-            phone: user?.internPhoneNumber,
-            isActive: user?.isActive,
-          };
-        }
+      user = await internModel.findOne({ email, isActive: true });
+      userTypeName = 'Intern';
+      if (user) {
+        userData = {
+          fullName: user?.fullName,
+          role: user?.role,
+          email: user?.email,
+          phone: user?.internPhoneNumber,
+          isActive: user?.isActive,
+        };
+      }
     } else if (role === 'Admin') {
-        user = await User.findOne({ email, isActive: true }).populate('role', 'role');
-        userTypeName = 'Admin';
-        if (user) {
-          userData = {
-            name: user?.name,
-            phone: user?.phone,
-            email: user?.email,
-            role: user?.role?.role, 
-          };
-        }
+      user = await User.findOne({ email, isActive: true }).populate('role', 'role');
+      userTypeName = 'Admin';
+      if (user) {
+        userData = {
+          name: user?.name,
+          phone: user?.phone,
+          email: user?.email,
+          role: user?.role?.role,
+        };
+      }
     } else {
-        user = await Staff.findOne({ email, isActive: true }).populate('role', 'role');
-        userTypeName = 'Staff';
-        if (user) {
-          userData = {
-            name: user?.fullName,
-            role: user?.role?.role, 
-            email: user?.officialEmail,
-            phone: user?.staffPhoneNumber,
-          };
-        }
+      user = await Staff.findOne({ email, isActive: true }).populate('role', 'role');
+      userTypeName = 'Staff';
+      if (user) {
+        userData = {
+          name: user?.fullName,
+          role: user?.role?.role,
+          email: user?.officialEmail,
+          phone: user?.staffPhoneNumber,
+        };
+      }
     }
 
     if (!user) {

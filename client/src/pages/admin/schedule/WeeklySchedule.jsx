@@ -701,13 +701,13 @@ export const WeeklySchedule = () => {
                     <option key={branch._id} value={branch._id}>{branch.branchName}</option>
                   ))}
                 </select>
-                <select className="w-full sm:w-auto p-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500">
+                {/* <select className="w-full sm:w-auto p-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500">
                   <option>Alternative</option>
                   <option>Regular</option>
                   <option>Special</option>
                   <option>Custom</option>
                   <option>Weekend</option>
-                </select>
+                </select> */}
                 <div className="flex items-center space-x-2">
                   <input
                     type="date"

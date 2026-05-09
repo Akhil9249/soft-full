@@ -35,6 +35,7 @@ export const StudentManagement = () => {
   const [deletingStudent, setDeletingStudent] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingStudent, setViewingStudent] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [formData, setFormData] = useState({});
 
   // Pagination state
@@ -233,6 +234,15 @@ export const StudentManagement = () => {
     fetchStaff();
   }, []);
 
+  // Cleanup object URLs for photo preview
+  useEffect(() => {
+    return () => {
+      if (photoPreview && photoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(photoPreview);
+      }
+    };
+  }, [photoPreview]);
+
   // Handle search and filter changes with debounce
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -324,6 +334,7 @@ export const StudentManagement = () => {
     //   completionDate: formatDateForInput(student.completionDate)
     // });
 
+    setPhotoPreview(student.photo || null);
     setActiveTab('newStudent');
   };
 
@@ -331,6 +342,7 @@ export const StudentManagement = () => {
     setEditingStudent(null);
     setIsEditMode(false);
     setFormData({});
+    setPhotoPreview(null);
     setActiveTab('studentsList');
   };
 
@@ -548,6 +560,7 @@ export const StudentManagement = () => {
       setEditingStudent(null);
       setIsEditMode(false);
       setFormData({});
+      setPhotoPreview(null);
       // e.currentTarget.reset();
     } catch (err) {
       showNotification('error', 'Error', err?.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} student`);
@@ -783,11 +796,19 @@ export const StudentManagement = () => {
                     <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
-                            <span className="text-orange-600 font-medium text-sm">
-                              {intern.fullName?.charAt(0)?.toUpperCase() || 'S'}
-                            </span>
-                          </div>
+                          {intern.photo ? (
+                            <img
+                              src={intern.photo}
+                              alt={intern.fullName}
+                              className="h-10 w-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                              <span className="text-orange-600 font-medium text-sm">
+                                {intern.fullName?.charAt(0)?.toUpperCase() || 'S'}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{intern.fullName}</div>
@@ -816,7 +837,7 @@ export const StudentManagement = () => {
                       </span>
                     </td>
                     <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <Link to="/menor-card" className="text-orange-600 hover:text-orange-800 font-medium underline">
+                      <Link to={`/menor-card?internId=${intern._id}`} className="text-orange-600 hover:text-orange-800 font-medium underline">
                         View Card
                       </Link>
                     </td>
@@ -963,9 +984,20 @@ export const StudentManagement = () => {
 
   const renderNewStudentForm = () => (
     <form onSubmit={handleCreateStudent} className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex-grow">
-      <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4 sm:mb-6">
-        {isEditMode ? `Edit Student - ${editingStudent?.fullName}` : 'Create New Student'}
-      </h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
+        <h2 className="text-lg sm:text-xl font-bold text-gray-800">
+          {isEditMode ? `Edit Student - ${editingStudent?.fullName}` : 'Create New Student'}
+        </h2>
+        {photoPreview && (
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-orange-500 shadow-sm">
+            <img 
+              src={photoPreview} 
+              alt="Profile" 
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+      </div>
       <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Basic Details</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div>
@@ -1135,6 +1167,7 @@ export const StudentManagement = () => {
                       return;
                     }
                     setFormData((p) => ({ ...p, photo: file }));
+                    setPhotoPreview(URL.createObjectURL(file));
                     setError(''); // Clear any previous errors
                   }
                 } catch (error) {
