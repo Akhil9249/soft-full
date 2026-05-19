@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import Tabs from '../../../components/button/Tabs';
 import { Navbar } from '../../../components/admin/AdminNavBar';
 import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
@@ -176,8 +176,15 @@ export const Courses = () => {
     fetchCourses(pagination.currentPage, searchTerm, filters.category, filters.courseType);
   }, []);
 
+  const isFirstRender = useRef(true);
+
   // Handle search and filter changes with debounce
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       fetchCourses(1, searchTerm, filters.category, filters.courseType);
     }, 500); // 500ms debounce

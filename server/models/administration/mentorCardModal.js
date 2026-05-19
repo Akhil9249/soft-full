@@ -6,6 +6,8 @@ const mentorCardSchema = new mongoose.Schema({
     // subject: { type: mongoose.Schema.Types.ObjectId, ref: "Module" },
     subject: { type: String },
     // topic: { type: mongoose.Schema.Types.ObjectId, ref: "Topic" },
+    startDate: { type: Date },
+    endDate: { type: Date },
     topic: { type: String },
     test_name: { type: String },
     test_marks: { type: Number },

@@ -105,13 +105,11 @@ const Login = () => {
 
         // Navigate after a short delay to show the success message
         setTimeout(() => {
-          switch (role) {
-            case 'admin':
-              navigate("/dashboard")
-              break
-            case 'mentor':
-              navigate("/")
-              break
+          const userRole = role?.toLowerCase() || '';
+          if (userRole === 'super admin' || userRole === 'admin') {
+            navigate("/dashboard");
+          } else {
+            navigate("/"); // Mentors and any other roles go to root
           }
         }, 2000);
       } else {

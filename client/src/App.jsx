@@ -30,6 +30,7 @@ import Material from "./pages/admin/task-management/Material";
 import LeaveRequest from "./pages/admin/attendance/LeaveRequest";
 import AppTemp from "./pages/admin/attendance/Report";
 import MenorCard from "./pages/admin/administration/MenorCard";
+import Dashboard from "./pages/admin/administration/Dashboard";
 
 
 
@@ -45,10 +46,13 @@ function App() {
       </Route>
 
       <Route element={<AdminProtectedRoute />}>
+      
         <Route element={<SuperAdminProtectedRoute />} >
           <Route path="/" element={<RoleManagement />} />
           <Route path="/staff-management" element={<StaffManagement />} />
         </Route>
+
+        <Route path="/dashboard" element={<Dashboard />} /> 
         <Route path="/menor-card" element={<MenorCard />} />
         <Route path="/student-management" element={<StudentManagement />} />
         <Route path="/courses" element={<Courses />} />

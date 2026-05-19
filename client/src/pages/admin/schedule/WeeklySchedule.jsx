@@ -3,6 +3,24 @@ import { Navbar } from '../../../components/admin/AdminNavBar';
 import AdminService from '../../../services/admin-api-service/AdminService';
 import { IoEyeOutline } from "react-icons/io5";
 
+const getDefaultDates = () => {
+  const today = new Date();
+  const day = today.getDay();
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - day);
+  
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() + 6);
+  
+  const getLocalYYYYMMDD = (date) => {
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().split('T')[0];
+  };
+
+  return { startDate: getLocalYYYYMMDD(sunday), endDate: getLocalYYYYMMDD(saturday) };
+};
+
 export const WeeklySchedule = () => {
 
   const [activeTab, setActiveTab] = useState('weekly-schedule');
@@ -21,6 +39,9 @@ export const WeeklySchedule = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('success');
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingScheduleId, setDeletingScheduleId] = useState(null);
+
   const [weeklySchedules, setWeeklySchedules] = useState([]);
   const [mentors, setMentors] = useState([]);
   const [allMentors, setAllMentors] = useState([]);
@@ -31,9 +52,10 @@ export const WeeklySchedule = () => {
   const [timings, setTimings] = useState([]);
   const [dayCombinations, setDayCombinations] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const { getBatchesData, getAllBatchesData, getWeeklySchedulesData, postWeeklySchedulesData, putWeeklySchedulesData, deleteWeeklySchedulesData, getAllActiveStaffData, getModulesData, getTopicsData, updateWeeklyScheduleSubject, getBranchesData, getTimingsData, getDaysCombinationsData } = AdminService();
+  const defaultDates = getDefaultDates();
+  const [startDate, setStartDate] = useState(defaultDates.startDate);
+  const [endDate, setEndDate] = useState(defaultDates.endDate);
+  const { getBatchesData, getAllBatchesData, getWeeklySchedulesData, postWeeklySchedulesData, putWeeklySchedulesData, deleteWeeklySchedulesData, deleteWeeklyScheduleDocument, getAllActiveStaffData, getModulesData, getTopicsData, updateWeeklyScheduleSubject, getBranchesData, getTimingsData, getDaysCombinationsData } = AdminService();
 
   const showModalMessage = (message, type = 'info') => {
     setModalMessage(message);
@@ -254,18 +276,32 @@ export const WeeklySchedule = () => {
     setDraggingItem(dragItem);
   };
 
-  const handleRemoveBatchFromDatabase = async (scheduleId, batchId) => {
+  const handleDeleteScheduleClick = (scheduleId) => {
+    setDeletingScheduleId(scheduleId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteSchedule = async () => {
+    if (!deletingScheduleId) return;
+
     try {
-      const response = await deleteWeeklySchedulesData(scheduleId, {
-        batchId
-      });
-      showToastMessage('Batch successfully removed from schedule!', 'success');
+      const response = await deleteWeeklyScheduleDocument(deletingScheduleId);
+      showToastMessage('Schedule document successfully deleted!', 'success');
       await fetchWeeklySchedules();
+      setShowDeleteModal(false);
+      setDeletingScheduleId(null);
     } catch (error) {
-      console.error('Error removing batch from database:', error);
-      setError('Failed to remove batch');
-      showModalMessage('Failed to remove batch from schedule. Please try again.', 'error');
+      console.error('Error deleting schedule document:', error);
+      setError('Failed to delete schedule document');
+      showModalMessage('Failed to delete schedule document. Please try again.', 'error');
+      setShowDeleteModal(false);
+      setDeletingScheduleId(null);
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setDeletingScheduleId(null);
   };
 
   const handleSubjectChange = async (scheduleId, newSubject) => {
@@ -788,7 +824,7 @@ export const WeeklySchedule = () => {
                                           >
                                             <span className="truncate">{batch.batchName}</span>
                                             <button
-                                              onClick={() => handleRemoveBatchFromDatabase(currentSchedule._id, batch._id)}
+                                              onClick={() => handleDeleteScheduleClick(currentSchedule._id)}
                                               className="bg-red-600 text-white rounded-full w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center font-bold text-[10px] sm:text-xs leading-none transition-transform duration-200 hover:scale-110 flex-shrink-0 ml-1"
                                             >
                                               &times;
@@ -832,6 +868,11 @@ export const WeeklySchedule = () => {
             </div>
           </div>
         </div>
+
+        <Toast />
+        <Modal />
+
+
       </div>
     );
   };
@@ -848,6 +889,50 @@ export const WeeklySchedule = () => {
       <Toast />
       <Modal />
       {renderContent()}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={cancelDelete}></div>
+          <div className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all w-full max-w-lg">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                      Delete Schedule
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500">
+                        Are you sure you want to delete this schedule document? This action cannot be undone.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 flex justify-end items-center gap-3">
+                <button
+                  type="button"
+                  className="inline-flex justify-center items-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm h-fit"
+                  onClick={cancelDelete}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm h-fit"
+                  onClick={confirmDeleteSchedule}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+      )}
     </>
   )
 }

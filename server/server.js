@@ -112,7 +112,7 @@ app.use("/api/materials", materialRoutes);
 app.use("/api/interns-attendance", internsAttendanceRoutes);
 app.use("/api/mentor-card", mentorCardRoutes);
 app.use("/api/leave-requests", leaveRequestRoutes);
-//  Error Handling
+//  Error Handling.i
 app.use(errorHandle);
 
 

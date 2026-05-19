@@ -19,6 +19,10 @@ const userSchema = new mongoose.Schema(
     },
     mobile: {
       type: String,
+      required: [true, "Mobile number is required"],
+      match: [/^\d{10}$/, "Mobile number must be exactly 10 digits"], 
+      unique: true,
+      trim: true
     },
     description: {
       type: String,
@@ -30,11 +34,6 @@ const userSchema = new mongoose.Schema(
       // required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters long"],
     },
-    // googleId: {
-    //   type: String,
-    //   unique: true,
-    //   sparse: true, // Allows multiple users without a googleId
-    // },
     loginMethod: {
       type: String,
       enum: ["local", "google"],
@@ -43,9 +42,7 @@ const userSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     role: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Role",
-      // enum: ["super admin", "admin"],
-      // default: "user",
+      ref: "Role"
     }
   },
   { timestamps: true }

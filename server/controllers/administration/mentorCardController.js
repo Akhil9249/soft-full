@@ -3,7 +3,7 @@ const MentorCard = require("../../models/administration/mentorCardModal");
 // Create a new Mentor Card entry
 const createMentorCard = async (req, res) => {
     try {
-        const { internId, week, subject, topic, test_name, test_marks, test_total, isTest, project_name, project_marks, project_total, isProject, isSoftSkill, totalDays, attend, note } = req.body;
+        const { internId, week, subject, topic, startDate, endDate, test_name, test_marks, test_total, isTest, project_name, project_marks, project_total, isProject, isSoftSkill, totalDays, attend, note } = req.body;
         const mentorId = req.userId; // Taken from checkAuth middleware
 
         const weekNum = Number(week);
@@ -18,6 +18,8 @@ const createMentorCard = async (req, res) => {
             week: weekNum,
             subject,
             topic,
+            startDate,
+            endDate,
             test_name,
             test_marks,
             test_total,
@@ -61,7 +63,7 @@ const getMentorCardsByIntern = async (req, res) => {
 const updateMentorCard = async (req, res) => {
     try {
         const { id } = req.params;
-        const { week, subject, topic, test_name, test_marks, test_total, isTest, project_name, project_marks, project_total, isProject, isSoftSkill, totalDays, attend, note } = req.body;
+        const { week, subject, topic, startDate, endDate, test_name, test_marks, test_total, isTest, project_name, project_marks, project_total, isProject, isSoftSkill, totalDays, attend, note } = req.body;
         const mentorId = req.userId;
 
         const weekNum = week !== undefined ? Number(week) : undefined;
@@ -78,7 +80,7 @@ const updateMentorCard = async (req, res) => {
 
         const updatedCard = await MentorCard.findByIdAndUpdate(
             id,
-            { week: weekNum, subject, topic, test_name, test_marks, test_total, isTest, project_name, project_marks, project_total, isProject, isSoftSkill, totalDays, attend, note },
+            { week: weekNum, subject, topic, startDate, endDate, test_name, test_marks, test_total, isTest, project_name, project_marks, project_total, isProject, isSoftSkill, totalDays, attend, note },
             { new: true }
         );
 

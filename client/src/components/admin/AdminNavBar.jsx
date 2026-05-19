@@ -120,7 +120,7 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
       {/* Sidebar */}
       <aside className={`
         fixed lg:static
-        w-64 bg-white p-6 shadow-md flex flex-col justify-between rounded-r-2xl h-screen overflow-hidden z-50
+        w-64 bg-white p-6 shadow-md flex flex-col justify-between rounded-r-xl h-screen overflow-hidden z-50
         transform transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
@@ -133,16 +133,21 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
           >
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15L4 12l6-5 6 5-6 5z" />
           </svg>
-          <span className="text-xl font-bold text-gray-800">Softronics</span>
+          <span className="text-xl font-bold text-gray-800">Softroniics</span>
         </div>
         <nav className="space-y-4">
-          <a href="#" className="flex items-center text-gray-600 hover:text-orange-500 font-medium p-2 rounded-lg transition-colors duration-200">
-            {/* <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M3 14h18m-9-4v8m-7-8v8m14-8v8"></path></svg> */}
+          <Link 
+            to="/dashboard" 
+            onClick={() => handleNavItemClick('/dashboard')}
+            className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
+              activeNavItem === '/dashboard' 
+                ? 'bg-orange-100 text-orange-500' 
+                : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+            }`}
+          >
             <LayoutDashboard className="w-5 h-5 mr-3" />
-            
-            
             Dashboard
-          </a>
+          </Link>
 
           <div className={`font-medium ${openSections.administration ? 'text-orange-500' : 'text-gray-600'}`}>
             <div onClick={() => toggleSection('administration')} className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200">

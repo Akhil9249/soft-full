@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import useAuth from '../../../hooks/useAuth';
 import Tabs from '../../../components/button/Tabs';
 import { Navbar } from '../../../components/admin/AdminNavBar';
@@ -243,8 +243,15 @@ export const StudentManagement = () => {
     };
   }, [photoPreview]);
 
+  const isFirstRender = useRef(true);
+
   // Handle search and filter changes with debounce
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       fetchInterns(1, searchTerm, filters.courseStatus, filters.course, filters.branch, filters.batch);
     }, 500); // 500ms debounce

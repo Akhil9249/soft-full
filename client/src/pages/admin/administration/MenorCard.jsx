@@ -25,6 +25,8 @@ const MenorCard = () => {
 
     const [formData, setFormData] = useState({
         week: 1,
+        startDate: '',
+        endDate: '',
         subject: '',
         topic: '',
         isTest: false,
@@ -107,6 +109,8 @@ const MenorCard = () => {
         setEditingCardId(card._id);
         setFormData({
             week: card.week || 1,
+            startDate: card.startDate ? new Date(card.startDate).toISOString().split('T')[0] : '',
+            endDate: card.endDate ? new Date(card.endDate).toISOString().split('T')[0] : '',
             subject: card.subject?._id || card.subject || '', // handle populated object
             topic: card.topic?._id || card.topic || '', // handle populated object
             isTest: card.isTest || false,
@@ -129,6 +133,8 @@ const MenorCard = () => {
         setEditingCardId(null);
         setFormData({
             week: 1,
+            startDate: '',
+            endDate: '',
             subject: '',
             topic: '',
             isTest: false,
@@ -233,6 +239,7 @@ const MenorCard = () => {
                             <thead>
                                 <tr className="text-[10px] text-gray-500 uppercase tracking-widest border-b border-gray-800">
                                     <th className="p-4">Week</th>
+                                    <th className="p-4">Dates</th>
                                     <th className="p-4">Subject</th>
                                     <th className="p-4">Topic</th>
                                     <th className="p-4">Test</th>
@@ -251,6 +258,11 @@ const MenorCard = () => {
                                             <tr key={idx} className="border-b border-gray-800/50 hover:bg-gray-800/20 transition-colors group">
                                                 <td className="p-4 font-bold text-indigo-400 border-r border-gray-800">
                                                     W{row.week}
+                                                </td>
+                                                <td className="p-4 text-xs text-gray-400 whitespace-nowrap">
+                                                    {row.startDate ? new Date(row.startDate).toLocaleDateString('en-GB') : '-'} <br/>
+                                                    to <br/>
+                                                    {row.endDate ? new Date(row.endDate).toLocaleDateString('en-GB') : '-'}
                                                 </td>
                                                 <td className="p-4 text-gray-200">{row.subject || '-'}</td>
                                                 <td className="p-4 text-gray-200">{row.topic || '-'}</td>
@@ -334,6 +346,17 @@ const MenorCard = () => {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-1">Topic (Topic ID or text)</label>
                                     <input type="text" name="topic" value={formData.topic} onChange={handleInputChange} className="w-full bg-[#0f1117] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 h-[42px]" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">Start Date</label>
+                                    <input type="date" name="startDate" value={formData.startDate} onChange={handleInputChange} className="w-full bg-[#0f1117] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 h-[42px]" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-1">End Date</label>
+                                    <input type="date" name="endDate" value={formData.endDate} onChange={handleInputChange} className="w-full bg-[#0f1117] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 h-[42px]" />
                                 </div>
                             </div>
 

@@ -24,7 +24,7 @@ router.get("/", checkAuth, checkRoles(["super admin", "admin", "mentor"]), async
 router.post("/", checkAuth, checkRoles(["super admin", "admin"]), asyncHandler(weeklyScheduleController.createWeeklySchedule));
 router.get("/:id", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(weeklyScheduleController.getWeeklyScheduleById));
 router.put("/:id", checkAuth, checkRoles(["super admin", "admin"]), asyncHandler(weeklyScheduleController.updateWeeklySchedule));
-// router.delete("/:id", weeklyScheduleController.deleteWeeklySchedule);
+router.delete("/:id", checkAuth, checkRoles(["super admin", "admin"]), asyncHandler(weeklyScheduleController.deleteWeeklySchedule));
 
 // Advanced operations for managing schedule structure
 router.post("/:id/time", checkAuth, checkRoles(["super admin", "admin"]), asyncHandler(weeklyScheduleController.addTimeToSchedule));

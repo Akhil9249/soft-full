@@ -753,8 +753,14 @@ export const Notification = () => {
         fetchNotifications();
     }, []);
 
+    const isFirstRender = useRef(true);
+
     // Refetch when filters change (backend-driven)
     useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
         fetchNotifications(1);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filterType, filterAudience, filterBranch]);

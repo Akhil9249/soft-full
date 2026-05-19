@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import useAuth from '../../../hooks/useAuth';
 import Tabs from '../../../components/button/Tabs';
 import { Navbar } from '../../../components/admin/AdminNavBar';
@@ -296,8 +296,15 @@ export const Batches = () => {
     // fetchInterns();
   }, []);
 
+  const isFirstRender = useRef(true);
+
   // Handle search and filter changes with debounce
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       fetchBatches(1, searchTerm, filters.status, filters.branch);
     }, 500); // 500ms debounce

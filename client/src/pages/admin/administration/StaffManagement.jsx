@@ -1,6 +1,6 @@
 // import React from 'react'
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import useAuth from '../../../hooks/useAuth';
 import api from "../../../axios";
 import Tabs from "../../../components/button/Tabs";
@@ -218,8 +218,15 @@ export const StaffManagement = () => {
         };
     }, [photoPreview]);
 
+    const isFirstRender = useRef(true);
+
     // Handle search and filter changes with debounce
     useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+
         const timeoutId = setTimeout(() => {
             fetchStaff(1, searchTerm, filters.department, filters.employmentStatus, filters.branch);
         }, 500); // 500ms debounce

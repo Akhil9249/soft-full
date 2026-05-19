@@ -9,7 +9,7 @@ const DefaultProtectedRoute = () => {
 
     const token = localStorage.getItem("accessToken");
     if (token) {
-        return <Navigate to="/" />;
+        return <Navigate to="/dashboard" />;
     }
 
 

@@ -571,6 +571,10 @@ const AdminService = () => {
         const response = await axiosPrivate.delete(`/api/weekly-schedules/${scheduleId}/batch`, {data});
         return response.data;
     };
+    const deleteWeeklyScheduleDocument = async (scheduleId) => {
+        const response = await axiosPrivate.delete(`/api/weekly-schedules/${scheduleId}`);
+        return response.data;
+    };
     const updateWeeklyScheduleSubject = async (scheduleId, data) => {
         const response = await axiosPrivate.put(`/api/weekly-schedules/${scheduleId}/subject`, data);
         return response.data;
@@ -680,6 +684,7 @@ const AdminService = () => {
         putWeeklySchedulesData,
         postWeeklySchedulesData,
         deleteWeeklySchedulesData,
+        deleteWeeklyScheduleDocument,
         updateWeeklyScheduleSubject,
 
 

@@ -21,7 +21,7 @@ const checkRoles = (roles) => {
 // Basic CRUD operations
 router.get("/", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(materialController.getMaterials));
 router.post("/", checkAuth, checkRoles(["super admin", "admin"]), upload.single('attachments'), asyncHandler(materialController.createMaterial));
-
+ 
 // Additional material operations (must be before /:id routes)
 router.get("/mentor/:mentorId", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(materialController.getMaterialsByMentor));
 router.get("/batch/:batchId", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(materialController.getMaterialsByBatch));
