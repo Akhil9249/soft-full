@@ -1,19 +1,19 @@
-const express = require("express")
-const cors = require('cors')
+const express = require("express");
+const cors = require("cors");
 const morgan = require("morgan");
+require("dotenv").config();
 
 const connectDb = require("./config/db");
 const { startAttendanceCron } = require("./cron/attendanceCron");
 
-
-const registerAndLoginRoute = require('./routes/registerAndLoginRoute');
-const staffRoutes = require('./routes/staffRoutes');
-const internRoutes = require('./routes/internRoutes');
-const categoryRoutes = require('./routes/categoryRoutes');
-const courseRoutes = require('./routes/courseRoutes');
-const courseTypeRoutes = require('./routes/courseTypeRoutes');
-const courseDurationRoutes = require('./routes/courseDurationRoutes');
-const moduleRoutes = require('./routes/moduleRoutes');
+const registerAndLoginRoute = require("./routes/registerAndLoginRoute");
+const staffRoutes = require("./routes/staffRoutes");
+const internRoutes = require("./routes/internRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
+const courseRoutes = require("./routes/courseRoutes");
+const courseTypeRoutes = require("./routes/courseTypeRoutes");
+const courseDurationRoutes = require("./routes/courseDurationRoutes");
+const moduleRoutes = require("./routes/moduleRoutes");
 const topicRoutes = require("./routes/topicRoutes");
 const batchRoutes = require("./routes/batchRoutes");
 const timingRoutes = require("./routes/timingRoutes");
@@ -31,58 +31,44 @@ const mentorCardRoutes = require("./routes/mentorCardRoutes");
 const leaveRequestRoutes = require("./routes/leaveRequestRoutes");
 
 const errorHandle = require("./middlewares/errorHandle");
-// const authRoutes = require("./routes/auth");
 
+const app = express();
 
-const app = express()
-require('dotenv').config()
+// Morgan middleware
+app.use(morgan("dev"));
 
-//connect to database
-connectDb()
-
-// Start attendance cron job
-startAttendanceCron() 
-
-// Start the plan downgrade cron job
-// startCronJobs();
-
-// Use morgan middleware
-app.use(morgan("dev")); // 'dev' is a predefined format string
-
+// CORS
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
-   process.env.FRONTENT_URI,
-  // `https://${process.env.BASE_URL}` 
+  process.env.FRONTENT_URI,
 ];
 
-// app.use(cors())
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error("Not allowed by CORS"));
-    }
-  },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  credentials: true,
-}));
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+  })
+);
 
-// app.options("*", cors()); // handle preflight
+// Middleware
+app.use(express.json());
 
-
-app.use(express.json())
-
+// Test route
 app.get("/", (req, res) => {
   res.send("Hello from Express on Vercel!");
 });
 
-
-
+// Routes
 app.use("/api", registerAndLoginRoute);
 
 app.use("/api/staff", staffRoutes);
@@ -100,7 +86,6 @@ app.use("/api/topics", topicRoutes);
 app.use("/api/batches", batchRoutes);
 app.use("/api/timings", timingRoutes);
 app.use("/api/weekly-schedules", weeklyScheduleRoutes);
-// app.use("/api/weekly-schedule", weeklyScheduleRoutes);
 
 app.use("/api/pages", pageRoutes);
 app.use("/api/notifications", notificationRoutes);
@@ -112,11 +97,27 @@ app.use("/api/materials", materialRoutes);
 app.use("/api/interns-attendance", internsAttendanceRoutes);
 app.use("/api/mentor-card", mentorCardRoutes);
 app.use("/api/leave-requests", leaveRequestRoutes);
-//  Error Handling.i
+
+// Error handler
 app.use(errorHandle);
 
-
+// Start server only AFTER DB connection
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log(`Server running on http://localhost:${PORT}`)
-);
+
+const startServer = async () => {
+  try {
+    // Wait for DB connection
+    await connectDb();
+
+    // Start cron after DB connects
+    startAttendanceCron();
+
+    app.listen(PORT, () => {
+      console.log(`✅ Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Server startup failed:", error);
+  }
+};
+
+startServer();
