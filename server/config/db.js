@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const connectDb = async () => {
   try {
     const connection = await mongoose.connect(process.env.MONGO_URI);
-    console.log(`✅ Database Connected: ${connection.connection.name}`);
+    console.log("Database Connected: ");
     
     // Drop old username index from users collection if it exists
     try {
