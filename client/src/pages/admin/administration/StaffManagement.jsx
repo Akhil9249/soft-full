@@ -10,7 +10,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export const StaffManagement = () => {
-    const { getStaffData,putStaffData,postStaffData,getBranchesData,deleteStaffData,getRolesData } = AdminService();
+    const { getStaffData,putStaffData,postStaffData,getBranchesData,deleteStaffData,getRolesData,getTimingsData } = AdminService();
 
 
     const [activeTab, setActiveTab] = useState('staffList');
@@ -22,6 +22,7 @@ export const StaffManagement = () => {
     const [branches, setBranches] = useState([]);
     const [roles, setRoles] = useState([]);
     const [rolesLoading, setRolesLoading] = useState(false);
+    const [timings, setTimings] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [editingStaff, setEditingStaff] = useState(null);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -79,6 +80,8 @@ export const StaffManagement = () => {
         officialEmail: "",
         password: "",
         confirmPassword: "",
+        isMentor: false,
+        time: [],
     });
     const [openSections, setOpenSections] = useState({
         administration: true,
@@ -183,6 +186,18 @@ export const StaffManagement = () => {
         }
     };
 
+    // Fetch timings from backend
+    const fetchTimings = async () => {
+        try {
+            const res = await getTimingsData();
+            const timingsData = res.data?.data || res.data || [];
+            setTimings(Array.isArray(timingsData) ? timingsData : []);
+        } catch (err) {
+            console.error('Failed to load timings:', err);
+            setTimings([]);
+        }
+    };
+
     // Pagination handlers
     const handlePageChange = (newPage) => {
         if (newPage >= 1 && newPage <= pagination.totalPages) {
@@ -204,9 +219,10 @@ export const StaffManagement = () => {
 
     // Load staff and branches when component mounts
     useEffect(() => {
-            fetchStaff(pagination.currentPage, searchTerm, filters.department, filters.employmentStatus, filters.branch);
+        fetchStaff(pagination.currentPage, searchTerm, filters.department, filters.employmentStatus, filters.branch);
         fetchBranches();
         fetchRoles();
+        fetchTimings();
     }, []);
 
     // Cleanup object URLs for photo preview
@@ -294,6 +310,8 @@ export const StaffManagement = () => {
             officialEmail: staffMember.officialEmail || "",
             password: "",
             confirmPassword: "",
+            isMentor: staffMember.isMentor || false,
+            time: staffMember.time?.map(t => typeof t === 'object' ? t._id : t) || [],
         });
         setPhotoPreview(staffMember.photo || null);
         setActiveTab('newStaff');
@@ -325,6 +343,8 @@ export const StaffManagement = () => {
             officialEmail: "",
             password: "",
             confirmPassword: "",
+            isMentor: false,
+            time: [],
         });
         setPhotoPreview(null);
         setActiveTab('staffList');
@@ -538,6 +558,11 @@ export const StaffManagement = () => {
         if (formData.password && formData.password.trim() !== '') {
             payload.append('password', formData.password);
         }
+        
+        payload.append('isMentor', formData.isMentor);
+        if (formData.time && formData.time.length > 0) {
+            payload.append('time', JSON.stringify(formData.time));
+        }
 
         try {
             setLoading(true);
@@ -581,6 +606,8 @@ export const StaffManagement = () => {
                 officialEmail: "",
                 password: "",
                 confirmPassword: "",
+                isMentor: false,
+                time: [],
             });
             setPhotoPreview(null);
         } catch (err) {
@@ -1073,6 +1100,90 @@ export const StaffManagement = () => {
                     <input name="remarks" value={formData.remarks} onChange={handleInputChange} type="text" placeholder="Enter Any Remarks or notes" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
                 </div>
             </div>
+
+            {/* Mentor Timings Section */}
+            <div className="mb-6 sm:mb-8">
+                <div className="flex items-center mb-4">
+                    <input 
+                        type="checkbox" 
+                        id="isMentor" 
+                        name="isMentor" 
+                        checked={formData.isMentor}
+                        onChange={(e) => setFormData(prev => ({ ...prev, isMentor: e.target.checked }))}
+                        className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded" 
+                    />
+                    <label htmlFor="isMentor" className="ml-2 block text-gray-700 font-medium">
+                        Enable Mentor Role
+                    </label>
+                </div>
+                
+                {formData.isMentor && (
+                    <div className="p-4 border border-gray-200 rounded-md bg-gray-50">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Left Side: Dropdown */}
+                            <div>
+                                <label className="block text-gray-700 font-medium mb-2">Select Timings</label>
+                                <select
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                                    onChange={(e) => {
+                                        const selectedId = e.target.value;
+                                        if (selectedId && !formData.time.includes(selectedId)) {
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                time: [...prev.time, selectedId]
+                                            }));
+                                        }
+                                        e.target.value = ""; // reset dropdown after selection
+                                    }}
+                                    defaultValue=""
+                                >
+                                    <option value="" disabled>-- Select a Timing --</option>
+                                    {timings.filter(t => !formData.time.includes(t._id)).map(t => (
+                                        <option key={t._id} value={t._id}>{t.timeSlot}</option>
+                                    ))}
+                                </select>
+                                {timings.length === 0 && (
+                                    <p className="text-sm text-gray-500 mt-2">No timings available. Please add timings in the system.</p>
+                                )}
+                            </div>
+                            
+                            {/* Right Side: Selected Timings */}
+                            <div>
+                                <label className="block text-gray-700 font-medium mb-2">Selected Timings</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {formData.time.length === 0 ? (
+                                        <p className="text-sm text-gray-500 italic mt-2">No timings selected yet.</p>
+                                    ) : (
+                                        formData.time.map(id => {
+                                            const timingObj = timings.find(t => t._id === id);
+                                            return (
+                                                <div key={id} className="flex items-center bg-orange-100 text-orange-800 px-3 py-1.5 rounded-full text-sm font-medium border border-orange-200">
+                                                    <span>{timingObj ? timingObj.timeSlot : "Unknown Timing"}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                time: prev.time.filter(tId => tId !== id)
+                                                            }));
+                                                        }}
+                                                        className="ml-2 text-orange-500 hover:text-orange-900 focus:outline-none flex-shrink-0"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
             <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Login & Access</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <div>

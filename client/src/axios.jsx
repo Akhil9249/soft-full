@@ -7,18 +7,9 @@ export const BASE_URL = apiUrl;
 export const MEDIA_URL = "";
 
 export default axios.create({
-  baseURL: BASE_URL,
-  // headers: {
-  //   "Content-Type": "application/json",
-  // },
+  baseURL: BASE_URL
 });
 
 export const axiosPrivate = axios.create({
-  baseURL: BASE_URL,
-  // headers: {
-  //   "Content-Type": "application/json",
-  // },
-  //   headers: {
-  //     "Content-Type": "multipart/form-data",
-  // },
+  baseURL: BASE_URL
 });

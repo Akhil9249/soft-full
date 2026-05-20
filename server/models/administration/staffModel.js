@@ -26,12 +26,15 @@ const staffSchema = new mongoose.Schema({
   // role: { type: String, enum: ["Super Admin", "Admin", "Mentor", "Accountant"], default: "Mentor" },
   role: { type: mongoose.Schema.Types.ObjectId, ref: "Role", required: true },
 
+  isMentor: { type: Boolean, default: false },
+  time: [{ type: mongoose.Schema.Types.ObjectId, ref: "Timing", default: [] }],
+
   // Login & Access
   officialEmail: { type: String, required: true, unique: true, lowercase: true },
   password: { type: String, required: true }, // store hashed password
   isActive: { type: Boolean, default: true }
 },
-{ timestamps: true }
+  { timestamps: true }
 );
 
 // module.exports = mongoose.model("Staff", staffSchema);

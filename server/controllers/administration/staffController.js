@@ -83,7 +83,9 @@ const addStaff = async (req, res) => {
       remarks,
       role,
       officialEmail,
-      password
+      password,
+      isMentor,
+      time
     } = req.body;
 
     // Validate required fields according to schema
@@ -167,7 +169,9 @@ const addStaff = async (req, res) => {
       role: role,
       officialEmail,
       password: hashedPassword,
-      isActive: true
+      isActive: true,
+      isMentor: isMentor === 'true' || isMentor === true,
+      time: time ? (Array.isArray(time) ? time : JSON.parse(time || "[]")).filter(Boolean) : []
     });
 
     // Populate branch and role fields for response
@@ -380,7 +384,9 @@ const updateStaff = async (req, res) => {
       role,
       officialEmail,
       password,
-      isActive
+      isActive,
+      isMentor,
+      time
     } = req.body;
 
     // Validate gender enum if provided
@@ -464,8 +470,17 @@ const updateStaff = async (req, res) => {
       remarks,
       role,
       officialEmail,
-      isActive
+      isActive,
+      isMentor: isMentor !== undefined ? (isMentor === 'true' || isMentor === true) : undefined,
     };
+
+    if (time !== undefined) {
+      try {
+        updateData.time = Array.isArray(time) ? time : JSON.parse(time || "[]").filter(Boolean);
+      } catch (e) {
+        updateData.time = [time].filter(Boolean);
+      }
+    }
 
     // Add hashed password if provided
     if (hashedPassword) {

@@ -129,9 +129,11 @@ export const WeeklySchedule = () => {
   const fetchTimings = async () => {
     try {
       const res = await getTimingsData();
-      setTimings(res.data || []);
+      const timingsData = res.data?.data || res.data || [];
+      setTimings(Array.isArray(timingsData) ? timingsData : []);
     } catch (err) {
       console.error('Failed to load timings:', err);
+      setTimings([]);
     }
   };
 
@@ -163,7 +165,8 @@ export const WeeklySchedule = () => {
       const transformedMentors = mentorStaff.map(staff => ({
         _id: staff._id,
         name: staff.fullName,
-        branch: staff.branch
+        branch: staff.branch,
+        time: staff.time || []
       }));
       setAllMentors(transformedMentors);
       setMentors(transformedMentors);
@@ -407,9 +410,13 @@ export const WeeklySchedule = () => {
         }
 
         const mentor = mentors[mentorIndex];
-        const currentBranch2 = branches.find(b => b._id === selectedBranch);
-        const branchTimings = currentBranch2?.time || [];
-        const timeSlot = branchTimings[slotIndex];
+        let mentorTimings = [];
+        if (mentor.time && mentor.time.length > 0) {
+            mentorTimings = timings.filter(t => 
+                mentor.time.some(mt => String(mt._id || mt) === String(t._id))
+            );
+        }
+        const timeSlot = mentorTimings[slotIndex];
         const targetDaysName = dayCombo.name;
 
         // Find existing schedule for this mentor, time slot, day, and branch
@@ -768,8 +775,8 @@ export const WeeklySchedule = () => {
               <table className="min-w-full">
                 <thead className="bg-orange-500 text-white">
                   <tr>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider">Mentors</th>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider">Time</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky left-0 bg-orange-500 z-20 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px]">Mentors</th>
+                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky left-[120px] sm:left-[150px] bg-orange-500 z-20 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] border-r border-orange-400 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]">Time</th>
                     {displayedDayCombinations.map((dayCombo) => (
                       <React.Fragment key={dayCombo._id}>
                         <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider">{dayCombo.name}</th>
@@ -779,17 +786,41 @@ export const WeeklySchedule = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {mentors.map((mentor, mentorIndex) => (
+                  {mentors.map((mentor, mentorIndex) => {
+                    let mentorTimings = [];
+                    if (mentor.time && mentor.time.length > 0) {
+                        mentorTimings = timings.filter(t => 
+                            mentor.time.some(mt => String(mt._id || mt) === String(t._id))
+                        );
+                    }
+                    
+                    if (mentorTimings.length === 0) {
+                        return (
+                            <tr key={mentorIndex}>
+                                <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 border-r border-gray-200 sticky left-0 bg-gray-50 z-10 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px] truncate max-w-[120px] sm:max-w-[150px]" title={mentor.name}>
+                                    {mentor.name}
+                                </td>
+                                <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 italic sticky left-[120px] sm:left-[150px] bg-gray-50 z-10 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                    -
+                                </td>
+                                <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 italic" colSpan={displayedDayCombinations.length * 2}>
+                                    No timings assigned to this mentor
+                                </td>
+                            </tr>
+                        );
+                    }
+
+                    return (
                     <React.Fragment key={mentorIndex}>
-                      {displayedTimings.map((timeSlot, slotIndex) => {
+                      {mentorTimings.map((timeSlot, slotIndex) => {
                         return (
                           <tr key={`${mentorIndex}-${slotIndex}`} data-mentor-slot={`${mentorIndex}-${slotIndex}`}>
                             {slotIndex === 0 && (
-                              <td rowSpan={displayedTimings.length} className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 border-r border-gray-200 align-top">
+                              <td rowSpan={mentorTimings.length} className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 border-r border-gray-200 align-top sticky left-0 bg-white z-10 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px] truncate max-w-[120px] sm:max-w-[150px]" title={mentor.name}>
                                 {mentor.name}
                               </td>
                             )}
-                            <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200">
+                            <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 sticky left-[120px] sm:left-[150px] bg-white z-10 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                               {timeSlot.timeSlot}
                             </td>
 
@@ -862,7 +893,8 @@ export const WeeklySchedule = () => {
                         )
                       })}
                     </React.Fragment>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
