@@ -26,7 +26,7 @@ const internSchema = new mongoose.Schema({
   courseStartedDate: { type: Date, required: true },
   completionDate: { type: Date },
   batch: { type: String },
-  courseStatus: { type: String, enum: ["Active", "Inactive","Ongoing", "Dropped", "Completed", "Long leave"], default: "Active" },
+  courseStatus: { type: String, enum: ["Active", "Inactive","Ongoing","Pause", "Dropped", "Completed", "Long leave"], default: "Active" },
   careerAdvisor: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
   remarks: { type: String },
   // mentorCard: {

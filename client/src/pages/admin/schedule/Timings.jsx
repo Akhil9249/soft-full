@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 
-import { X } from 'lucide-react';
+import { X, Edit2 } from 'lucide-react';
 import { Navbar } from '../../../components/admin/AdminNavBar';
 import Tabs from '../../../components/button/Tabs';   
 import AdminService from '../../../services/admin-api-service/AdminService';
@@ -16,7 +16,11 @@ export const Timings = () => {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [deletingTiming, setDeletingTiming] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const { getBranchesData, getTimingsData, postTimingsData, deleteTimingsData } = AdminService();
+  const [editingTiming, setEditingTiming] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({ start: '', end: '', branch: '' });
+  
+  const { getBranchesData, getTimingsData, postTimingsData, deleteTimingsData, putTimingsData } = AdminService();
   const headData = "Settings"
 
   const tabOptions = [
@@ -108,6 +112,65 @@ export const Timings = () => {
     setDeletingTiming(null);
   };
 
+  const convertTo24Hour = (time12h) => {
+    if (!time12h) return '';
+    const parts = time12h.trim().split(' ');
+    if (parts.length !== 2) return '';
+    const [time, modifier] = parts;
+    let [hours, minutes] = time.split(':');
+    if (hours === '12') hours = '00';
+    if (modifier === 'PM') hours = parseInt(hours, 10) + 12;
+    return `${hours.toString().padStart(2, '0')}:${minutes}`;
+  };
+
+  const formatTime = (timeStr) => {
+    let [hours, minutes] = timeStr.split(':');
+    let ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${hours.toString().padStart(2, '0')}:${minutes} ${ampm}`;
+  };
+
+  const handleEditClick = (timing) => {
+    const [start, end] = timing.timeSlot.split(' - ');
+    setEditForm({
+      start: convertTo24Hour(start),
+      end: convertTo24Hour(end),
+      branch: typeof timing.branch === 'object' ? timing.branch?._id : timing.branch
+    });
+    setEditingTiming(timing);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateTiming = async () => {
+    if (!editForm.start || !editForm.end || !editForm.branch) {
+      setError('Please provide start time, end time, and select a branch');
+      return;
+    }
+    const updatedTimeSlot = `${formatTime(editForm.start)} - ${formatTime(editForm.end)}`;
+    try {
+      setLoading(true);
+      await putTimingsData(editingTiming._id, {
+        timeSlot: updatedTimeSlot,
+        branch: editForm.branch
+      });
+      setSuccess('Timing updated successfully!');
+      setShowEditModal(false);
+      setEditingTiming(null);
+      await fetchTimings();
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Failed to update timing');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingTiming(null);
+    setEditForm({ start: '', end: '', branch: '' });
+  };
+
 
   const AddedTimings = () => {
     return (
@@ -151,12 +214,16 @@ export const Timings = () => {
                 className="bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-full flex items-center gap-2 sm:space-x-2 text-xs sm:text-sm"
               >
                 <span className="font-medium">{timing.timeSlot}</span>
-                <span className="text-xs sm:text-sm text-gray-500">
+                <span className="text-xs sm:text-sm text-gray-500 border-r border-gray-300 pr-2 mr-1">
                   {typeof timing.branch === 'object' && timing.branch 
                     ? timing.branch.branchName 
                     : 'Unknown Branch'
                   }
                 </span>
+                <Edit2
+                  className="w-4 h-4 text-gray-500 cursor-pointer hover:text-blue-500 flex-shrink-0"
+                  onClick={() => handleEditClick(timing)}
+                />
                 <X 
                   className="w-4 h-4 text-gray-500 cursor-pointer hover:text-red-500 flex-shrink-0" 
                   onClick={() => handleDeleteTiming(timing)}
@@ -175,28 +242,32 @@ export const Timings = () => {
     setSuccess('');
 
     // Get form data
-    const batchNameSelect = document.getElementById('batch-name');
+    const startTimeInput = document.getElementById('start-time');
+    const endTimeInput = document.getElementById('end-time');
     const branchNameSelect = document.getElementById('branch-name');
     
-    const timeSlot = batchNameSelect.value;
-    const branchId = branchNameSelect.value;
+    const startTime = startTimeInput?.value;
+    const endTime = endTimeInput?.value;
+    const branchId = branchNameSelect?.value;
 
-    if (!timeSlot || !branchId) {
-      setError('Please select both time slot and branch');
+    if (!startTime || !endTime || !branchId) {
+      setError('Please provide start time, end time, and select a branch');
       return;
     }
 
+    const timeSlot = `${formatTime(startTime)} - ${formatTime(endTime)}`;
+
     try {
       setLoading(true);
-      // const response = await axiosPrivate.post('http://localhost:3000/api/timings', {
       const response = await postTimingsData({
         branch: branchId,
         timeSlot: timeSlot
       });
       setSuccess('Timing created successfully!');
       // Reset form
-      batchNameSelect.value = '';
-      branchNameSelect.value = '';
+      if (startTimeInput) startTimeInput.value = '';
+      if (endTimeInput) endTimeInput.value = '';
+      if (branchNameSelect) branchNameSelect.value = '';
       // Refresh timings list
       await fetchTimings();
       setActiveTab('timings'); // Switch to timings tab
@@ -248,19 +319,26 @@ export const Timings = () => {
       )}
       <div className="space-y-4 sm:space-y-6">
         <h3 className="text-lg sm:text-xl font-bold text-gray-900">Timings Details</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           <div className="flex flex-col">
-            <label htmlFor="batch-name" className="text-xs sm:text-sm text-gray-600 mb-2">
-              Batch Name
+            <label htmlFor="start-time" className="text-xs sm:text-sm text-gray-600 mb-2">
+              Start Time
             </label>
-            <select
-              id="batch-name"
+            <input
+              type="time"
+              id="start-time"
               className="p-2 sm:p-3 bg-gray-100 text-gray-800 rounded-lg sm:rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none text-sm sm:text-base"
-            >
-              <option value="08.30 AM - 11.30 AM">08.30 Am - 11.30 Am</option>
-              <option value="11.30 AM - 02.30 PM">11.30 Pm - 02.30 Pm</option>
-              <option value="02.00 PM - 05.00 PM">02.00 Pm - 05.00 Pm</option>
-            </select>
+            />
+          </div>
+          <div className="flex flex-col">
+            <label htmlFor="end-time" className="text-xs sm:text-sm text-gray-600 mb-2">
+              End Time
+            </label>
+            <input
+              type="time"
+              id="end-time"
+              className="p-2 sm:p-3 bg-gray-100 text-gray-800 rounded-lg sm:rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none text-sm sm:text-base"
+            />
           </div>
            <div className="flex flex-col">
              <label htmlFor="branch-name" className="text-xs sm:text-sm text-gray-600 mb-2">
@@ -349,6 +427,67 @@ export const Timings = () => {
                 className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
               >
                 {loading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Timing Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Edit Timing</h3>
+            
+            <div className="space-y-4">
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600 mb-1">Start Time</label>
+                <input
+                  type="time"
+                  value={editForm.start}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, start: e.target.value }))}
+                  className="p-2 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600 mb-1">End Time</label>
+                <input
+                  type="time"
+                  value={editForm.end}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, end: e.target.value }))}
+                  className="p-2 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-sm text-gray-600 mb-1">Branch Name</label>
+                <select
+                  value={editForm.branch}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, branch: e.target.value }))}
+                  className="p-2 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                >
+                  <option value="">Choose Branch</option>
+                  {branches.map((branch) => (
+                    <option key={branch._id} value={branch._id}>
+                      {branch.branchName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col sm:flex-row justify-end gap-3">
+              <button
+                onClick={closeEditModal}
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateTiming}
+                disabled={loading}
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-orange-500 border border-transparent rounded-md hover:bg-orange-600 focus:outline-none disabled:opacity-50"
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

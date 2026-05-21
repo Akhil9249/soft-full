@@ -693,6 +693,7 @@ export const StudentManagement = () => {
             <option value="">All Status</option>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
+            <option value="Pause">Pause</option>
             <option value="Ongoing">Ongoing</option>
             <option value="Dropped">Dropped</option>
             <option value="Completed">Completed</option>

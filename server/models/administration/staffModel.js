@@ -19,7 +19,7 @@ const staffSchema = new mongoose.Schema({
   // assignedBatches: [{ type: mongoose.Schema.Types.ObjectId, ref: "Batch" }], // For mentors - batches they are assigned to
   yearsOfExperience: { type: Number, min: 0 },
   dateOfJoining: { type: Date, required: true },
-  employmentStatus: { type: String, enum: ["Active", "Inactive"], required: true },
+  employmentStatus: { type: String, enum: ["Active","Pause","Inactive"], required: true },
   resignationDate: { type: Date }, // only if inactive
   resume: { type: String }, // store resume file URL or path
   remarks: { type: String },

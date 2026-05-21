@@ -41,6 +41,8 @@ export const WeeklySchedule = () => {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingScheduleId, setDeletingScheduleId] = useState(null);
+  
+  const [hoveredBatchInfo, setHoveredBatchInfo] = useState(null);
 
   const [weeklySchedules, setWeeklySchedules] = useState([]);
   const [mentors, setMentors] = useState([]);
@@ -305,6 +307,23 @@ export const WeeklySchedule = () => {
   const cancelDelete = () => {
     setShowDeleteModal(false);
     setDeletingScheduleId(null);
+  };
+
+  const handleBatchHover = (e, batchId) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const batchObj = typeof batchId === 'object' ? batchId : { _id: batchId };
+    const fullBatch = allBatches.find(b => b._id === batchObj._id);
+    if (fullBatch) {
+      setHoveredBatchInfo({
+        batch: fullBatch,
+        x: rect.left + rect.width / 2,
+        y: rect.top,
+      });
+    }
+  };
+
+  const handleBatchLeave = () => {
+    setHoveredBatchInfo(null);
   };
 
   const handleSubjectChange = async (scheduleId, newSubject) => {
@@ -710,6 +729,8 @@ export const WeeklySchedule = () => {
                       key={batch._id || index}
                       draggable
                       onDragStart={() => handleDragStart(batch)}
+                      onMouseEnter={(e) => handleBatchHover(e, batch._id)}
+                      onMouseLeave={handleBatchLeave}
                       className={`flex justify-between items-center p-2 sm:p-3 rounded-lg border cursor-grab hover:bg-gray-100 transition-colors text-xs sm:text-sm ${isAssigned
                           ? 'bg-green-100 border-green-200'
                           : 'bg-gray-50 border-gray-200'
@@ -851,6 +872,8 @@ export const WeeklySchedule = () => {
                                         {batches.map((batch, index) => (
                                           <div
                                             key={batch._id || index}
+                                            onMouseEnter={(e) => handleBatchHover(e, batch._id)}
+                                            onMouseLeave={handleBatchLeave}
                                             className={`text-white p-1.5 sm:p-2 rounded-md sm:rounded-lg shadow-md transition-all duration-200 text-[10px] sm:text-xs w-full flex items-center justify-between ${dcIndex % 2 === 0 ? 'bg-blue-500' : 'bg-green-500'}`}
                                           >
                                             <span className="truncate">{batch.batchName}</span>
@@ -904,7 +927,31 @@ export const WeeklySchedule = () => {
         <Toast />
         <Modal />
 
-
+        {/* Hover Batch Modal */}
+        {hoveredBatchInfo && (
+          <div
+            className="fixed z-[100] bg-white border border-gray-200 rounded-lg shadow-xl p-4 w-56 text-gray-800 pointer-events-none transform -translate-x-1/2 -translate-y-full"
+            style={{
+              top: `${hoveredBatchInfo.y - 10}px`,
+              left: `${hoveredBatchInfo.x}px`,
+            }}
+          >
+            <h4 className="font-bold border-b pb-2 mb-2 text-sm text-orange-600">{hoveredBatchInfo.batch.batchName} Interns</h4>
+            <div className="max-h-48 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+              {hoveredBatchInfo.batch.interns?.length > 0 ? (
+                <ul className="space-y-1">
+                  {hoveredBatchInfo.batch.interns.map((intern, idx) => (
+                    <li key={intern._id || idx} className="text-xs py-1 border-b border-gray-100 last:border-0">
+                      <span className="font-medium text-gray-700">{intern.fullName}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-gray-500 italic">No interns in this batch.</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   };

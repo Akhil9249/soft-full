@@ -671,6 +671,7 @@ export const StaffManagement = () => {
                     >
                         <option value="">All Status</option>
                         <option value="Active">Active</option>
+                        <option value="Pause">Pause</option>    
                         <option value="Inactive">Inactive</option>
                     </select>
                     <button 

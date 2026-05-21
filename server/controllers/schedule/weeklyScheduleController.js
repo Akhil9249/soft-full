@@ -372,7 +372,7 @@ const getAllMentorsWithBatches = async (req, res) => {
           },
           {
             path: 'interns',
-            select: 'course',
+            select: 'course fullName',
             populate: {
               path: 'course',
               select: 'courseName'
@@ -429,11 +429,17 @@ const getAllMentorsWithBatches = async (req, res) => {
                 mentorData.batches.add(batch._id.toString());
 
                 const courses = new Set();
+                const internsList = [];
                 if (batch.interns && batch.interns.length > 0) {
                   batch.interns.forEach(intern => {
                     if (intern.course && intern.course.courseName) {
                       courses.add(intern.course.courseName);
                     }
+                    internsList.push({
+                      _id: intern._id,
+                      fullName: intern.fullName,
+                      courseName: intern.course?.courseName
+                    });
                   });
                 }
                 const courseNames = Array.from(courses).join(', ') || 'N/A';
@@ -442,7 +448,8 @@ const getAllMentorsWithBatches = async (req, res) => {
                   _id: batch._id,
                   batchName: batch.batchName,
                   branchName: batch.branch?.branchName || 'N/A',
-                  courseName: courseNames
+                  courseName: courseNames,
+                  interns: internsList
                 });
               }
             });
@@ -457,31 +464,51 @@ const getAllMentorsWithBatches = async (req, res) => {
     mentorsWithBatches.push(...Array.from(mentorMap.values()).map(mentor => ({
       ...mentor,
       batches: Array.from(mentor.batches).map(batchId => {
+        const batchDays = new Set();
+        let finalBatch = null;
+
         for (const scheduleDoc of weeklySchedules) {
-          if (scheduleDoc.schedule && scheduleDoc.schedule.sub_details && scheduleDoc.schedule.sub_details.batch) {
+          if (scheduleDoc.mentor?._id.toString() === mentor._id.toString() && scheduleDoc.schedule && scheduleDoc.schedule.sub_details && scheduleDoc.schedule.sub_details.batch) {
             for (const batch of scheduleDoc.schedule.sub_details.batch) {
               if (batch && batch._id.toString() === batchId) {
-                const courses = new Set();
-                if (batch.interns && batch.interns.length > 0) {
-                  batch.interns.forEach(intern => {
-                    if (intern.course && intern.course.courseName) {
-                      courses.add(intern.course.courseName);
-                    }
-                  });
+                if (scheduleDoc.schedule.sub_details.day?.name) {
+                  batchDays.add(scheduleDoc.schedule.sub_details.day.name);
                 }
-                const courseNames = Array.from(courses).join(', ') || 'N/A';
 
-                return {
-                  _id: batch._id,
-                  batchName: batch.batchName,
-                  branchName: batch.branch?.branchName || 'N/A',
-                  courseName: courseNames
-                };
+                if (!finalBatch) {
+                  const courses = new Set();
+                  const internsList = [];
+                  if (batch.interns && batch.interns.length > 0) {
+                    batch.interns.forEach(intern => {
+                      if (intern.course && intern.course.courseName) {
+                        courses.add(intern.course.courseName);
+                      }
+                      internsList.push({
+                        _id: intern._id,
+                        fullName: intern.fullName,
+                        courseName: intern.course?.courseName
+                      });
+                    });
+                  }
+                  const courseNames = Array.from(courses).join(', ') || 'N/A';
+
+                  finalBatch = {
+                    _id: batch._id,
+                    batchName: batch.batchName,
+                    branchName: batch.branch?.branchName || 'N/A',
+                    courseName: courseNames,
+                    interns: internsList
+                  };
+                }
               }
             }
           }
         }
-        return null;
+        
+        if (finalBatch) {
+          finalBatch.dayCombination = Array.from(batchDays).join(', ') || 'N/A';
+        }
+        return finalBatch;
       }).filter(batch => batch !== null)
     })));
 

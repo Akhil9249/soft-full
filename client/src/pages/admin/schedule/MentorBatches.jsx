@@ -12,6 +12,7 @@ export const MentorBatches = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedMentors, setExpandedMentors] = useState(new Set());
+  const [hoveredBatchInfo, setHoveredBatchInfo] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [branches, setBranches] = useState([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
@@ -87,6 +88,21 @@ export const MentorBatches = () => {
       }
       return newSet;
     });
+  };
+
+  const handleBatchHover = (e, batch) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (batch) {
+      setHoveredBatchInfo({
+        batch: batch,
+        x: rect.left + rect.width / 2,
+        y: rect.top,
+      });
+    }
+  };
+
+  const handleBatchLeave = () => {
+    setHoveredBatchInfo(null);
   };
 
   const getRoleBadgeColor = (role) => {
@@ -424,10 +440,22 @@ export const MentorBatches = () => {
                                   ) : (
                                     <div className="space-y-2">
                                       {mentor.batches.map((batch) => (
-                                        <div key={batch._id} className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                        <div 
+                                          key={batch._id} 
+                                          className="bg-blue-50 border border-blue-200 rounded-lg p-3 relative"
+                                          onMouseEnter={(e) => handleBatchHover(e, batch)}
+                                          onMouseLeave={handleBatchLeave}
+                                        >
                                           <div className="flex items-center justify-between">
                                             <div>
-                                              <h5 className="font-medium text-gray-800">{batch.batchName}</h5>
+                                              <div className="flex items-center gap-2">
+                                                <h5 className="font-medium text-gray-800">{batch.batchName}</h5>
+                                                {batch.dayCombination && batch.dayCombination !== 'N/A' && (
+                                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded-full font-medium">
+                                                    {batch.dayCombination}
+                                                  </span>
+                                                )}
+                                              </div>
                                               <div className="flex items-center space-x-2 mt-1">
                                                 <span className="text-xs text-gray-600">{batch.courseName}</span>
                                                 <span className="text-xs text-gray-400">•</span>
@@ -591,8 +619,20 @@ export const MentorBatches = () => {
                           ) : (
                             <div className="space-y-2">
                               {mentor.batches.map((batch) => (
-                                <div key={batch._id} className="bg-blue-50 border border-blue-200 rounded-lg p-2">
-                                  <h5 className="text-xs font-medium text-gray-800">{batch.batchName}</h5>
+                                <div 
+                                  key={batch._id} 
+                                  className="bg-blue-50 border border-blue-200 rounded-lg p-2"
+                                  onMouseEnter={(e) => handleBatchHover(e, batch)}
+                                  onMouseLeave={handleBatchLeave}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <h5 className="text-xs font-medium text-gray-800">{batch.batchName}</h5>
+                                    {batch.dayCombination && batch.dayCombination !== 'N/A' && (
+                                      <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] rounded-full font-medium">
+                                        {batch.dayCombination}
+                                      </span>
+                                    )}
+                                  </div>
                                   <div className="flex items-center gap-2 mt-1">
                                     <span className="text-xs text-gray-600">{batch.courseName}</span>
                                     <span className="text-xs text-gray-400">•</span>
@@ -704,6 +744,35 @@ export const MentorBatches = () => {
           )}
         </div>
       </div>
+      
+      {/* Hover Batch Modal */}
+      {hoveredBatchInfo && (
+        <div
+          className="fixed z-[100] bg-white border border-gray-200 rounded-lg shadow-xl p-4 w-56 text-gray-800 pointer-events-none transform -translate-x-1/2 -translate-y-full"
+          style={{
+            top: `${hoveredBatchInfo.y - 10}px`,
+            left: `${hoveredBatchInfo.x}px`,
+          }}
+        >
+          <h4 className="font-bold border-b pb-2 mb-2 text-sm text-orange-600">{hoveredBatchInfo.batch.batchName} Interns</h4>
+          <div className="max-h-48 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            {hoveredBatchInfo.batch.interns?.length > 0 ? (
+              <ul className="space-y-1">
+                {hoveredBatchInfo.batch.interns.map((intern, idx) => (
+                  <li key={intern._id || idx} className="text-xs py-1 border-b border-gray-100 last:border-0">
+                    <span className="font-medium text-gray-700">{intern.fullName}</span>
+                    {intern.courseName && (
+                      <div className="text-[10px] text-gray-500 mt-0.5">{intern.courseName}</div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-gray-500 italic">No interns in this batch.</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
