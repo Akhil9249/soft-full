@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   BookOpen, 
@@ -18,6 +18,29 @@ import {
 } from 'lucide-react';
 import AdminService from '../../../services/admin-api-service/AdminService';
 
+const PAGES_LIST = [
+  { name: 'Dashboard', path: '/dashboard', category: 'General' },
+  { name: 'Staff Management', path: '/staff-management', category: 'Administration' },
+  { name: 'Student Management', path: '/student-management', category: 'Administration' },
+  { name: 'Mentor Card', path: '/menor-card', category: 'Administration' },
+  { name: 'Courses', path: '/courses', category: 'Course Management' },
+  { name: 'Category', path: '/category', category: 'Course Management' },
+  { name: 'Modules', path: '/modules', category: 'Syllabus Management' },
+  { name: 'Topics', path: '/topics', category: 'Syllabus Management' },
+  { name: 'Batches', path: '/batches', category: 'Schedule' },
+  { name: 'Weekly Schedule', path: '/weekly-schedule', category: 'Schedule' },
+  { name: 'Mentor Batches', path: '/mentor-batches', category: 'Schedule' },
+  { name: 'Timings', path: '/timings', category: 'Schedule' },
+  { name: 'Task Management', path: '/task-management', category: 'Task Management' },
+  { name: 'Material', path: '/material', category: 'Task Management' },
+  { name: 'Student Attendance', path: '/student-attendance', category: 'Attendance' },
+  { name: 'Leave Request', path: '/leave-request', category: 'Attendance' },
+  { name: 'Attendance Report', path: '/temp', category: 'Attendance' },
+  { name: 'Static Pages', path: '/static-pages', category: 'Settings' },
+  { name: 'Notifications', path: '/notification', category: 'Settings' },
+  { name: 'Branch', path: '/branch', category: 'Settings' }
+];
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { getCoursesData, getInternsData, getBatchesData, getStaffData } = AdminService();
@@ -29,6 +52,27 @@ export default function Dashboard() {
   // Modal State
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const filteredPages = PAGES_LIST.filter(page => 
+    page.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    page.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleViewDetails = (course) => {
     setSelectedCourse(course);
@@ -103,16 +147,56 @@ export default function Dashboard() {
           
           <div className="flex items-center gap-4">
             {/* Elegant Search Bar */}
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-full sm:w-80" ref={searchRef}>
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input 
                 type="text" 
-                placeholder="Search your courses..." 
+                placeholder="Search pages..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
                 className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               />
+              
+              {isSearchFocused && (
+                <div className="absolute right-0 top-full mt-2 w-full bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pb-2 pt-1 border-b border-slate-100 flex items-center justify-between">
+                    <span>Quick Navigation</span>
+                    <span className="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full lowercase font-semibold font-mono">
+                      {filteredPages.length} result(s)
+                    </span>
+                  </div>
+                  {filteredPages.length > 0 ? (
+                    <div className="mt-1.5 space-y-0.5 max-h-60 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+                      {filteredPages.map((page) => (
+                        <button
+                          key={page.path}
+                          onClick={() => {
+                            navigate(page.path);
+                            setIsSearchFocused(false);
+                          }}
+                          className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-indigo-50/50 hover:text-indigo-600 transition-colors flex items-center justify-between group"
+                        >
+                          <span className="truncate pr-2">{page.name}</span>
+                          <span className="text-[9px] font-bold bg-slate-50 text-slate-400 px-2 py-0.5 rounded-md uppercase group-hover:bg-indigo-100/60 group-hover:text-indigo-600 transition-colors shrink-0">
+                            {page.category}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-xs text-slate-400 font-medium italic">
+                      No matching pages found.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             {/* Notification Badge */}
-            <button className="relative p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all">
+            <button 
+              onClick={() => navigate('/notification')}
+              className="relative p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all"
+            >
               <Bell size={18} />
               <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full"></span>
             </button>

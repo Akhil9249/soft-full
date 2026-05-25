@@ -56,7 +56,7 @@ export const Batches = () => {
     branch: ''
   });
   
-  const { getBranchesData, getCoursesData, getBatchesData, getInternsData,getInternsDataSearch, postBatchesData, putBatchesData, deleteBatchesData } = AdminService();
+  const { getBranchesData, getCoursesData, getBatchesData, getInternsData,getInternsDataSearch, postBatchesData, putBatchesData, deleteBatchesData, addInternToBatchData } = AdminService();
 
   const tabOptions = [
     { value: "batches", label: "Batches" },
@@ -1131,7 +1131,7 @@ export const Batches = () => {
                             if (editingBatch && editingBatch._id) {
                               // Edit mode: Make API call to add intern to existing batch
                               console.log('Making API call to add intern:', internData);
-                              const response = await axiosPrivate.post(`http://localhost:3000/api/batches/${editingBatch._id}/interns`, internData);
+                              const response = await addInternToBatchData(editingBatch._id, internData);
                               
                               console.log('API response:', response);
                               console.log('Response data:', response.data);

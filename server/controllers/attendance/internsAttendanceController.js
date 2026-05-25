@@ -608,12 +608,15 @@ const createDailyAttendanceForAllInterns = async (req, res) => {
       });
     }
 
-    const { branchId, courseId, days, timingId, date } = req.body;
+    const { branchId, courseId, days, timingId, date, batchId } = req.body;
 
     // Super Admin and Admin can create attendance for all interns
     if (userRole === 'super admin' || userRole === 'admin') {
       let allowedInternIds = null;
-      if (courseId || branchId || days || timingId) {
+      if (batchId) {
+        const batchDoc = await Batch.findById(batchId);
+        allowedInternIds = batchDoc ? batchDoc.interns.map(id => id.toString()) : [];
+      } else if (courseId || branchId || days || timingId) {
         const weeklyScheduleResult = await getInternsByWeeklyScheduleFilters({
           timingId,
           days,
@@ -630,7 +633,7 @@ const createDailyAttendanceForAllInterns = async (req, res) => {
         }
       }
 
-      await createDailyAttendanceRecords(allowedInternIds, userId, date);
+      await createDailyAttendanceRecords(allowedInternIds, userId, date, batchId);
       res.status(200).json({
         message: allowedInternIds
           ? `Daily attendance records created successfully for ${allowedInternIds.length} filtered interns`
@@ -647,6 +650,12 @@ const createDailyAttendanceForAllInterns = async (req, res) => {
         });
       }
 
+      if (batchId) {
+        const batchDoc = await Batch.findById(batchId);
+        const batchInternIds = batchDoc ? batchDoc.interns.map(id => id.toString()) : [];
+        allowedInternIds = allowedInternIds.filter(id => batchInternIds.includes(id.toString()));
+      }
+
       if (courseId || branchId || days || timingId) {
         const weeklyScheduleResult = await getInternsByWeeklyScheduleFilters({
           timingId,
@@ -658,16 +667,16 @@ const createDailyAttendanceForAllInterns = async (req, res) => {
 
         const filteredIds = weeklyScheduleResult.interns.map(intern => intern._id.toString());
         allowedInternIds = allowedInternIds.filter(id => filteredIds.includes(id.toString()));
+      }
 
-        if (allowedInternIds.length === 0) {
-          return res.status(200).json({
-            message: "No interns found matching the specified filters in your schedule"
-          });
-        }
+      if (allowedInternIds.length === 0) {
+        return res.status(200).json({
+          message: "No interns found matching the specified criteria in your schedule"
+        });
       }
 
       // Create attendance records for mentor's weekly schedule interns only
-      await createDailyAttendanceRecords(allowedInternIds, userId, date);
+      await createDailyAttendanceRecords(allowedInternIds, userId, date, batchId);
       res.status(200).json({
         message: `Daily attendance records created successfully for ${allowedInternIds.length} interns in your weekly schedule`
       });
@@ -802,9 +811,9 @@ const getMentorInterns = async (req, res) => {
     }
 
     // Allow mentors to get their own interns, or admins to get any mentor's interns
-    const targetMentorId = mentorId || userId;
+    const targetMentorId = (mentorId && mentorId !== "undefined" && mentorId !== "null") ? mentorId : userId;
 
-    if (userRole !== 'admin' && userRole !== 'super admin' && targetMentorId !== userId) {
+    if (userRole !== 'admin' && userRole !== 'super admin' && targetMentorId.toString() !== userId.toString()) {
       return res.status(403).json({
         message: "Access denied: You can only view your own assigned interns"
       });
@@ -828,6 +837,56 @@ const getMentorInterns = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: error.message || "Error retrieving mentor's interns"
+    });
+  }
+};
+
+// -------------------- GET MENTOR'S BATCHES FROM WEEKLY SCHEDULE --------------------
+const getMentorBatches = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { mentorId } = req.params;
+
+    const userRole = await getUserRoleName(userId);
+    if (!userRole) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const targetMentorId = (mentorId && mentorId !== "undefined" && mentorId !== "null") ? mentorId : userId;
+
+    if (userRole !== 'admin' && userRole !== 'super admin' && targetMentorId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        message: "Access denied: You can only view your own assigned batches"
+      });
+    }
+
+    const weeklySchedules = await WeeklySchedule.find({ mentor: targetMentorId })
+      .populate({
+        path: 'schedule.sub_details.batch',
+        select: 'batchName branchName'
+      });
+
+    const uniqueBatches = [];
+    const batchIds = new Set();
+
+    weeklySchedules.forEach(scheduleDoc => {
+      if (scheduleDoc.schedule && scheduleDoc.schedule.sub_details && scheduleDoc.schedule.sub_details.batch) {
+        scheduleDoc.schedule.sub_details.batch.forEach(batch => {
+          if (batch && !batchIds.has(batch._id.toString())) {
+            batchIds.add(batch._id.toString());
+            uniqueBatches.push(batch);
+          }
+        });
+      }
+    });
+
+    res.status(200).json({
+      message: "Mentor's batches retrieved successfully",
+      data: uniqueBatches
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: error.message || "Error retrieving mentor's batches"
     });
   }
 };
@@ -1087,9 +1146,27 @@ const getInternsByAttendanceDate = async (req, res) => {
       internQuery._id = query.intern;
     }
 
-    // If batch ID is provided, include it in internQuery and attendance query
+    // If batch ID is provided, retrieve interns in that batch and filter
     if (req.query.batchId) {
-      internQuery.batch = req.query.batchId;
+      const batchDoc = await Batch.findById(req.query.batchId);
+      const batchInternIds = batchDoc ? batchDoc.interns.map(id => id.toString()) : [];
+      
+      if (internQuery._id) {
+        if (internQuery._id.$in) {
+          const currentAllowedIds = internQuery._id.$in.map(id => id.toString());
+          const intersection = currentAllowedIds.filter(id => batchInternIds.includes(id));
+          internQuery._id = { $in: intersection };
+        } else {
+          const currentIdStr = internQuery._id.toString();
+          if (batchInternIds.includes(currentIdStr)) {
+            internQuery._id = currentIdStr;
+          } else {
+            internQuery._id = { $in: [] };
+          }
+        }
+      } else {
+        internQuery._id = { $in: batchInternIds };
+      }
       query.batch = req.query.batchId;
     }
 
@@ -1405,5 +1482,6 @@ module.exports = {
   getAttendanceSummaryReport,
   getInternsByAttendanceDate,
   getMentorInterns,
+  getMentorBatches,
   getInternsAttendanceByMonth
 };

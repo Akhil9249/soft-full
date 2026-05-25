@@ -5,7 +5,7 @@ const { Staff } = require("../models/administration/staffModel");
 const Role = require("../models/administration/roleModel");
 
 // Function to create daily attendance records for all ongoing interns
-const createDailyAttendanceRecords = async (allowedInternIds = null, mentorId = null, dateStr = null) => {
+const createDailyAttendanceRecords = async (allowedInternIds = null, mentorId = null, dateStr = null, batchId = null) => {
   try {
     console.log(`Starting daily attendance creation process for ${dateStr || 'today'}...`);
     
@@ -74,11 +74,15 @@ const createDailyAttendanceRecords = async (allowedInternIds = null, mentorId = 
     for (const intern of ongoingInterns) {
       try {
         // Check if attendance already exists for this intern on this date by this mentor
-        const existingAttendance = await InternsAttendance.findOne({
+        const checkQuery = {
           intern: intern._id,
           date: formattedToday,
           mentor: resolvedMentorId
-        });
+        };
+        if (batchId) {
+          checkQuery.batch = batchId;
+        }
+        const existingAttendance = await InternsAttendance.findOne(checkQuery);
         
         if (existingAttendance) {
           console.log(`Attendance already exists for intern ${intern.fullName} on ${formattedToday}`);
@@ -94,6 +98,9 @@ const createDailyAttendanceRecords = async (allowedInternIds = null, mentorId = 
           markedBy: resolvedMentorId,
           remarks: "Auto-generated daily attendance record"
         };
+        if (batchId) {
+          attendanceRecord.batch = batchId;
+        }
         
         attendanceRecords.push(attendanceRecord);
         

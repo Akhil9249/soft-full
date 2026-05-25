@@ -154,8 +154,19 @@ const StatusCard = ({ label, value, colorClass }) => (
     </div>
 );
 
-const ActionBar = ({ activeTab, setActiveTab, branches, selectedBranch, onBranchChange, branchesLoading, courses, selectedCourse, onCourseChange, coursesLoading, timings, selectedTiming, onTimingChange, timingsLoading, allDaysCombinations, daysCombinations, selectedDaysCombination, onDaysCombinationChange, daysCombLoading, selectedYear, onYearChange, years, selectedMonth, onMonthChange }) => {
-    const todayDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const ActionBar = ({
+    activeTab,
+    setActiveTab,
+    branches,
+    selectedBranch,
+    onBranchChange,
+    branchesLoading,
+    isMentor,
+    batches,
+    selectedBatch,
+    onBatchChange,
+    batchesLoading
+}) => {
     return (
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4 sm:mb-6">
             <div className="flex space-x-3 w-full lg:w-auto">
@@ -163,103 +174,60 @@ const ActionBar = ({ activeTab, setActiveTab, branches, selectedBranch, onBranch
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 w-full lg:w-auto flex-wrap">
-                {/* Branch Dropdown */}
-                <select
-                    value={selectedBranch}
-                    onChange={onBranchChange}
-                    disabled={branchesLoading}
-                    className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                >
-                    <option value="">
-                        {branchesLoading ? 'Loading branches...' : 'All Branches'}
-                    </option>
-                    {branches.map((branch) => (
-                        <option key={branch._id} value={branch._id}>
-                            {branch.branchName}
+                {isMentor ? (
+                    <select
+                        value={selectedBatch}
+                        onChange={onBatchChange}
+                        disabled={batchesLoading}
+                        className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
+                    >
+                        <option value="" disabled>
+                            {batchesLoading ? 'Loading batches...' : 'Select Batch'}
                         </option>
-                    ))}
-                </select>
+                        {batches.map((batch) => (
+                            <option key={batch._id} value={batch._id}>
+                                {/* {batch.batchName} {batch.branchName ? `(${batch.branchName})` : ''} */}
+                                {batch.batchName}
+                            </option>
+                        ))}
+                    </select>
+                ) : (
+                    <>
+                        {/* Branch Dropdown */}
+                        <select
+                            value={selectedBranch}
+                            onChange={onBranchChange}
+                            disabled={branchesLoading}
+                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
+                        >
+                            <option value="">
+                                {branchesLoading ? 'Loading branches...' : 'All Branches'}
+                            </option>
+                            {branches.map((branch) => (
+                                <option key={branch._id} value={branch._id}>
+                                    {branch.branchName}
+                                </option>
+                            ))}
+                        </select>
 
-                {/* Days Filter Dropdown */}
-                <select
-                    value={selectedDaysCombination}
-                    onChange={onDaysCombinationChange}
-                    disabled={daysCombLoading}
-                    className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                >
-                    <option value="">
-                        {daysCombLoading ? 'Loading days...' : 'All Days'}
-                    </option>
-                    {daysCombinations.map(day => (
-                        <option key={day._id} value={day._id}>{day.name}</option>
-                    ))}
-                </select>
-
-                {/* Courses Dropdown */}
-                <select
-                    value={selectedCourse}
-                    onChange={onCourseChange}
-                    disabled={coursesLoading}
-                    className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                >
-                    <option value="">
-                        {coursesLoading ? 'Loading courses...' : 'All Courses'}
-                    </option>
-                    {courses.map((course) => (
-                        <option key={course._id} value={course._id}>
-                            {course.courseName}
-                        </option>
-                    ))}
-                </select>
-
-                {/* Timings Dropdown */}
-                <select
-                    value={selectedTiming}
-                    onChange={onTimingChange}
-                    disabled={timingsLoading}
-                    className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                >
-                    <option value="">
-                        {timingsLoading ? 'Loading timings...' : 'All Timings'}
-                    </option>
-                    {timings.map((timing) => (
-                        <option key={timing._id} value={timing._id}>
-                            {timing.timeSlot}
-                        </option>
-                    ))}
-                </select>
-
-                {/* Year Dropdown */}
-                <select
-                    value={selectedYear}
-                    onChange={onYearChange}
-                    className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                >
-                    {years.map(year => (
-                        <option key={year} value={year}>{year}</option>
-                    ))}
-                </select>
-
-                {/* Month Dropdown */}
-                <select
-                    value={selectedMonth}
-                    onChange={onMonthChange}
-                    className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                >
-                    <option value="">All Months</option>
-                    <option value="01">January</option>
-                    <option value="02">February</option>
-                    <option value="03">March</option>
-                    <option value="04">April</option>
-                    <option value="05">May</option>
-                    <option value="06">June</option>
-                    <option value="07">July</option>
-                    <option value="08">August</option>
-                    <option value="09">September</option>
-                    <option value="10">October</option>
-                    <option value="11">November</option>
-                    <option value="12">December</option>
-                </select>
+                        {/* Batches Dropdown */}
+                        <select
+                            value={selectedBatch}
+                            onChange={onBatchChange}
+                            disabled={batchesLoading}
+                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
+                        >
+                            <option value="">
+                                {batchesLoading ? 'Loading batches...' : 'All Batches'}
+                            </option>
+                            {batches.map((batch) => (
+                                <option key={batch._id} value={batch._id}>
+                                    {batch.batchName}
+                                </option>
+                            ))}
+                        </select>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -270,8 +238,8 @@ const AttendanceToggle = ({ isPresent, onToggle, disabled = false }) => (
     <label className={`relative inline-flex items-center ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
         <input type="checkbox" checked={isPresent} onChange={onToggle} disabled={disabled} className="sr-only peer" />
         <div className={`w-11 h-6 rounded-full peer peer-focus:outline-none transition-colors duration-200 ${isPresent
-                ? 'bg-green-500 after:translate-x-full peer-checked:bg-green-500'
-                : 'bg-gray-300'
+            ? 'bg-green-500 after:translate-x-full peer-checked:bg-green-500'
+            : 'bg-gray-300'
             } after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all`}
         ></div>
     </label>
@@ -290,8 +258,8 @@ const AttendanceRow = ({ attendance, isPresent, onToggle }) => (
                 </span>
             ) : (
                 <span className={`px-1.5 sm:px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium ${attendance.attendanceStatus
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
                     }`}>
                     {attendance.attendanceStatus ? 'Present' : 'Absent'}
                 </span>
@@ -317,11 +285,16 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         getInternsAttendanceData,
         getInternsByAttendanceDate,
         getBranchesData,
-        getCoursesData,
         getTimingsData,
         getDaysCombinationsData,
-        getAllBatchesData
+        getAllBatchesData,
+        getMentorBatchesData
     } = AdminService();
+
+    // Role detection
+    const isMentor = localStorage.getItem("role")?.toLowerCase() === "mentor";
+    const rawUserId = localStorage.getItem("userId");
+    const loggedInUserId = (rawUserId === "undefined" || rawUserId === "null") ? "" : (rawUserId || "");
 
     // State for attendance data from backend
     const [attendanceRecords, setAttendanceRecords] = useState([]); // Attendance records for display
@@ -340,32 +313,25 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
     const [selectedBranch, setSelectedBranch] = useState(''); // Empty string means "All Branches"
     const [branchesLoading, setBranchesLoading] = useState(false);
 
-    // State for days combination filter
-    const [allDaysCombinations, setAllDaysCombinations] = useState([]);
-    const [daysCombinations, setDaysCombinations] = useState([]);
-    const [selectedDaysCombination, setSelectedDaysCombination] = useState('');
-    const [daysCombLoading, setDaysCombLoading] = useState(false);
-
-    // Batches for filtering
+    // State for batches
+    const [batches, setBatches] = useState([]);
     const [allBatches, setAllBatches] = useState([]);
+    const [selectedBatch, setSelectedBatch] = useState('');
+    const [batchesLoading, setBatchesLoading] = useState(false);
 
-    // Year and Month Data
-    const currentYear = new Date().getFullYear();
-    const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
-    const [selectedYear, setSelectedYear] = useState(currentYear.toString());
-    const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
-    const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-
-    // State for courses
-    const [courses, setCourses] = useState([]);
-    const [selectedCourse, setSelectedCourse] = useState(''); // Empty string means "All Courses"
-    const [coursesLoading, setCoursesLoading] = useState(false);
-
-    // State for timings
-    const [allTimings, setAllTimings] = useState([]);
-    const [timings, setTimings] = useState([]);
-    const [selectedTiming, setSelectedTiming] = useState(''); // Empty string means "All Timings"
-    const [timingsLoading, setTimingsLoading] = useState(false);
+    // Filter batches reactive to selected branch for admin/superadmin
+    const filteredBatches = useMemo(() => {
+        if (isMentor) {
+            return batches;
+        }
+        if (!selectedBranch) {
+            return allBatches;
+        }
+        return allBatches.filter(batch => {
+            const branchId = typeof batch.branch === 'object' && batch.branch !== null ? batch.branch._id : batch.branch;
+            return branchId === selectedBranch;
+        });
+    }, [isMentor, batches, allBatches, selectedBranch]);
 
     // State for pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -400,64 +366,60 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         }
     };
 
-    // Fetch courses from backend
-    const fetchCourses = async () => {
+    // Fetch all batches from backend (for admin view)
+    const fetchAllBatches = async () => {
         try {
-            setCoursesLoading(true);
-            const response = await getCoursesData();
-            console.log('Courses response:', response);
-
+            setBatchesLoading(true);
+            const response = await getAllBatchesData();
             if (response?.data) {
-                setCourses(response.data);
-                console.log('Courses loaded:', response.data.length, 'courses available');
+                setAllBatches(response.data);
             }
         } catch (err) {
-            console.error('Failed to load courses:', err);
-            setError('Failed to load courses');
+            console.error('Failed to load all batches:', err);
+            setError('Failed to load batches');
         } finally {
-            setCoursesLoading(false);
+            setBatchesLoading(false);
         }
     };
 
-    // Fetch timings from backend
-    const fetchTimings = async () => {
+    // Fetch mentor batches from backend
+    const fetchMentorBatches = async () => {
         try {
-            setTimingsLoading(true);
-            const response = await getTimingsData();
+            setBatchesLoading(true);
+            const response = await getMentorBatchesData(loggedInUserId);
+            console.log('Mentor batches response:', response);
             if (response?.data) {
-                setAllTimings(response.data);
-                setTimings(response.data);
+                setBatches(response.data);
+                if (response.data.length > 0) {
+                    const firstBatchId = response.data[0]._id;
+                    setSelectedBatch(firstBatchId);
+                    // Fetch attendance immediately for the first batch
+                    await fetchAttendanceForDate(selectedDate, null, null, 1, firstBatchId);
+                } else {
+                    setAttendanceRecords([]);
+                    setAllAttendanceRecords([]);
+                    setAttendance({});
+                    setTotalRecords(0);
+                    setTotalPages(1);
+                    setCurrentPage(1);
+                    setTotalPresent(0);
+                    setTotalAbsent(0);
+                }
             }
         } catch (err) {
-            console.error('Failed to load timings:', err);
-            setError('Failed to load timings');
+            console.error('Failed to load mentor batches:', err);
+            setError('Failed to load batches');
         } finally {
-            setTimingsLoading(false);
-        }
-    };
-
-    // Fetch days combinations and batches
-    const fetchDaysAndBatches = async () => {
-        try {
-            setDaysCombLoading(true);
-            const [daysRes, batchesRes] = await Promise.all([
-                getDaysCombinationsData(),
-                getAllBatchesData()
-            ]);
-            if (daysRes?.data) setAllDaysCombinations(daysRes.data);
-            if (batchesRes?.data) setAllBatches(batchesRes.data);
-        } catch (err) {
-            console.error('Failed to load days combinations or batches:', err);
-        } finally {
-            setDaysCombLoading(false);
+            setBatchesLoading(false);
         }
     };
 
     // Fetch attendance data for selected date and filters
-    const fetchAttendanceForDate = async (date, branchId = null, daysId = null, courseId = null, timingId = null, page = 1) => {
+    const fetchAttendanceForDate = async (date, branchId = null, courseId = null, page = 1, batchId = null) => {
         try {
-            const response = await getInternsByAttendanceDate(date, branchId, daysId, courseId, timingId);
-            console.log('Interns with attendance for date:', date, 'branch:', branchId, 'days:', daysId, 'course:', courseId, 'timing:', timingId, response);
+            const activeBatchId = batchId || selectedBatch || null;
+            const response = await getInternsByAttendanceDate(date, branchId, null, courseId, null, activeBatchId);
+            console.log('Interns with attendance for date:', date, 'branch:', branchId, 'course:', courseId, 'batch:', activeBatchId, response);
 
             if (response?.data?.data && response.data.data.length > 0) {
                 // Transform the response data to match our expected format
@@ -508,7 +470,7 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                 // console.log('Filtered interns for display:', paginatedRecords);
             } else {
                 // If no attendance data for the selected date, show empty list
-                console.log('No attendance data found for date:', date, 'branch:', branchId);
+                console.log('No attendance data found for date:', date, 'branch:', branchId, 'batch:', activeBatchId);
                 setAttendanceRecords([]);
                 setAllAttendanceRecords([]);
                 setAttendance({});
@@ -536,15 +498,29 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
     const createDailyAttendance = async () => {
         try {
             setLoading(true);
-            await createDailyAttendanceForAllInterns(
-                selectedBranch || null,
-                selectedCourse || null,
-                selectedDaysCombination || null,
-                selectedTiming || null,
-                selectedDate
-            );
-            console.log('Daily attendance created successfully');
-            await fetchAttendanceForDate(selectedDate, selectedBranch || null, selectedDaysCombination || null, selectedCourse || null, selectedTiming || null, 1); // Refresh attendance for selected date and branch
+            if (isMentor) {
+                await createDailyAttendanceForAllInterns(
+                    null,
+                    null,
+                    null,
+                    null,
+                    selectedDate,
+                    selectedBatch || null
+                );
+                console.log('Daily attendance created successfully for batch:', selectedBatch);
+                await fetchAttendanceForDate(selectedDate, null, null, 1, selectedBatch || null);
+            } else {
+                await createDailyAttendanceForAllInterns(
+                    selectedBranch || null,
+                    null,
+                    null,
+                    null,
+                    selectedDate,
+                    selectedBatch || null
+                );
+                console.log('Daily attendance created successfully');
+                await fetchAttendanceForDate(selectedDate, selectedBranch || null, null, 1, selectedBatch || null); // Refresh attendance for selected date, branch, and batch
+            }
         } catch (err) {
             console.error('Failed to create daily attendance:', err);
             setError('Failed to create daily attendance');
@@ -616,31 +592,14 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
 
     // Load data when component mounts
     useEffect(() => {
-        fetchBranches();
-        fetchCourses();
-        fetchTimings();
-        fetchDaysAndBatches();
-        fetchAttendanceForDate(selectedDate, selectedBranch || null, selectedDaysCombination || null, selectedCourse || null, selectedTiming || null, 1);
-    }, []);
-
-    // Update combinations when branch changes
-    useEffect(() => {
-        if (selectedBranch) {
-            const branch = branches.find(b => b._id === selectedBranch);
-            const branchDayCombIds = new Set();
-            if (branch && branch.days) {
-                branch.days.forEach(d => branchDayCombIds.add(typeof d === 'object' ? d._id.toString() : d.toString()));
-            }
-            const filtered = allDaysCombinations.filter(d => branchDayCombIds.has(d._id.toString()));
-            setDaysCombinations(filtered);
-            
-            const filteredTimings = allTimings.filter(t => t.branch?._id === selectedBranch || t.branch === selectedBranch);
-            setTimings(filteredTimings);
+        if (isMentor) {
+            fetchMentorBatches();
         } else {
-            setDaysCombinations(allDaysCombinations);
-            setTimings(allTimings);
+            fetchBranches();
+            fetchAllBatches();
+            fetchAttendanceForDate(selectedDate, null, null, 1, null);
         }
-    }, [selectedBranch, branches, allDaysCombinations, allTimings]);
+    }, []);
 
     // Update currentDate when selectedDate changes
     useEffect(() => {
@@ -668,57 +627,33 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
     const handleBranchChange = async (e) => {
         const branchId = e.target.value;
         setSelectedBranch(branchId);
+        setSelectedBatch(''); // Reset batch selection when branch changes
         setCurrentPage(1); // Reset to first page when filter changes
 
-        // Fetch attendance records for the selected filters
-        await fetchAttendanceForDate(selectedDate, branchId || null, selectedDaysCombination || null, selectedCourse || null, selectedTiming || null, 1);
+        // Fetch attendance records for the selected branch (batch reset to null)
+        await fetchAttendanceForDate(selectedDate, branchId || null, null, 1, null);
     };
 
-    // Handle days combination filter selection
-    const handleDaysCombinationChange = async (e) => {
-        const daysId = e.target.value;
-        setSelectedDaysCombination(daysId);
+    // Handle batch selection
+    const handleBatchChange = async (e) => {
+        const batchId = e.target.value;
+        setSelectedBatch(batchId);
         setCurrentPage(1); // Reset to first page when filter changes
 
-        // Fetch attendance records for the selected filters
-        await fetchAttendanceForDate(selectedDate, selectedBranch || null, daysId || null, selectedCourse || null, selectedTiming || null, 1);
-    };
-
-    // Handle course selection
-    const handleCourseChange = async (e) => {
-        const courseId = e.target.value;
-        setSelectedCourse(courseId);
-        setCurrentPage(1); // Reset to first page when filter changes
-
-        // Fetch attendance records for the selected filters
-        await fetchAttendanceForDate(selectedDate, selectedBranch || null, selectedDaysCombination || null, courseId || null, selectedTiming || null, 1);
-    };
-
-    // Handle timing selection
-    const handleTimingChange = async (e) => {
-        const timingId = e.target.value;
-        setSelectedTiming(timingId);
-        setCurrentPage(1); // Reset to first page when filter changes
-
-        // Fetch attendance records for the selected filters
-        await fetchAttendanceForDate(selectedDate, selectedBranch || null, selectedDaysCombination || null, selectedCourse || null, timingId || null, 1);
-    };
-
-    const handleYearChange = async (e) => {
-        const year = e.target.value;
-        setSelectedYear(year);
-        // Sync with month or not? Right now we just set state.
-    };
-
-    const handleMonthChange = async (e) => {
-        const month = e.target.value;
-        setSelectedMonth(month);
+        // Fetch attendance records for the selected batch
+        await fetchAttendanceForDate(selectedDate, selectedBranch || null, null, 1, batchId || null);
     };
 
     // Pagination handlers
     const handlePageChange = async (page) => {
         setCurrentPage(page);
-        await fetchAttendanceForDate(selectedDate, selectedBranch || null, selectedDaysCombination || null, selectedCourse || null, selectedTiming || null, page);
+        await fetchAttendanceForDate(
+            selectedDate,
+            isMentor ? null : (selectedBranch || null),
+            null,
+            page,
+            selectedBatch || null
+        );
     };
 
     const handleItemsPerPageChange = (e) => {
@@ -726,7 +661,13 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         setItemsPerPage(newItemsPerPage);
         setCurrentPage(1); // Reset to first page when changing items per page
         // Re-fetch with new pagination settings
-        fetchAttendanceForDate(selectedDate, selectedBranch || null, selectedDaysCombination || null, selectedCourse || null, selectedTiming || null, 1);
+        fetchAttendanceForDate(
+            selectedDate,
+            isMentor ? null : (selectedBranch || null),
+            null,
+            1,
+            selectedBatch || null
+        );
     };
 
     // Total present and absent are now calculated from full dataset in fetchAttendanceForDate
@@ -743,24 +684,11 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                 selectedBranch={selectedBranch}
                 onBranchChange={handleBranchChange}
                 branchesLoading={branchesLoading}
-                allDaysCombinations={allDaysCombinations}
-                daysCombinations={daysCombinations}
-                selectedDaysCombination={selectedDaysCombination}
-                onDaysCombinationChange={handleDaysCombinationChange}
-                daysCombLoading={daysCombLoading}
-                courses={courses}
-                selectedCourse={selectedCourse}
-                onCourseChange={handleCourseChange}
-                coursesLoading={coursesLoading}
-                timings={timings}
-                selectedTiming={selectedTiming}
-                onTimingChange={handleTimingChange}
-                timingsLoading={timingsLoading}
-                selectedYear={selectedYear}
-                onYearChange={handleYearChange}
-                years={years}
-                selectedMonth={selectedMonth}
-                onMonthChange={handleMonthChange}
+                isMentor={isMentor}
+                batches={filteredBatches}
+                selectedBatch={selectedBatch}
+                onBatchChange={handleBatchChange}
+                batchesLoading={batchesLoading}
             />
 
             {/* Create Daily Attendance Button */}
@@ -882,7 +810,13 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                                         setCurrentDate(formattedDate);
 
                                         // Fetch attendance for the new date with all selected filters
-                                        fetchAttendanceForDate(newDate, selectedBranch || null, selectedDaysCombination || null, selectedCourse || null, selectedTiming || null, 1);
+                                        fetchAttendanceForDate(
+                                            newDate,
+                                            isMentor ? null : (selectedBranch || null),
+                                            null,
+                                            1,
+                                            selectedBatch || null
+                                        );
                                     }}
                                     className="w-full sm:w-auto px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500"
                                 />
@@ -929,8 +863,8 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                                             </span>
                                         ) : (
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ml-2 ${attendanceRecord.attendanceStatus
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-red-100 text-red-800'
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
                                                 }`}>
                                                 {attendanceRecord.attendanceStatus ? 'Present' : 'Absent'}
                                             </span>
@@ -990,8 +924,8 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                                                     key={pageNum}
                                                     onClick={() => handlePageChange(pageNum)}
                                                     className={`px-2 sm:px-3 py-1 text-xs sm:text-sm border rounded ${currentPage === pageNum
-                                                            ? 'bg-amber-500 text-white border-amber-500'
-                                                            : 'border-gray-300 hover:bg-gray-50'
+                                                        ? 'bg-amber-500 text-white border-amber-500'
+                                                        : 'border-gray-300 hover:bg-gray-50'
                                                         }`}
                                                 >
                                                     {pageNum}

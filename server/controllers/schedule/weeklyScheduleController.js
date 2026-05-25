@@ -334,10 +334,15 @@ const getAllMentorsWithBatches = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 5;
     const branch = req.query.branch;
+    const { startDate, endDate } = req.query;
 
     let filter = {};
     if (branch) {
       filter['schedule.sub_details.branch'] = branch;
+    }
+    if (startDate && endDate) {
+      filter.startDate = { $gte: new Date(startDate) };
+      filter.endDate = { $lte: new Date(endDate) };
     }
 
     // Get all weekly schedules with populated data
@@ -432,14 +437,16 @@ const getAllMentorsWithBatches = async (req, res) => {
                 const internsList = [];
                 if (batch.interns && batch.interns.length > 0) {
                   batch.interns.forEach(intern => {
-                    if (intern.course && intern.course.courseName) {
-                      courses.add(intern.course.courseName);
+                    if (intern) {
+                      if (intern.course && intern.course.courseName) {
+                        courses.add(intern.course.courseName);
+                      }
+                      internsList.push({
+                        _id: intern._id,
+                        fullName: intern.fullName,
+                        courseName: intern.course?.courseName
+                      });
                     }
-                    internsList.push({
-                      _id: intern._id,
-                      fullName: intern.fullName,
-                      courseName: intern.course?.courseName
-                    });
                   });
                 }
                 const courseNames = Array.from(courses).join(', ') || 'N/A';
@@ -468,7 +475,7 @@ const getAllMentorsWithBatches = async (req, res) => {
         let finalBatch = null;
 
         for (const scheduleDoc of weeklySchedules) {
-          if (scheduleDoc.mentor?._id.toString() === mentor._id.toString() && scheduleDoc.schedule && scheduleDoc.schedule.sub_details && scheduleDoc.schedule.sub_details.batch) {
+          if (scheduleDoc.mentor && scheduleDoc.mentor._id && scheduleDoc.mentor._id.toString() === mentor._id.toString() && scheduleDoc.schedule && scheduleDoc.schedule.sub_details && scheduleDoc.schedule.sub_details.batch) {
             for (const batch of scheduleDoc.schedule.sub_details.batch) {
               if (batch && batch._id.toString() === batchId) {
                 if (scheduleDoc.schedule.sub_details.day?.name) {
@@ -480,14 +487,16 @@ const getAllMentorsWithBatches = async (req, res) => {
                   const internsList = [];
                   if (batch.interns && batch.interns.length > 0) {
                     batch.interns.forEach(intern => {
-                      if (intern.course && intern.course.courseName) {
-                        courses.add(intern.course.courseName);
+                      if (intern) {
+                        if (intern.course && intern.course.courseName) {
+                          courses.add(intern.course.courseName);
+                        }
+                        internsList.push({
+                          _id: intern._id,
+                          fullName: intern.fullName,
+                          courseName: intern.course?.courseName
+                        });
                       }
-                      internsList.push({
-                        _id: intern._id,
-                        fullName: intern.fullName,
-                        courseName: intern.course?.courseName
-                      });
                     });
                   }
                   const courseNames = Array.from(courses).join(', ') || 'N/A';

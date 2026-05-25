@@ -1,6 +1,7 @@
 // import React from 'react'
 
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import useAuth from '../../../hooks/useAuth';
 import api from "../../../axios";
 import Tabs from "../../../components/button/Tabs";
@@ -10,6 +11,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export const StaffManagement = () => {
+    const navigate = useNavigate();
     const { getStaffData,putStaffData,postStaffData,getBranchesData,deleteStaffData,getRolesData,getTimingsData } = AdminService();
 
 
@@ -712,6 +714,7 @@ export const StaffManagement = () => {
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Batches</th>
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider flex justify-center">Actions</th>
                                 </tr>
                             </thead>
@@ -748,6 +751,19 @@ export const StaffManagement = () => {
                                             }`}>
                                                 {staffMember.employmentStatus}
                                             </span>
+                                        </td>
+                                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                            {staffMember.isMentor ? (
+                                                <button 
+                                                    onClick={() => navigate('/mentor-batches', { state: { searchMentor: staffMember.fullName } })}
+                                                    className="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-md text-xs font-medium transition-colors"
+                                                    title="View Mentor Batches"
+                                                >
+                                                    View Batches
+                                                </button>
+                                            ) : (
+                                                <span className="text-gray-400 text-xs italic">N/A</span>
+                                            )}
                                         </td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium flex justify-center">
                                             <div className="flex space-x-2">
@@ -829,6 +845,14 @@ export const StaffManagement = () => {
                                     >
                                         Delete
                                     </button>
+                                    {staffMember.isMentor && (
+                                        <button 
+                                            onClick={() => navigate('/mentor-batches', { state: { searchMentor: staffMember.fullName } })}
+                                            className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-[#f7931e] bg-orange-50 rounded-md hover:bg-orange-100 transition-colors"
+                                        >
+                                            Batches
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -1503,6 +1527,17 @@ export const StaffManagement = () => {
                                 >
                                     Edit
                                 </button>
+                                {viewingStaff.isMentor && (
+                                    <button
+                                        onClick={() => {
+                                            closeViewModal();
+                                            navigate('/mentor-batches', { state: { searchMentor: viewingStaff.fullName } });
+                                        }}
+                                        className="w-full sm:w-auto bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                                    >
+                                        View Batches
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => window.print()}
                                     className="w-full sm:w-auto bg-[#f7931e] text-white px-5 py-2 rounded-lg hover:bg-[#e67c00] transition-colors"

@@ -9,12 +9,12 @@ const AdminService = () => {
     // ======================================== register and login ========================================
 
     const postRegister = async (data) => {
-        const response = await axiosPrivate.post("/api/signup",data);
+        const response = await axiosPrivate.post("/api/signup", data);
         return response;
     };
 
     const postLogin = async (data) => {
-        const response = await axiosPrivate.post("/api/login",data);
+        const response = await axiosPrivate.post("/api/login", data);
         return response;
     };
 
@@ -37,7 +37,7 @@ const AdminService = () => {
     };
 
     const postStaffData = async (data) => {
-        const response = await axiosPrivate.post("/api/staff",data);
+        const response = await axiosPrivate.post("/api/staff", data);
         return response.data;
     };
 
@@ -62,7 +62,7 @@ const AdminService = () => {
     };
 
     const postBranchesData = async (data) => {
-        const response = await axiosPrivate.post("/api/branches",data);
+        const response = await axiosPrivate.post("/api/branches", data);
         return response.data;
     };
 
@@ -70,7 +70,7 @@ const AdminService = () => {
         const response = await axiosPrivate.put(`/api/branches/${branchId}`, data);
         return response.data;
     };
-    
+
     const deleteBranchesData = async (branchId) => {
         const response = await axiosPrivate.delete(`/api/branches/${branchId}`);
         return response.data;
@@ -89,7 +89,7 @@ const AdminService = () => {
     };
 
     const postInternsData = async (data) => {
-        const response = await axiosPrivate.post("/api/intern",data);
+        const response = await axiosPrivate.post("/api/intern", data);
         return response.data;
     };
 
@@ -123,7 +123,7 @@ const AdminService = () => {
         return response.data;
     };
     const postBatchesData = async (data) => {
-        const response = await axiosPrivate.post("/api/batches",data);
+        const response = await axiosPrivate.post("/api/batches", data);
         return response.data;
     };
     const putBatchesData = async (batchId, data) => {
@@ -138,7 +138,11 @@ const AdminService = () => {
         const url = queryParams ? `/api/batches/all?${queryParams}` : "/api/batches/all";
         const response = await axiosPrivate.get(url);
         return response.data;
-    };  
+    };
+    const addInternToBatchData = async (batchId, data) => {
+        const response = await axiosPrivate.post(`/api/batches/${batchId}/interns`, data);
+        return response;
+    };
 
     // ======================================== course management ========================================
 
@@ -149,10 +153,10 @@ const AdminService = () => {
     };
 
     const postCoursesData = async (data) => {
-        const response = await axiosPrivate.post("/api/course",data);
+        const response = await axiosPrivate.post("/api/course", data);
         return response.data;
     };
-    
+
     const putCoursesData = async (courseId, data) => {
         const response = await axiosPrivate.put(`/api/course/${courseId}`, data);
         return response.data;
@@ -169,12 +173,12 @@ const AdminService = () => {
         const response = await axiosPrivate.get(url);
         return response.data;
     };
-    
+
     const postCategoriesData = async (data) => {
-        const response = await axiosPrivate.post("/api/category",data);
+        const response = await axiosPrivate.post("/api/category", data);
         return response.data;
     };
-    
+
     const putCategoriesData = async (categoryId, data) => {
         const response = await axiosPrivate.put(`/api/category/${categoryId}`, data);
         return response.data;
@@ -192,17 +196,17 @@ const AdminService = () => {
         const response = await axiosPrivate.get(url);
         return response.data;
     };
-    
+
     const postModulesData = async (data) => {
-        const response = await axiosPrivate.post("/api/module",data);
+        const response = await axiosPrivate.post("/api/module", data);
         return response.data;
     };
-    
+
     const putModulesData = async (moduleId, data) => {
         const response = await axiosPrivate.put(`/api/module/${moduleId}`, data);
         return response.data;
     };
-    
+
     const deleteModulesData = async (moduleId) => {
         const response = await axiosPrivate.delete(`/api/module/${moduleId}`);
         return response.data;
@@ -220,17 +224,17 @@ const AdminService = () => {
         const response = await axiosPrivate.get(url);
         return response.data;
     };
-    
+
     const postTopicsData = async (data) => {
-        const response = await axiosPrivate.post("/api/topics",data);
+        const response = await axiosPrivate.post("/api/topics", data);
         return response.data;
     };
-    
+
     const putTopicsData = async (topicId, data) => {
         const response = await axiosPrivate.put(`/api/topics/${topicId}`, data);
         return response.data;
     };
-    
+
     const deleteTopicsData = async (topicId) => {
         const response = await axiosPrivate.delete(`/api/topics/${topicId}`);
         return response.data;
@@ -245,15 +249,15 @@ const AdminService = () => {
     };
 
     const postTasksData = async (data) => {
-        const response = await axiosPrivate.post("/api/tasks",data);
+        const response = await axiosPrivate.post("/api/tasks", data);
         return response;
     };
-    
+
     const putTasksData = async (taskId, data) => {
         const response = await axiosPrivate.put(`/api/tasks/${taskId}`, data);
         return response;
     };
-    
+
     const deleteTasksData = async (taskId) => {
         const response = await axiosPrivate.delete(`/api/tasks/${taskId}`);
         return response;
@@ -271,17 +275,17 @@ const AdminService = () => {
         const response = await axiosPrivate.post("/api/materials", data);
         return response;
     };
-    
+
     const putMaterialsData = async (materialId, data) => {
         const response = await axiosPrivate.put(`/api/materials/${materialId}`, data);
         return response;
     };
-    
+
     const deleteMaterialsData = async (materialId) => {
         const response = await axiosPrivate.delete(`/api/materials/${materialId}`);
         return response;
     };
-    
+
     const downloadMaterialAttachment = async (materialId) => {
         const response = await axiosPrivate.get(`/api/materials/${materialId}/download`, {
             responseType: 'blob'
@@ -315,17 +319,17 @@ const AdminService = () => {
         const response = await axiosPrivate.get("/api/timings");
         return response.data;
     };
-    
+
     const postTimingsData = async (data) => {
-        const response = await axiosPrivate.post("/api/timings",data);
+        const response = await axiosPrivate.post("/api/timings", data);
         return response.data;
     };
-    
+
     const putTimingsData = async (timingId, data) => {
         const response = await axiosPrivate.put(`/api/timings/${timingId}`, data);
         return response.data;
     };
-    
+
     const deleteTimingsData = async (timingId) => {
         const response = await axiosPrivate.delete(`/api/timings/${timingId}`);
         return response.data;
@@ -365,13 +369,14 @@ const AdminService = () => {
     };
 
     // ======================================== automatic attendance system ========================================
-    const createDailyAttendanceForAllInterns = async (branchId = null, courseId = null, days = null, timingId = null, date = null) => {
+    const createDailyAttendanceForAllInterns = async (branchId = null, courseId = null, days = null, timingId = null, date = null, batchId = null) => {
         const body = {};
         if (branchId) body.branchId = branchId;
         if (courseId) body.courseId = courseId;
         if (days) body.days = days;
         if (timingId) body.timingId = timingId;
         if (date) body.date = date;
+        if (batchId) body.batchId = batchId;
         const response = await axiosPrivate.post("/api/interns-attendance/create-daily", body);
         return response;
     };
@@ -382,13 +387,13 @@ const AdminService = () => {
     };
 
     const getAttendanceSummaryReport = async (startDate, endDate) => {
-        const response = await axiosPrivate.get("/api/interns-attendance/summary-report", { 
-            params: { startDate, endDate } 
+        const response = await axiosPrivate.get("/api/interns-attendance/summary-report", {
+            params: { startDate, endDate }
         });
         return response;
     };
 
-    const getInternsByAttendanceDate = async (date, branchId = null, days = null, courseId = null, timingId = null) => {
+    const getInternsByAttendanceDate = async (date, branchId = null, days = null, courseId = null, timingId = null, batchId = null) => {
         const params = { date };
         if (branchId) {
             params.branchId = branchId;
@@ -402,10 +407,20 @@ const AdminService = () => {
         if (timingId) {
             params.timingId = timingId;
         }
-        const response = await axiosPrivate.get("/api/interns-attendance/interns-by-date", { 
-            params 
+        if (batchId) {
+            params.batchId = batchId;
+        }
+        const response = await axiosPrivate.get("/api/interns-attendance/interns-by-date", {
+            params
         });
         return response;
+    };
+
+    const getMentorBatchesData = async (mentorId = '') => {
+        const cleanMentorId = (mentorId === 'undefined' || mentorId === 'null' || !mentorId) ? '' : mentorId;
+        const url = cleanMentorId ? `/api/interns-attendance/mentor-batches/${cleanMentorId}` : "/api/interns-attendance/mentor-batches";
+        const response = await axiosPrivate.get(url);
+        return response.data;
     };
 
     const getInternsAttendanceByMonth = async (month, year, branchId = null, mentorId = null) => {
@@ -416,8 +431,8 @@ const AdminService = () => {
         if (mentorId) {
             params.mentorId = mentorId;
         }
-        const response = await axiosPrivate.get("/api/interns-attendance/month", { 
-            params 
+        const response = await axiosPrivate.get("/api/interns-attendance/month", {
+            params
         });
         return response;
     };
@@ -433,69 +448,69 @@ const AdminService = () => {
         const response = await axiosPrivate.get(url);
         return response.data;
     };
-    
+
     const postRolesData = async (data) => {
         const response = await axiosPrivate.post("/api/roles", data);
         return response.data;
     };
-    
+
     const putRolesData = async (roleId, data) => {
         const response = await axiosPrivate.put(`/api/roles/${roleId}`, data);
         return response.data;
     };
-    
+
     const deleteRolesData = async (roleId) => {
         const response = await axiosPrivate.delete(`/api/roles/${roleId}`);
         return response.data;
     };
-    
+
     const getRoleByRoleName = async (roleName) => {
         const response = await axiosPrivate.get(`/api/roles/role/${roleName}`);
         return response.data;
     };
-    
+
     const getRolePermissions = async (roleName) => {
         const response = await axiosPrivate.get(`/api/roles/role/${roleName}/permissions`);
         return response.data;
     };
-    
+
     const getRoleById = async (roleId) => {
         const response = await axiosPrivate.get(`/api/roles/${roleId}`);
         return response.data;
     };
-    
+
     const updateRole = async (roleId, data) => {
         const response = await axiosPrivate.put(`/api/roles/${roleId}`, data);
         return response.data;
     };
 
     // ======================================== notification management ========================================
-    
-       const getNotificationsData = async (page = 1, limit = 5, filters = {}) => {
-           const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-           if (filters.type) params.append('type', filters.type);
-           if (filters.audience) params.append('audience', filters.audience);
-           if (filters.branch) params.append('branch', filters.branch);
-           const url = `/api/notifications?${params.toString()}`;
-           const response = await axiosPrivate.get(url);
-           return response.data;
-       };
-    
+
+    const getNotificationsData = async (page = 1, limit = 5, filters = {}) => {
+        const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+        if (filters.type) params.append('type', filters.type);
+        if (filters.audience) params.append('audience', filters.audience);
+        if (filters.branch) params.append('branch', filters.branch);
+        const url = `/api/notifications?${params.toString()}`;
+        const response = await axiosPrivate.get(url);
+        return response.data;
+    };
+
     const createNotification = async (data) => {
         const response = await axiosPrivate.post("/api/notifications", data);
         return response;
     };
-    
+
     const getNotificationById = async (notificationId) => {
         const response = await axiosPrivate.get(`/api/notifications/${notificationId}`);
         return response.data;
     };
-    
+
     const updateNotification = async (notificationId, data) => {
         const response = await axiosPrivate.put(`/api/notifications/${notificationId}`, data);
         return response.data;
     };
-    
+
     const deleteNotification = async (notificationId) => {
         const response = await axiosPrivate.delete(`/api/notifications/${notificationId}`);
         return response;
@@ -506,10 +521,14 @@ const AdminService = () => {
     //     const response = await axiosPrivate.get("/api/weekly-schedule");
     //     return response.data;
     // };
-    
 
-    const getAllMentorsWithBatches = async (page = 1, limit = 5) => {
-        const response = await axiosPrivate.get(`/api/weekly-schedules/mentors-batches?page=${page}&limit=${limit}`);
+
+    const getAllMentorsWithBatches = async (page = 1, limit = 5, startDate = '', endDate = '', branch = '') => {
+        let url = `/api/weekly-schedules/mentors-batches?page=${page}&limit=${limit}`;
+        if (startDate) url += `&startDate=${startDate}`;
+        if (endDate) url += `&endDate=${endDate}`;
+        if (branch) url += `&branch=${branch}`;
+        const response = await axiosPrivate.get(url);
         return response.data;
     };
 
@@ -560,7 +579,7 @@ const AdminService = () => {
         return response.data;
     };
     const postWeeklySchedulesData = async (data) => {
-        const response = await axiosPrivate.post("/api/weekly-schedules",data);
+        const response = await axiosPrivate.post("/api/weekly-schedules", data);
         return response.data;
     };
     const putWeeklySchedulesData = async (scheduleId, data) => {
@@ -568,7 +587,7 @@ const AdminService = () => {
         return response.data;
     };
     const deleteWeeklySchedulesData = async (scheduleId, data) => {
-        const response = await axiosPrivate.delete(`/api/weekly-schedules/${scheduleId}/batch`, {data});
+        const response = await axiosPrivate.delete(`/api/weekly-schedules/${scheduleId}/batch`, { data });
         return response.data;
     };
     const deleteWeeklyScheduleDocument = async (scheduleId) => {
@@ -609,6 +628,7 @@ const AdminService = () => {
         postBatchesData,
         putBatchesData,
         deleteBatchesData,
+        addInternToBatchData,
         getDaysCombinationsData,
         getCategoriesData,
         putCategoriesData,
@@ -622,7 +642,7 @@ const AdminService = () => {
         postModulesData,
         putModulesData,
         deleteModulesData,
-        removeTopicFromModuleData, 
+        removeTopicFromModuleData,
         getTopicsData,
         postTopicsData,
         putTopicsData,
@@ -644,7 +664,7 @@ const AdminService = () => {
         postTimingsData,
         putTimingsData,
         deleteTimingsData,
-        
+
         // ======================================== interns attendance management ========================================
         getInternsAttendanceData,
         postInternsAttendanceData,
@@ -656,6 +676,7 @@ const AdminService = () => {
         updateSingleInternAttendance,
         getAttendanceSummaryReport,
         getInternsByAttendanceDate,
+        getMentorBatchesData,
         getInternsAttendanceByMonth,
         getRolesData,
         postRolesData,
@@ -665,7 +686,7 @@ const AdminService = () => {
         getRolePermissions,
         getRoleById,
         updateRole,
-        
+
         // ======================================== notification management ========================================
         getNotificationsData,
         createNotification,

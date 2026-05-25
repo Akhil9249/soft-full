@@ -14,6 +14,7 @@ const {
   getAttendanceSummaryReport,
   getInternsByAttendanceDate,
   getMentorInterns,
+  getMentorBatches,
   getInternsAttendanceByMonth
 } = require("../controllers/attendance/internsAttendanceController");
 
@@ -54,6 +55,9 @@ router.get("/summary/overview", checkAuth, checkRoles(["super admin", "admin", "
 
 // GET /api/interns-attendance/mentor-interns/:mentorId? - Get interns for a mentor based on WeeklySchedule
 router.get("/mentor-interns/:mentorId?", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(getMentorInterns));
+
+// GET /api/interns-attendance/mentor-batches/:mentorId? - Get batches for a mentor based on WeeklySchedule
+router.get("/mentor-batches/:mentorId?", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(getMentorBatches));
 
 // GET /api/interns-attendance/month - Get all interns attendance for a specific month
 router.get("/month", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(getInternsAttendanceByMonth));

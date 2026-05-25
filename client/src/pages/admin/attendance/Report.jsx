@@ -108,6 +108,11 @@ const AttendanceKey = () => (
 const Report = ({ activeTab, setActiveTab }) => {
   // const [activeTab, setActiveTab] = useState('attendance');
 
+  // Role detection
+  const isMentor = localStorage.getItem("role")?.toLowerCase() === "mentor";
+  const rawUserId = localStorage.getItem("userId");
+  const loggedInUserId = (rawUserId === "undefined" || rawUserId === "null") ? "" : (rawUserId || "");
+
   // AdminService for fetching data
   const {
  
@@ -123,7 +128,7 @@ const Report = ({ activeTab, setActiveTab }) => {
 
   // State for Mentors
   const [mentors, setMentors] = useState([]);
-  const [selectedMentor, setSelectedMentor] = useState('');
+  const [selectedMentor, setSelectedMentor] = useState(isMentor ? loggedInUserId : '');
   const [mentorsLoading, setMentorsLoading] = useState(false);
 
   // Year State
@@ -244,8 +249,10 @@ const Report = ({ activeTab, setActiveTab }) => {
 
   // Load data when component mounts
   useEffect(() => {
-    fetchBranches();
-    fetchMentors();
+    if (!isMentor) {
+      fetchBranches();
+      fetchMentors();
+    }
   }, []);
 
   // Fetch attendance data when month, branch, or mentor changes
@@ -254,8 +261,8 @@ const Report = ({ activeTab, setActiveTab }) => {
       fetchAttendanceData(
         selectedMonth,
         selectedYear,
-        selectedBranch || null,
-        selectedMentor || null
+        isMentor ? null : (selectedBranch || null),
+        isMentor ? loggedInUserId : (selectedMentor || null)
       );
     }
   }, [selectedMonth, selectedYear, selectedBranch, selectedMentor]);
@@ -286,10 +293,11 @@ const Report = ({ activeTab, setActiveTab }) => {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       const metaLeft = `Month: ${selectedMonth || 'N/A'}`;
-      const metaMid = `Branch: ${branches.find(b => b._id === selectedBranch)?.branchName || 'All'}`;
-      const metaRight = `Mentor: ${mentors.find(m => m._id === selectedMentor)?.fullName || 'All'}`;
+      const mentorName = isMentor ? (localStorage.getItem("name") || "Mentor") : (mentors.find(m => m._id === selectedMentor)?.fullName || 'All');
+      const metaMid = isMentor ? '' : `Branch: ${branches.find(b => b._id === selectedBranch)?.branchName || 'All'}`;
+      const metaRight = `Mentor: ${mentorName}`;
       doc.text(metaLeft, 10, 22);
-      doc.text(metaMid, (pageWidth - doc.getTextWidth(metaMid)) / 2, 22);
+      if (metaMid) doc.text(metaMid, (pageWidth - doc.getTextWidth(metaMid)) / 2, 22);
       const rightX = pageWidth - 10 - doc.getTextWidth(metaRight);
       doc.text(metaRight, rightX, 22);
       const exportedOn = `Exported on: ${new Date().toLocaleDateString('en-GB')}`;
@@ -376,44 +384,48 @@ const Report = ({ activeTab, setActiveTab }) => {
             </div>
 
             {/* Branch Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                disabled={branchesLoading}
-                className="appearance-none block w-full bg-white border border-gray-300 rounded-lg py-2 pl-4 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-sm text-sm"
-              >
-                <option value="">
-                  {branchesLoading ? 'Loading branches...' : 'All Branches'}
-                </option>
-                {branches.map((branch) => (
-                  <option key={branch._id} value={branch._id}>
-                    {branch.branchName}
+            {!isMentor && (
+              <div className="relative">
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  disabled={branchesLoading}
+                  className="appearance-none block w-full bg-white border border-gray-300 rounded-lg py-2 pl-4 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-sm text-sm"
+                >
+                  <option value="">
+                    {branchesLoading ? 'Loading branches...' : 'All Branches'}
                   </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 w-5 h-5 text-gray-400" />
-            </div>
+                  {branches.map((branch) => (
+                    <option key={branch._id} value={branch._id}>
+                      {branch.branchName}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 w-5 h-5 text-gray-400" />
+              </div>
+            )}
 
             {/* Mentor Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedMentor}
-                onChange={(e) => setSelectedMentor(e.target.value)}
-                disabled={mentorsLoading}
-                className="appearance-none block w-full bg-white border border-gray-300 rounded-lg py-2 pl-4 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-sm text-sm"
-              >
-                <option value="">
-                  {mentorsLoading ? 'Loading mentors...' : 'All Mentors'}
-                </option>
-                {mentors.map((mentor) => (
-                  <option key={mentor._id} value={mentor._id}>
-                    {mentor.fullName}
+            {!isMentor && (
+              <div className="relative">
+                <select
+                  value={selectedMentor}
+                  onChange={(e) => setSelectedMentor(e.target.value)}
+                  disabled={mentorsLoading}
+                  className="appearance-none block w-full bg-white border border-gray-300 rounded-lg py-2 pl-4 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-sm text-sm"
+                >
+                  <option value="">
+                    {mentorsLoading ? 'Loading mentors...' : 'All Mentors'}
                   </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 w-5 h-5 text-gray-400" />
-            </div>
+                  {mentors.map((mentor) => (
+                    <option key={mentor._id} value={mentor._id}>
+                      {mentor.fullName}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 w-5 h-5 text-gray-400" />
+              </div>
+            )}
 
             {/* Year Dropdown */}
             <div className="relative">
