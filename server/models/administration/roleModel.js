@@ -26,6 +26,12 @@ const roleSchema = new mongoose.Schema({
       editMentor: { type: Boolean, default: false },
       deleteMentor: { type: Boolean, default: false }
     },
+    mentorCard: {
+      addMentorCard: { type: Boolean, default: false },
+      viewMentorCard: { type: Boolean, default: false },
+      editMentorCard: { type: Boolean, default: false },
+      deleteMentorCard: { type: Boolean, default: false }
+    },
     courseManagement: {
       addCourse: { type: Boolean, default: false },
       viewCourse: { type: Boolean, default: false },
@@ -54,7 +60,8 @@ const roleSchema = new mongoose.Schema({
       addTask: { type: Boolean, default: false },
       viewTask: { type: Boolean, default: false },
       editTask: { type: Boolean, default: false },
-      deleteTask: { type: Boolean, default: false }
+      deleteTask: { type: Boolean, default: false },
+      downloadTask: { type: Boolean, default: false }
     },
     materialManagement: {
       addMaterial: { type: Boolean, default: false },

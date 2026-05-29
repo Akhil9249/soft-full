@@ -1,14 +1,18 @@
 // controllers/categoryController.js
 const Category = require("../../models/course-management/categoryModel");
+const mongoose = require("mongoose");
 
 // Create new category
 const createCategory = async (req, res) => {
   try {
     const { categoryName, branch, courses } = req.body;
 
-    if (!categoryName || !branch) {
+    if (!categoryName || !branch || (Array.isArray(branch) && branch.length === 0)) {
       return res.status(400).json({ message: "Category name and branch are required" });
     }
+
+    // Ensure branch is an array
+    const branchArray = Array.isArray(branch) ? branch : [branch];
 
     // Check if category with same name already exists
     const existingCategory = await Category.findOne({ categoryName });
@@ -18,12 +22,16 @@ const createCategory = async (req, res) => {
 
     const newCategory = await Category.create({
       categoryName,
-      branch,
+      branch: branchArray,
       courses: courses || [],
       totalCourses: courses ? courses.length : 0
     });
 
-    res.status(201).json({ message: "Category created successfully", data: newCategory });
+    const populatedCategory = await Category.findById(newCategory._id)
+      .populate("branch", "branchName")
+      .populate("courses", "courseName duration courseType courseFee");
+
+    res.status(201).json({ message: "Category created successfully", data: populatedCategory });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -47,15 +55,40 @@ const getCategories = async (req, res) => {
     // Add search functionality
     if (search) {
       const searchRegex = new RegExp(search, 'i');
+      
+      // Let's find any branches matching the search query
+      const matchingBranchIds = [];
+      try {
+        const Branch = require("../../models/settings/branchModel");
+        const matchingBranches = await Branch.find({ branchName: { $regex: searchRegex } }).select("_id");
+        matchingBranches.forEach(b => matchingBranchIds.push(b._id));
+      } catch (err) {
+        console.error("Failed to load Branch model or search branches:", err);
+      }
+
       query.$or = [
-        { categoryName: { $regex: searchRegex } },
-        { branch: { $regex: searchRegex } }
+        { categoryName: { $regex: searchRegex } }
       ];
+
+      if (matchingBranchIds.length > 0) {
+        query.$or.push({ branch: { $in: matchingBranchIds } });
+      }
     }
 
     // Add branch filter
     if (branch) {
-      query.branch = branch;
+      try {
+        const Branch = require("../../models/settings/branchModel");
+        const foundBranch = await Branch.findOne({ branchName: branch });
+        if (foundBranch) {
+          query.branch = foundBranch._id;
+        } else {
+          // If branch name is not found, force query to return empty
+          query.branch = new mongoose.Types.ObjectId();
+        }
+      } catch (err) {
+        console.error("Failed to filter by branch name:", err);
+      }
     }
 
     // Get total count for pagination
@@ -64,6 +97,7 @@ const getCategories = async (req, res) => {
 
     // Get paginated results
     const categories = await Category.find(query)
+      .populate("branch", "branchName")
       .populate("courses", "courseName duration courseType courseFee")
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -89,7 +123,9 @@ const getCategories = async (req, res) => {
 // Get single category
 const getCategoryById = async (req, res) => {
   try {
-    const category = await Category.findById(req.params.id).populate("courses", "courseName duration courseType courseFee");
+    const category = await Category.findById(req.params.id)
+      .populate("branch", "branchName")
+      .populate("courses", "courseName duration courseType courseFee");
     if (!category) return res.status(404).json({ message: "Category not found" });
     res.status(200).json({ message: "Category retrieved successfully", data: category });
   } catch (error) {
@@ -100,7 +136,7 @@ const getCategoryById = async (req, res) => {
 // Update category
 const updateCategory = async (req, res) => {
   try {
-    const { courses } = req.body;
+    const { courses, branch } = req.body;
     
     const updateData = { ...req.body };
     
@@ -109,11 +145,18 @@ const updateCategory = async (req, res) => {
       updateData.totalCourses = courses.length;
     }
 
+    // Coerce branch to array if provided
+    if (branch !== undefined) {
+      updateData.branch = Array.isArray(branch) ? branch : [branch];
+    }
+
     const updated = await Category.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true, runValidators: true }
-    ).populate("courses", "courseName duration courseType courseFee");
+    )
+      .populate("branch", "branchName")
+      .populate("courses", "courseName duration courseType courseFee");
 
     if (!updated) return res.status(404).json({ message: "Category not found" });
     res.status(200).json({ message: "Category updated successfully", data: updated });

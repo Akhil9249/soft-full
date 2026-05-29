@@ -200,14 +200,17 @@ const ActionBar = ({
                             disabled={branchesLoading}
                             className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
                         >
-                            <option value="">
-                                {branchesLoading ? 'Loading branches...' : 'All Branches'}
-                            </option>
-                            {branches.map((branch) => (
-                                <option key={branch._id} value={branch._id}>
-                                    {branch.branchName}
-                                </option>
-                            ))}
+                            {branchesLoading ? (
+                                <option value="" disabled>Loading branches...</option>
+                            ) : branches.length === 0 ? (
+                                <option value="" disabled>No branches available</option>
+                            ) : (
+                                branches.map((branch) => (
+                                    <option key={branch._id} value={branch._id}>
+                                        {branch.branchName}
+                                    </option>
+                                ))
+                            )}
                         </select>
 
                         {/* Batches Dropdown */}
@@ -347,7 +350,7 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
     console.log("allAttendanceRecords===", allAttendanceRecords);
 
     // Fetch branches from backend
-    const fetchBranches = async () => {
+    const fetchBranches = async (date) => {
         try {
             setBranchesLoading(true);
             const response = await getBranchesData();
@@ -355,8 +358,14 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
 
             if (response?.data) {
                 setBranches(response.data);
-                // Keep selectedBranch as empty string to show "All Branches" by default
-                // console.log('Branches loaded:', response.data.length, 'branches available');
+                if (response.data.length > 0) {
+                    const firstBranchId = response.data[0]._id;
+                    setSelectedBranch(firstBranchId);
+                    // Fetch attendance immediately for the first branch
+                    await fetchAttendanceForDate(date, firstBranchId, null, 1, null);
+                } else {
+                    await fetchAttendanceForDate(date, null, null, 1, null);
+                }
             }
         } catch (err) {
             console.error('Failed to load branches:', err);
@@ -595,9 +604,8 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         if (isMentor) {
             fetchMentorBatches();
         } else {
-            fetchBranches();
+            fetchBranches(selectedDate);
             fetchAllBatches();
-            fetchAttendanceForDate(selectedDate, null, null, 1, null);
         }
     }, []);
 

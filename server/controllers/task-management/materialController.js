@@ -477,10 +477,11 @@ const downloadAttachment = async (req, res) => {
 
     // Use axios to fetch file from Cloudinary
     const axios = require('axios');
+    const cleanAxios = axios.create(); // Create an isolated instance with no default headers or interceptors
 
     try {
       // Fetch file as stream from Cloudinary
-      const response = await axios.get(attachmentUrl, {
+      const response = await cleanAxios.get(attachmentUrl, {
         responseType: 'stream',
         timeout: 30000, // 30 second timeout
         maxRedirects: 5

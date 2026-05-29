@@ -13,7 +13,8 @@ const weeklySchedulelSchema = new mongoose.Schema({
                         day: {type: mongoose.Schema.Types.ObjectId,ref: "DayCombination"},
                         subject: { type: mongoose.Schema.Types.ObjectId, ref: "Module" },
                         branch: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
-                        batch: [{ type: mongoose.Schema.Types.ObjectId, ref: "Batch" }]
+                        batch: [{ type: mongoose.Schema.Types.ObjectId, ref: "Batch" }],
+                        note: { type: String, trim: true }
                     }
                 }
             

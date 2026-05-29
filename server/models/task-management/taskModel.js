@@ -53,6 +53,11 @@ const taskSchema = new mongoose.Schema({
     default: "All interns"  ,
     required: true
   },
+  // branch: [{
+  //   type: mongoose.Schema.Types.ObjectId,
+  //   ref: "Branch",
+  //   required: true
+  // }],
   batches: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: "Batch",

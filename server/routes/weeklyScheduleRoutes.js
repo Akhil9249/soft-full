@@ -32,5 +32,6 @@ router.post("/:id/sub-details", checkAuth, checkRoles(["super admin", "admin"]),
 router.post("/:id/batch", checkAuth, checkRoles(["super admin", "admin"]), asyncHandler(weeklyScheduleController.addBatchToSubDetails));
 router.delete("/:id/batch", checkAuth, checkRoles(["super admin", "admin"]), asyncHandler(weeklyScheduleController.removeBatchFromSubDetails));
 router.put("/:id/subject", checkAuth, checkRoles(["super admin", "admin"]), asyncHandler(weeklyScheduleController.updateSubjectInSubDetails));
+router.put("/:id/note", checkAuth, checkRoles(["super admin", "admin"]), asyncHandler(weeklyScheduleController.updateNoteInSubDetails));
 
 module.exports = router;

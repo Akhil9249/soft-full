@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
 
 export const StudentManagement = () => {
 
-  const { getInternsData, getAllBatchesData, putInternsData, postInternsData, getBranchesData, getCoursesData, deleteInternsData, getStaffData } = AdminService();
+  const { getInternsData, getAllBatchesData, putInternsData, postInternsData, getBranchesData, getCoursesData, deleteInternsData, getStaffData, downloadInternResume } = AdminService();
 
   const [activeTab, setActiveTab] = useState('studentsList');
   const [activeSubModule, setActiveSubModule] = useState('studentManagement');
@@ -36,6 +36,7 @@ export const StudentManagement = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingStudent, setViewingStudent] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [resumePreview, setResumePreview] = useState(null);
   const [formData, setFormData] = useState({});
 
   // Pagination state
@@ -146,16 +147,30 @@ export const StudentManagement = () => {
       setBranchesLoading(true);
       // const res = await axiosPrivate.get('http://localhost:3000/api/branches');
       const res = await getBranchesData();
-      setBranches(res?.data || []);
+      const branchesData = res?.data || [];
+      setBranches(branchesData);
+      
+      if (branchesData.length > 0) {
+        const calicutBranch = branchesData.find(b => b.branchName.toLowerCase().includes('calicut'));
+        const defaultBranchId = calicutBranch ? calicutBranch._id : branchesData[0]._id;
+        setFilters(prev => ({
+          ...prev,
+          branch: defaultBranchId
+        }));
+      } else {
+        fetchInterns(1, searchTerm, filters.courseStatus, filters.course, '', filters.batch);
+      }
     } catch (err) {
       console.error('Failed to load branches:', err);
       // Set default branches if API fails
-      setBranches([
+      const defaultBranches = [
         { _id: '1', branchName: 'Choose Branch' },
         { _id: '2', branchName: 'Software Development' },
         { _id: '3', branchName: 'Data Science' },
         { _id: '4', branchName: 'Embedded Systems' }
-      ]);
+      ];
+      setBranches(defaultBranches);
+      fetchInterns(1, searchTerm, filters.courseStatus, filters.course, '', filters.batch);
     } finally {
       setBranchesLoading(false);
     }
@@ -185,7 +200,7 @@ export const StudentManagement = () => {
     try {
       setCoursesLoading(true);
       // const res = await axiosPrivate.get('http://localhost:3000/api/course');
-      const res = await getCoursesData();
+      const res = await getCoursesData('limit=1000');
       // console.log("courses==", res);
       setCourses(res?.data || []);
     } catch (err) {
@@ -227,7 +242,6 @@ export const StudentManagement = () => {
   };
 
   useEffect(() => {
-    fetchInterns(pagination.currentPage, searchTerm, filters.courseStatus, filters.course, filters.branch, filters.batch);
     fetchBranches();
     fetchBatches();
     fetchCourses();
@@ -242,6 +256,56 @@ export const StudentManagement = () => {
       }
     };
   }, [photoPreview]);
+
+  // Cleanup object URLs for resume preview
+  useEffect(() => {
+    return () => {
+      if (resumePreview && resumePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(resumePreview);
+      }
+    };
+  }, [resumePreview]);
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '';
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleDownloadResume = async (student) => {
+    if (!student || !student._id) return;
+    try {
+      setLoading(true);
+      showNotification('info', 'Downloading', 'Downloading resume...');
+      const response = await downloadInternResume(student._id);
+      
+      // Create blob link to download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const safeName = student.fullName ? student.fullName.replace(/[^a-z0-9]/gi, '_') : 'Student';
+      link.setAttribute('download', `${safeName}_Resume.pdf`);
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      showNotification('success', 'Download Successful', 'Resume downloaded successfully.');
+    } catch (err) {
+      console.error('Failed to download resume:', err);
+      showNotification('error', 'Download Failed', err?.response?.data?.message || 'Failed to download resume.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const isFirstRender = useRef(true);
 
@@ -342,6 +406,7 @@ export const StudentManagement = () => {
     // });
 
     setPhotoPreview(student.photo || null);
+    setResumePreview(student.resume || null);
     setActiveTab('newStudent');
   };
 
@@ -350,6 +415,7 @@ export const StudentManagement = () => {
     setIsEditMode(false);
     setFormData({});
     setPhotoPreview(null);
+    setResumePreview(null);
     setActiveTab('studentsList');
   };
 
@@ -568,6 +634,7 @@ export const StudentManagement = () => {
       setIsEditMode(false);
       setFormData({});
       setPhotoPreview(null);
+      setResumePreview(null);
       // e.currentTarget.reset();
     } catch (err) {
       showNotification('error', 'Error', err?.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} student`);
@@ -700,24 +767,6 @@ export const StudentManagement = () => {
             <option value="Long leave">Long leave</option>
           </select>
 
-          <select
-            value={filters.course}
-            onChange={(e) => handleFilterChange('course', e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            disabled={coursesLoading}
-          >
-            <option value="">All Courses</option>
-            {coursesLoading ? (
-              <option>Loading courses...</option>
-            ) : (
-              courses.map(course => (
-                <option key={course._id} value={course._id}>
-                  {course.courseName}
-                </option>
-              ))
-            )}
-          </select>
-
           {auth?.role?.toLowerCase() === 'super admin' && (
             <select
               value={filters.branch}
@@ -725,7 +774,6 @@ export const StudentManagement = () => {
               className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               disabled={branchesLoading}
             >
-              <option value="">All Branches</option>
               {branchesLoading ? (
                 <option>Loading branches...</option>
               ) : (
@@ -748,11 +796,17 @@ export const StudentManagement = () => {
             {batchesLoading ? (
               <option>Loading batches...</option>
             ) : (
-              batches.map(batch => (
-                <option key={batch._id} value={batch.batchName}>
-                  {batch.batchName}
-                </option>
-              ))
+              batches
+                .filter(batch => {
+                  if (!filters.branch) return true;
+                  const branchId = typeof batch.branch === 'object' && batch.branch !== null ? batch.branch._id : batch.branch;
+                  return String(branchId) === String(filters.branch);
+                })
+                .map(batch => (
+                  <option key={batch._id} value={batch.batchName}>
+                    {batch.batchName}
+                  </option>
+                ))
             )}
           </select>
 
@@ -1433,6 +1487,10 @@ export const StudentManagement = () => {
                       return;
                     }
                     setFormData((p) => ({ ...p, resume: file }));
+                    if (resumePreview && resumePreview.startsWith('blob:')) {
+                      URL.revokeObjectURL(resumePreview);
+                    }
+                    setResumePreview(URL.createObjectURL(file));
                     setError(''); // Clear any previous errors
                   }
                 } catch (error) {
@@ -1455,6 +1513,50 @@ export const StudentManagement = () => {
               </svg>
             </div>
           </div>
+          {formData?.resume && (
+            <div className="mt-3 p-3 bg-gray-50 border border-dashed border-orange-300 rounded-md flex items-center justify-between gap-4">
+              <div className="flex items-center min-w-0">
+                <svg className="w-8 h-8 text-red-500 flex-shrink-0 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                </svg>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-800 truncate">
+                    {formData.resume instanceof File ? formData.resume.name : 'Current_Resume.pdf'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formData.resume instanceof File ? formatFileSize(formData.resume.size) : 'Uploaded to server'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = formData.resume instanceof File 
+                      ? resumePreview 
+                      : formData.resume;
+                    if (url) {
+                      window.open(url, '_blank');
+                    } else {
+                      showNotification('error', 'Error', 'No preview URL available');
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded hover:bg-orange-100 transition-colors"
+                >
+                  Preview
+                </button>
+                {!(formData.resume instanceof File) && editingStudent && (
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadResume(editingStudent)}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 transition-colors"
+                  >
+                    Download
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1896,6 +1998,44 @@ export const StudentManagement = () => {
                               <p className="leading-6"><span className="font-semibold text-gray-900">Company Name:</span> <span className="text-gray-600">{viewingStudent.companyName || 'N/A'}</span></p>
                               <p className="leading-6"><span className="font-semibold text-gray-900">Job Role:</span> <span className="text-gray-600">{viewingStudent.jobRole || 'N/A'}</span></p>
                               <p className="leading-6"><span className="font-semibold text-gray-900">Official Email:</span> <span className="text-gray-600">{viewingStudent.officialEmail || 'N/A'}</span></p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Resume & Documents */}
+                        {viewingStudent.resume && (
+                          <div className="print-hide">
+                            <h2 className="text-[#f7931e] font-semibold mb-4 text-lg italic">
+                              Resume & Documents
+                            </h2>
+                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between gap-4 max-w-md">
+                              <div className="flex items-center min-w-0">
+                                <svg className="w-10 h-10 text-red-500 flex-shrink-0 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                </svg>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold text-gray-800 truncate">
+                                    {viewingStudent.fullName ? `${viewingStudent.fullName}_Resume.pdf` : 'Student_Resume.pdf'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">PDF Document</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2 flex-shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => window.open(viewingStudent.resume, '_blank')}
+                                  className="px-3 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDownloadResume(viewingStudent)}
+                                  className="px-3 py-1.5 text-xs font-semibold text-white bg-[#f7931e] rounded-lg hover:bg-[#e67c00] transition-colors"
+                                >
+                                  Download
+                                </button>
+                              </div>
                             </div>
                           </div>
                         )}

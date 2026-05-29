@@ -9,6 +9,7 @@ const { checkPermission } = require("../middlewares/checkPermission");
 router.get("/",checkAuth, checkPermission('moduleManagement', 'viewModule'), moduleController.getModules);
 router.post("/",checkAuth, checkPermission('moduleManagement', 'addModule'), upload.single('moduleImage'), moduleController.createModule);
 router.get("/:id",checkAuth, checkPermission('moduleManagement', 'viewModule'), moduleController.getModuleById);
+router.get("/:id/download", checkAuth, checkPermission('moduleManagement', 'viewModule'), moduleController.downloadModuleFile);
 router.put("/:id",checkAuth, checkPermission('moduleManagement', 'editModule'), upload.single('moduleImage'), moduleController.updateModule);
 router.delete("/:id",checkAuth, checkPermission('moduleManagement', 'deleteModule'), moduleController.deleteModule);
 router.delete("/:moduleId/topics/:topicId",checkAuth, checkPermission('moduleManagement', 'deleteModule'), moduleController.removeTopicFromModule);

@@ -83,7 +83,7 @@ export const MentorBatches = () => {
   const [exporting, setExporting] = useState(false);
 
   const [branches, setBranches] = useState([]);
-  const [selectedBranch, setSelectedBranch] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState(auth?.branch || '');
 
   const { getAllMentorsWithBatches, getBranchesData } = AdminService();
   const navigate = useNavigate();
@@ -102,13 +102,19 @@ export const MentorBatches = () => {
       try {
         const response = await getBranchesData();
         const branchesData = response?.data || response || [];
-        setBranches(Array.isArray(branchesData) ? branchesData : []);
+        const branchesList = Array.isArray(branchesData) ? branchesData : [];
+        setBranches(branchesList);
+        
+        // Default to logged-in user's branch, or first branch if not set
+        if (!selectedBranch && branchesList.length > 0) {
+          setSelectedBranch(auth?.branch || branchesList[0]._id);
+        }
       } catch (err) {
         console.error('Error fetching branches:', err);
       }
     };
     fetchBranches();
-  }, []);
+  }, [auth, selectedBranch]);
 
   const selectedMentorRef = useRef(selectedMentor);
   useEffect(() => {
@@ -203,7 +209,8 @@ export const MentorBatches = () => {
             day: { name: dayName },
             batches: [],
             branch: sub.branch,
-            subject: sub.subject
+            subject: sub.subject,
+            note: sub.note || ''
           };
         }
 
@@ -319,11 +326,11 @@ export const MentorBatches = () => {
       doc.text('Assigned Batches', 14, 58);
 
       const batchData = (selectedMentor.batches || []).map(b => [
-        b.batchName || 'N/A',
-        b.courseName || 'N/A',
-        b.branchName || 'N/A',
-        b.dayCombination || 'N/A',
-        (b.interns?.length || 0).toString()
+        b?.batchName || 'N/A',
+        b?.courseName || 'N/A',
+        b?.branchName || 'N/A',
+        b?.dayCombination || 'N/A',
+        (b?.interns?.length || 0).toString()
       ]);
 
       autoTable(doc, {
@@ -336,7 +343,7 @@ export const MentorBatches = () => {
       });
 
       // Section 2: Weekly Schedule Slots
-      const finalY = doc.lastAutoTable.finalY + 12;
+      const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 12 : 65;
       doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(247, 147, 30);
@@ -349,14 +356,16 @@ export const MentorBatches = () => {
           scheduleRows.push([
             slot.timeSlot || 'N/A',
             sub.day?.name || 'N/A',
-            sub.batches?.length > 0 ? sub.batches.map(b => b.batchName).join(', ') : 'No batches assigned'
+            sub.batches && sub.batches.length > 0 ? sub.batches.map(b => b?.batchName || 'N/A').join(', ') : 'No batches assigned',
+            sub.subject || 'N/A',
+            sub.note || 'N/A'
           ]);
         });
       });
 
       autoTable(doc, {
         startY: finalY + 3,
-        head: [['Time Slot', 'Days', 'Assigned Batches']],
+        head: [['Time Slot', 'Days', 'Assigned Batches', 'Subject', 'Note']],
         body: scheduleRows,
         theme: 'striped',
         headStyles: { fillColor: [40, 167, 69], textColor: 255, fontStyle: 'bold', fontSize: 9 },
@@ -366,6 +375,7 @@ export const MentorBatches = () => {
       doc.save(`mentor_schedule_${selectedMentor.fullName.replace(/\s+/g, '_')}.pdf`);
     } catch (e) {
       console.error('Export failed:', e);
+      alert('Export failed: ' + (e.message || e));
     } finally {
       setExporting(false);
     }
@@ -427,10 +437,10 @@ export const MentorBatches = () => {
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-base font-bold text-gray-800 truncate">
+              <h3 className="text-base font-bold text-slate-800 truncate">
                 {userRole?.toLowerCase() === 'mentor' ? 'My Schedule' : 'Select Mentor Schedule'}
               </h3>
-              <p className="text-xs text-gray-500 font-medium truncate">
+              <p className="text-xs text-slate-600 font-medium truncate">
                 {userRole?.toLowerCase() === 'mentor'
                   ? 'View your weekly schedule, assigned batches, and time slots'
                   : 'Choose a mentor to view assigned batches, days, and time slots'}
@@ -455,18 +465,29 @@ export const MentorBatches = () => {
 
             {/* Branch Selector */}
             {userRole?.toLowerCase() !== 'mentor' && (
-              <select
-                value={selectedBranch}
-                onChange={(e) => {
-                  setSelectedBranch(e.target.value);
-                }}
-                className="min-w-[180px] px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-gray-300 transition-colors flex-shrink-0"
-              >
-                <option value="">All Branches</option>
-                {branches.map(b => (
-                  <option key={b._id} value={b._id}>{b.branchName}</option>
-                ))}
-              </select>
+              userRole?.toLowerCase() === 'super admin' ? (
+                <select
+                  value={selectedBranch}
+                  onChange={(e) => {
+                    setSelectedBranch(e.target.value);
+                  }}
+                  className="min-w-[180px] px-4 py-2.5 border border-slate-200/80 rounded-xl text-sm bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-colors flex-shrink-0"
+                >
+                  {branches.map(b => (
+                    <option key={b._id} value={b._id}>{b.branchName}</option>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  value={selectedBranch}
+                  disabled
+                  className="min-w-[180px] px-4 py-2.5 border border-slate-200/80 bg-gray-50 rounded-xl text-sm text-slate-500 font-medium cursor-not-allowed shadow-sm flex-shrink-0"
+                >
+                  {branches.filter(b => b._id === (auth?.branch || selectedBranch)).map(b => (
+                    <option key={b._id} value={b._id}>{b.branchName}</option>
+                  ))}
+                </select>
+              )
             )}
 
             {userRole?.toLowerCase() !== 'mentor' && (
@@ -500,14 +521,14 @@ export const MentorBatches = () => {
 
         {/* Selected Mentor Detail Dashboard */}
         {!selectedMentor ? (
-          <div className="bg-white rounded-2xl p-16 text-center border border-gray-200/80 shadow-sm">
-            <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-white rounded-2xl p-16 text-center border border-slate-200/80 shadow-sm">
+            <svg className="w-16 h-16 mx-auto text-slate-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">
+            <h3 className="text-xl font-bold text-slate-800 mb-2">
               {userRole?.toLowerCase() === 'mentor' ? 'No Assigned Schedules' : 'No Mentors Configured'}
             </h3>
-            <p className="text-sm text-gray-500 max-w-sm mx-auto">
+            <p className="text-sm text-slate-600 max-w-sm mx-auto">
               {userRole?.toLowerCase() === 'mentor'
                 ? 'You do not have any active weekly schedules or batch assignments currently defined.'
                 : 'There are no mentors with active schedules or batch assignments currently defined.'}
@@ -520,7 +541,7 @@ export const MentorBatches = () => {
             <div className="lg:col-span-5 space-y-6">
 
               {/* Profile Card */}
-              <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-6">
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-16 h-16 bg-orange-100/80 rounded-2xl flex items-center justify-center text-orange-600 shadow-sm border border-orange-100 flex-shrink-0">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -531,36 +552,36 @@ export const MentorBatches = () => {
                     <span className={`inline-flex px-2.5 py-0.5 text-[10px] font-bold rounded-full mb-1.5 uppercase tracking-wider ${getRoleBadgeColor(selectedMentor.role)}`}>
                       {selectedMentor.role || 'Mentor'}
                     </span>
-                    <h4 className="text-lg font-bold text-gray-900 leading-tight truncate">{selectedMentor.fullName}</h4>
-                    <p className="text-xs text-gray-500 mt-1 font-medium truncate">{selectedMentor.email}</p>
+                    <h4 className="text-lg font-bold text-slate-900 leading-tight truncate">{selectedMentor.fullName}</h4>
+                    <p className="text-xs text-slate-600 mt-1 font-medium truncate">{selectedMentor.email}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4.5">
-                  <div className="bg-gray-50/50 rounded-2xl p-4.5 text-center border border-gray-100">
+                <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4.5">
+                  <div className="bg-slate-50/50 rounded-2xl p-4.5 text-center border border-slate-100">
                     <div className="text-2xl font-extrabold text-blue-600">{batches.length}</div>
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">Assigned Batches</div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">Assigned Batches</div>
                   </div>
-                  <div className="bg-gray-50/50 rounded-2xl p-4.5 text-center border border-gray-100">
+                  <div className="bg-slate-50/50 rounded-2xl p-4.5 text-center border border-slate-100">
                     <div className="text-2xl font-extrabold text-green-600">{scheduleDetails.length}</div>
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-1">Schedule Slots</div>
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">Schedule Slots</div>
                   </div>
                 </div>
               </div>
 
               {/* Assigned Batches List */}
-              <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-6">
-                <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
+                <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
                   <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
                     <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
                   </div>
-                  <h4 className="text-sm font-bold text-gray-800">Assigned Batches ({batches.length})</h4>
+                  <h4 className="text-sm font-bold text-slate-800">Assigned Batches ({batches.length})</h4>
                 </div>
 
                 {batches.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400 text-sm font-medium">
+                  <div className="text-center py-8 text-slate-500 text-sm font-medium">
                     No batches assigned to this mentor.
                   </div>
                 ) : (
@@ -568,19 +589,19 @@ export const MentorBatches = () => {
                     {batches.map((batch) => (
                       <div
                         key={batch?._id}
-                        className="group bg-white border border-gray-200/80 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-200/80 transition-all relative cursor-help"
+                        className="group bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-200/80 transition-all relative cursor-help"
                         onMouseEnter={(e) => handleBatchHover(e, batch)}
                         onMouseLeave={handleBatchLeave}
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <h5 className="text-sm font-bold text-gray-800 group-hover:text-blue-600 transition-colors">{batch?.batchName}</h5>
+                          <h5 className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{batch?.batchName}</h5>
                           {batch?.dayCombination && batch?.dayCombination !== 'N/A' && (
                             <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded-full font-bold border border-blue-100">
                               {batch?.dayCombination}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center space-x-2 text-[11px] text-gray-500 font-medium">
+                        <div className="flex items-center space-x-2 text-[11px] text-slate-600 font-medium">
                           <span className="truncate max-w-[150px]">{batch?.courseName}</span>
                           <span>•</span>
                           <span className="truncate">{batch?.branchName}</span>
@@ -588,7 +609,7 @@ export const MentorBatches = () => {
 
                         {/* Hover hint */}
                         <div className="absolute right-3.5 bottom-3.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="text-[9px] text-gray-400 flex items-center gap-1 font-bold">
+                          <span className="text-[9px] text-slate-500 flex items-center gap-1 font-bold">
                             <svg className="w-3.5 h-3.5 text-blue-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -605,19 +626,19 @@ export const MentorBatches = () => {
             </div>
 
             {/* Right Column: Weekly Schedule Timeline (span 7) */}
-            <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-200/80 shadow-sm p-6">
+            <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
 
-              <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">
+              <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
                 <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-green-600 border border-green-100">
                   <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
-                <h4 className="text-sm font-bold text-gray-800">Weekly Schedule Timeline</h4>
+                <h4 className="text-sm font-bold text-slate-800">Weekly Schedule Timeline</h4>
               </div>
 
               {scheduleDetails.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 text-sm font-medium">
+                <div className="text-center py-12 text-slate-500 text-sm font-medium">
                   No schedule slots assigned to this mentor.
                 </div>
               ) : (
@@ -628,7 +649,7 @@ export const MentorBatches = () => {
                       {/* Timeline dot */}
                       <div className="absolute left-[7px] top-1.5 w-3.5 h-3.5 -translate-x-1/2 rounded-full bg-green-500 border-3 border-white shadow-sm group-hover:scale-110 transition-transform" />
 
-                      <div className="bg-white border border-gray-200/70 rounded-2xl p-4.5 shadow-sm hover:shadow-md hover:border-green-200/80 transition-all">
+                      <div className="bg-white border border-slate-200/70 rounded-2xl p-4.5 shadow-sm hover:shadow-md hover:border-green-200/80 transition-all">
                         <div className="flex items-center justify-between mb-4">
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 text-xs font-bold rounded-lg border border-green-100/60 shadow-sm">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -640,12 +661,12 @@ export const MentorBatches = () => {
 
                         <div className="space-y-3.5">
                           {(timeSlot?.subDetails || []).map((subDetail, subIndex) => (
-                            <div key={subIndex} className="bg-gray-50/50 rounded-xl p-3.5 border border-gray-100">
+                            <div key={subIndex} className="bg-slate-50/50 rounded-xl p-3.5 border border-slate-100">
                               <div className="flex items-center justify-between mb-2">
-                                <span className="inline-flex items-center px-2 py-0.5 bg-gray-200 text-gray-800 text-[10px] font-bold rounded-md uppercase tracking-wider">
+                                <span className="inline-flex items-center px-2 py-0.5 bg-slate-200 text-slate-800 text-[10px] font-bold rounded-md uppercase tracking-wider">
                                   {subDetail?.day?.name || 'N/A'}
                                 </span>
-                                <span className={`text-[11px] font-bold ${subDetail?.batches?.length > 0 ? 'text-blue-600' : 'text-gray-400'}`}>
+                                <span className={`text-[11px] font-bold ${subDetail?.batches?.length > 0 ? 'text-blue-600' : 'text-slate-500'}`}>
                                   {subDetail?.batches?.length > 0 ? `${subDetail.batches.length} Batch(es) Active` : 'No Batches'}
                                 </span>
                               </div>
@@ -662,7 +683,25 @@ export const MentorBatches = () => {
                                   ))}
                                 </div>
                               ) : (
-                                <p className="text-xs text-gray-400/80 italic font-medium">No active batches assigned to this slot</p>
+                                <p className="text-xs text-slate-500 italic font-medium">No active batches assigned to this slot</p>
+                              )}
+
+                              {/* Subject */}
+                              {subDetail?.subject && subDetail.subject !== 'N/A' && (
+                                <div className="mt-2.5 flex items-center text-[11px] text-orange-700 font-semibold bg-orange-50/50 px-2.5 py-1.5 rounded-lg border border-orange-100/60 w-fit">
+                                  <svg className="w-3.5 h-3.5 mr-1.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.433 9.496 5 8 5c-4 0-8 3-8 8s4 8 8 8c.94 0 1.841-.213 2.684-.606m3.56-5.894C15.687 7.159 15.589 8 15 8s-1.5-.5-1.5-.5V5a2 2 0 00-2-2h-2c-1.5 0-2 1-2 2v2.5" />
+                                  </svg>
+                                  <span>Subject: {subDetail.subject}</span>
+                                </div>
+                              )}
+
+                              {/* Note */}
+                              {subDetail?.note && (
+                                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-start gap-1.5 text-[11px] text-slate-700 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                                  <span className="text-orange-500 flex-shrink-0 mt-0.5">📝</span>
+                                  <span className="italic leading-relaxed whitespace-pre-wrap break-words">{subDetail.note}</span>
+                                </div>
                               )}
                             </div>
                           ))}

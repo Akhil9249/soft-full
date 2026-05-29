@@ -1,6 +1,33 @@
   // controllers/moduleController.js
 const Module = require("../../models/syllabus-management/moduleModel");
 const Course = require("../../models/course-management/courseModel");
+const { cloudinary } = require("../../uploads/multer");
+
+// Helper to extract Cloudinary public ID and delete the file
+const deleteFromCloudinary = async (url) => {
+  if (!url || typeof url !== 'string' || !url.includes('cloudinary.com')) return;
+  try {
+    const parts = url.split('/upload/');
+    if (parts.length < 2) return;
+    
+    let pathPart = parts[1].replace(/^v\d+\//, ''); // Remove version
+    const isRaw = url.includes('/raw/upload/');
+    
+    let publicId = pathPart;
+    if (!isRaw) {
+      // Remove extension for images
+      const lastDotIndex = pathPart.lastIndexOf('.');
+      if (lastDotIndex !== -1) {
+        publicId = pathPart.substring(0, lastDotIndex);
+      }
+    }
+    
+    await cloudinary.uploader.destroy(publicId, { resource_type: isRaw ? 'raw' : 'image' });
+    console.log(`Deleted from cloudinary: ${publicId}`);
+  } catch (err) {
+    console.error('Failed to delete from Cloudinary:', err);
+  }
+};
 
 // Create new module
 const createModule = async (req, res) => {
@@ -8,18 +35,21 @@ const createModule = async (req, res) => {
     const { moduleName, course, moduleImage, topics } = req.body;
 
     if (!moduleName || !course) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({ message: "Module name and course are required" });
     }
 
     // Check if course exists
     const existingCourse = await Course.findById(course);
     if (!existingCourse) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(404).json({ message: "Course not found" });
     }
 
     // Check if module with same name already exists in this course
     const existingModule = await Module.findOne({ moduleName, course });
     if (existingModule) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({ message: "Module with this name already exists in this course" });
     }
 
@@ -44,6 +74,7 @@ const createModule = async (req, res) => {
 
     res.status(201).json({ message: "Module created successfully", data: newModule });
   } catch (error) {
+    if (req.file) await deleteFromCloudinary(req.file.path);
     res.status(500).json({ message: error.message });
   }
 };
@@ -125,29 +156,30 @@ const updateModule = async (req, res) => {
     
     // Get current module to check if course is changing
     const currentModule = await Module.findById(req.params.id);
-    if (!currentModule) return res.status(404).json({ message: "Module not found" });
+    if (!currentModule) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(404).json({ message: "Module not found" });
+    }
 
     const updateData = { ...req.body };
     
     // Handle uploaded file - remove moduleImage from updateData first to handle it separately
     delete updateData.moduleImage;
     
-    let moduleImageUrl = currentModule.moduleImage || undefined;
+    let moduleImageUrl = currentModule.moduleImage || null;
+    
     if (req.file) {
-      // New file uploaded
-      console.log('New file uploaded:', req.file.originalname, req.file.mimetype, req.file.path);
+      // If we are uploading a new document, delete the old one from Cloudinary!
+      if (currentModule.moduleImage && currentModule.moduleImage !== req.file.path) {
+        await deleteFromCloudinary(currentModule.moduleImage);
+      }
       moduleImageUrl = req.file.path; // Cloudinary URL
       updateData.moduleImage = moduleImageUrl;
     } else if (moduleImage && typeof moduleImage === 'string' && moduleImage.trim() !== '') {
       // Existing URL passed from frontend
-      console.log('Preserving existing URL:', moduleImage);
       moduleImageUrl = moduleImage;
       updateData.moduleImage = moduleImageUrl;
-    } else {
-      console.log('No file update - preserving existing:', currentModule.moduleImage);
     }
-    // If neither req.file nor moduleImage string is provided, moduleImageUrl stays as existing value
-    // and we don't add it to updateData, so the existing value is preserved
     
     // If topics array is being updated, calculate totalTopics
     if (topics !== undefined) {
@@ -182,6 +214,7 @@ const updateModule = async (req, res) => {
 
     res.status(200).json({ message: "Module updated successfully", data: updated });
   } catch (error) {
+    if (req.file) await deleteFromCloudinary(req.file.path);
     res.status(400).json({ message: error.message });
   }
 };
@@ -224,6 +257,11 @@ const deleteModule = async (req, res) => {
     const module = await Module.findById(req.params.id);
     if (!module) return res.status(404).json({ message: "Module not found" });
 
+    // Clean up module file if it exists on Cloudinary
+    if (module.moduleImage) {
+      await deleteFromCloudinary(module.moduleImage);
+    }
+
     await Module.findByIdAndDelete(req.params.id);
 
     // Remove module from course's modules array
@@ -240,6 +278,95 @@ const deleteModule = async (req, res) => {
   }
 };
 
+// Download module file (proxy through backend to avoid CORS issues)
+const downloadModuleFile = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const module = await Module.findById(id);
+    if (!module || !module.moduleImage) {
+      return res.status(404).json({ message: "Module or document not found" });
+    }
+
+    const fileUrl = module.moduleImage;
+
+    // Use axios to fetch file from Cloudinary
+    const axios = require('axios');
+    const cleanAxios = axios.create(); // Create an isolated instance with no default headers or interceptors
+
+    try {
+      // Fetch file as stream from Cloudinary
+      const response = await cleanAxios.get(fileUrl, {
+        responseType: 'stream',
+        timeout: 30000, // 30 second timeout
+        maxRedirects: 5
+      });
+
+      // Extract filename from URL
+      const urlParts = fileUrl.split('/');
+      let filename = urlParts[urlParts.length - 1] || 'document.pdf';
+
+      // Clean up filename (remove query parameters if any)
+      if (filename.includes('?')) {
+        filename = filename.split('?')[0];
+      }
+
+      // Format filename with module name and original extension
+      if (module.moduleName) {
+        const safeName = module.moduleName.replace(/[^a-z0-9]/gi, '_');
+        const ext = filename.includes('.') ? filename.substring(filename.lastIndexOf('.')) : '.pdf';
+        filename = `${safeName}_Document${ext}`;
+      }
+
+      // Set headers for file download
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', response.headers['content-type'] || 'application/pdf');
+      res.setHeader('Content-Length', response.headers['content-length'] || '');
+
+      // Pipe the file stream to response
+      response.data.pipe(res);
+
+    } catch (fetchError) {
+      console.error('Error fetching file from Cloudinary:', fetchError.message);
+
+      // If axios fails, try native http/https as fallback
+      const https = require('https');
+      const http = require('http');
+      const parsedUrl = new URL(fileUrl);
+      const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+      protocol.get(fileUrl, (response) => {
+        if (response.statusCode !== 200) {
+          return res.status(response.statusCode).json({
+            message: `Failed to fetch file from Cloudinary. Status: ${response.statusCode}`
+          });
+        }
+
+        const urlParts = fileUrl.split('/');
+        let filename = urlParts[urlParts.length - 1] || 'document.pdf';
+        if (module.moduleName) {
+          const safeName = module.moduleName.replace(/[^a-z0-9]/gi, '_');
+          const ext = filename.includes('.') ? filename.substring(filename.lastIndexOf('.')) : '.pdf';
+          filename = `${safeName}_Document${ext}`;
+        }
+
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Type', response.headers['content-type'] || 'application/pdf');
+
+        // Pipe the file stream to response
+        response.pipe(res);
+      }).on('error', (error) => {
+        console.error('Error downloading file:', error);
+        res.status(500).json({ message: 'Error downloading file from Cloudinary' });
+      });
+    }
+
+  } catch (error) {
+    console.error('Error in downloadModuleFile:', error);
+    res.status(500).json({ message: error.message || 'Error downloading file' });
+  }
+};
+
 module.exports = {
   createModule,
   getModules,
@@ -247,4 +374,5 @@ module.exports = {
   updateModule,
   removeTopicFromModule,
   deleteModule,
+  downloadModuleFile,
 };

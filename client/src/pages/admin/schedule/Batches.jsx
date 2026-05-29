@@ -166,10 +166,17 @@ export const Batches = () => {
       return;
     }
 
+    if (!formData.branchName) {
+      showNotification('error', 'Select Branch', 'Please select a branch before searching interns.');
+      setInternSearchTerm('');
+      setFilteredInterns([]);
+      return;
+    }
+
     try {
       setLoading(true);
       // const res = await axiosPrivate.get(`http://localhost:3000/api/intern/search?q=${encodeURIComponent(searchTerm)}`);
-      const res = await getInternsDataSearch(searchTerm);
+      const res = await getInternsDataSearch(searchTerm, formData.branchName);
       // const res = await getInternsData(searchTerm);
       console.log("res======",res.data);
       setFilteredInterns(res.data || []);
@@ -322,6 +329,11 @@ export const Batches = () => {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (internSearchTerm.trim() !== '') {
+        if (!formData.branchName) {
+          showNotification('error', 'Select Branch', 'Please select a branch before searching interns.');
+          setInternSearchTerm('');
+          return;
+        }
         searchInterns(internSearchTerm);
       } else {
         setFilteredInterns([]);
@@ -329,7 +341,7 @@ export const Batches = () => {
     }, 300); // 300ms delay
 
     return () => clearTimeout(timeoutId);
-  }, [internSearchTerm]);
+  }, [internSearchTerm, formData.branchName]);
 
 
   // Use batches directly since filtering is now server-side
@@ -981,7 +993,21 @@ export const Batches = () => {
                     <select 
                       name="branchName" 
                       value={formData.branchName || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, branchName: e.target.value}))}
+                      onChange={(e) => {
+                        const newBranch = e.target.value;
+                        setFormData(prev => ({...prev, branchName: newBranch}));
+                        
+                        // Clear intern search and selection states since branch changed
+                        setInternSearchTerm('');
+                        setFilteredInterns([]);
+                        setSelectedIntern('');
+                        setSelectedInternData(null);
+                        setInternAdmissionNumber('');
+                        setInternCourseName('');
+                        
+                        // Clear added interns list only if branch changed manually to prevent cross-branch intern assignment
+                        setAddedInterns([]);
+                      }}
                       className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500" 
                       required
                     >
@@ -1026,10 +1052,23 @@ export const Batches = () => {
                       <div className="relative">
                         <input
                           type="text"
-                          placeholder="Search by name, email, or course..."
+                          placeholder={formData.branchName ? "Search by name, email, or course..." : "Select a branch first to search interns..."}
                           value={internSearchTerm}
-                          onChange={(e) => setInternSearchTerm(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          onChange={(e) => {
+                            if (!formData.branchName) {
+                              showNotification('error', 'Select Branch', 'Please select a branch before searching interns.');
+                              return;
+                            }
+                            setInternSearchTerm(e.target.value);
+                          }}
+                          onClick={() => {
+                            if (!formData.branchName) {
+                              showNotification('error', 'Select Branch', 'Please select a branch before searching interns.');
+                            }
+                          }}
+                          className={`w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                            !formData.branchName ? 'bg-gray-50 cursor-not-allowed border-gray-200 text-gray-400' : 'border-gray-300'
+                          }`}
                         />
                         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                           <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">

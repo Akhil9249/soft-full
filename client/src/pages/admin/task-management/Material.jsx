@@ -56,6 +56,10 @@ const Material = () => {
   });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingMaterial, setDeletingMaterial] = useState(null);
+  
+  // View modal state
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingMaterial, setViewingMaterial] = useState(null);
 
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -429,6 +433,11 @@ const Material = () => {
     setEditingMaterial(null);
   };
 
+  const handleView = (material) => {
+    setViewingMaterial(material);
+    setShowViewModal(true);
+  };
+
   // Edit material
   const handleEdit = (material) => {
     setEditingMaterial(material);
@@ -626,6 +635,208 @@ const Material = () => {
     );
   };
 
+  const ViewMaterialModal = () => {
+    if (!showViewModal || !viewingMaterial) return null;
+
+    const material = viewingMaterial;
+    
+    // Check attachment type (image or pdf)
+    const isImage = material.attachments && (
+      material.attachments.match(/\.(jpeg|jpg|gif|png|webp)/i) || 
+      material.attachments.includes('image/upload')
+    );
+    const isPdf = material.attachments && (
+      material.attachments.match(/\.pdf/i) || 
+      material.attachments.includes('raw/upload')
+    );
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] flex flex-col overflow-hidden">
+          {/* Header */}
+          <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+            <div>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 truncate max-w-[400px]">
+                {material.title}
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Created on {new Date(material.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setShowViewModal(false);
+                setViewingMaterial(null);
+              }}
+              className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm text-gray-600">
+            {/* Mentor Info */}
+            <div className="flex items-center space-x-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
+              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
+                {material.mentor?.fullName?.charAt(0).toUpperCase() || 'M'}
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-900">{material.mentor?.fullName || 'N/A'}</h4>
+                <p className="text-xs text-gray-500">Assigned Mentor • {material.mentor?.email || 'N/A'}</p>
+              </div>
+            </div>
+
+            {/* Audience Info */}
+            <div className="space-y-2">
+              <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Audience Type</h4>
+              <div className="flex items-center">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                  material.audience === 'All interns' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                  material.audience === 'By batches' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                  material.audience === 'By courses' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
+                  'bg-green-100 text-green-800 border border-green-200'
+                }`}>
+                  {material.audience}
+                </span>
+              </div>
+            </div>
+
+            {/* Assigned Scope Details */}
+            {material.audience === 'By batches' && material.batches?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Assigned Batches ({material.batches.length})</h4>
+                <div className="flex flex-wrap gap-2">
+                  {material.batches.map((batch, index) => (
+                    <span key={index} className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-lg border border-purple-100">
+                      {batch.batchName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {material.audience === 'By courses' && material.courses?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Assigned Courses ({material.courses.length})</h4>
+                <div className="flex flex-wrap gap-2">
+                  {material.courses.map((course, index) => (
+                    <span key={index} className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-lg border border-indigo-100">
+                      {course.courseName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(material.audience === 'Individual interns' || material.audience === 'Individual Interns') && material.individualInterns?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Assigned Interns ({material.individualInterns.length})</h4>
+                <div className="max-h-40 overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-50">
+                  {material.individualInterns.map((intern, index) => (
+                    <div key={index} className="p-2.5 flex items-center justify-between hover:bg-gray-50 animate-fade-in">
+                      <div className="font-medium text-gray-900">{intern.fullName}</div>
+                      <div className="text-xs text-gray-500">{intern.email}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Attachments & Preview */}
+            <div className="space-y-2">
+              <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Attachment</h4>
+              {material.attachments ? (
+                <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 shadow-inner">
+                  {/* File preview */}
+                  <div className="p-4 flex items-center justify-between border-b border-gray-200 bg-white">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
+                        {isPdf ? (
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-900 truncate max-w-[250px] block">
+                          {material.attachments.split('/').pop() || 'Attachment File'}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {isPdf ? 'PDF Document' : isImage ? 'Image File' : 'Attachment Resource'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => handleViewAttachment(material)}
+                        className="px-3 py-1.5 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors shadow-sm"
+                      >
+                        View Full
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadAttachment(material)}
+                        className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors shadow-sm"
+                      >
+                        Download
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Live preview display */}
+                  {isImage && (
+                    <div className="p-4 flex justify-center bg-gray-100/50">
+                      <img
+                        src={material.attachments}
+                        alt="Preview"
+                        className="max-h-60 rounded-lg object-contain shadow-md border border-gray-200 hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                  )}
+
+                  {isPdf && (
+                    <div className="p-4 flex flex-col items-center justify-center bg-gray-100/30 text-gray-500 py-6">
+                      <svg className="w-12 h-12 text-red-400 mb-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-xs font-medium text-gray-700">PDF Preview Not Rendered Directly</span>
+                      <span className="text-[10px] text-gray-400 mt-1">Click 'View Full' above to read this PDF in a new tab</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 text-center bg-gray-50 rounded-xl border border-dashed border-gray-300 text-gray-400">
+                  No attachment uploaded for this material
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end bg-gray-50">
+            <button
+              onClick={() => {
+                setShowViewModal(false);
+                setViewingMaterial(null);
+              }}
+              className="px-6 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-semibold rounded-lg transition-colors shadow-sm"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       {/* Notification Modal */}
@@ -668,6 +879,9 @@ const Material = () => {
           </div>
         </div>
       )}
+
+      {/* Material Details View Modal */}
+      {showViewModal && <ViewMaterialModal />}
 
       <Navbar headData="Material" activeTab={activeTab} />
 
@@ -904,6 +1118,16 @@ const Material = () => {
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex space-x-2">
                               <button
+                                onClick={() => handleView(material)}
+                                className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-100 transition-colors"
+                                title="View details"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                              </button>
+                              <button
                                 onClick={() => handleEdit(material)}
                                 className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-100 transition-colors"
                                 title="Edit material"
@@ -941,6 +1165,16 @@ const Material = () => {
                           </p>
                         </div>
                         <div className="flex space-x-2 ml-2">
+                          <button
+                            onClick={() => handleView(material)}
+                            className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-100 transition-colors"
+                            title="View details"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                          </button>
                           <button
                             onClick={() => handleEdit(material)}
                             className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-100 transition-colors"

@@ -9,7 +9,7 @@ import autoTable from 'jspdf-autotable';
 export const Courses = () => {
   // const axiosPrivate = useAxiosPrivate();
 
-  const { getCategoriesData, getCoursesData, postCoursesData, putCoursesData, deleteCoursesData } = AdminService();  
+  const { getCategoriesData, getCoursesData, postCoursesData, putCoursesData, deleteCoursesData, downloadCourseSyllabus } = AdminService();  
 
 
   const [activeTab, setActiveTab] = useState('courses');
@@ -54,6 +54,7 @@ export const Courses = () => {
   const [formData, setFormData] = useState({
     syllabusFile: null
   });
+  const [syllabusPreview, setSyllabusPreview] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingCourse, setDeletingCourse] = useState(null);
   const [notification, setNotification] = useState({
@@ -198,6 +199,56 @@ export const Courses = () => {
     setSuccess('');
   }, [activeTab]);
 
+  // Cleanup object URLs for syllabus preview
+  useEffect(() => {
+    return () => {
+      if (syllabusPreview && syllabusPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(syllabusPreview);
+      }
+    };
+  }, [syllabusPreview]);
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '';
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleDownloadSyllabus = async (course) => {
+    if (!course || !course._id) return;
+    try {
+      setLoading(true);
+      showNotification('info', 'Downloading', 'Downloading syllabus...');
+      const response = await downloadCourseSyllabus(course._id);
+      
+      // Create blob link to download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const safeName = course.courseName ? course.courseName.replace(/[^a-z0-9]/gi, '_') : 'Course';
+      link.setAttribute('download', `${safeName}_Syllabus.pdf`);
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      showNotification('success', 'Download Successful', 'Syllabus downloaded successfully.');
+    } catch (err) {
+      console.error('Failed to download syllabus:', err);
+      showNotification('error', 'Download Failed', err?.response?.data?.message || 'Failed to download syllabus.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // No client-side filtering needed - server handles it
 
   const handleEditCourse = (course) => {
@@ -209,8 +260,9 @@ export const Courses = () => {
       category: typeof course.category === 'object' ? course.category._id : course.category || "",
       courseType: course.courseType || "",
       courseFee: course.courseFee || "",
-      syllabusFile: course.syllabusFile || null,
+      syllabusFile: course.syllabus || null, // Align with backend schema key "syllabus"
     });
+    setSyllabusPreview(course.syllabus || null);
     setActiveTab('newCourse');
   };
 
@@ -220,6 +272,7 @@ export const Courses = () => {
     setFormData({
       syllabusFile: null
     });
+    setSyllabusPreview(null);
     setActiveTab('courses');
   };
 
@@ -928,20 +981,26 @@ export const Courses = () => {
                       ₹{course.courseFee?.toLocaleString() || '0'}
                     </td>
                     <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                      {course.syllabusFile ? (
-                        <div className="flex items-center">
-                          <svg className="w-4 h-4 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      {course.syllabus ? (
+                        <div className="flex items-center space-x-2">
+                          <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
                           </svg>
-                          <span className="text-sm text-red-600 font-medium">PDF</span>
                           <a 
-                            href={course.syllabusFile} 
+                            href={course.syllabus} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="ml-2 text-blue-600 hover:text-blue-800 text-xs"
+                            className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                           >
                             View
                           </a>
+                          <span className="text-gray-300">|</span>
+                          <button 
+                            onClick={() => handleDownloadSyllabus(course)}
+                            className="text-gray-600 hover:text-orange-600 text-xs font-semibold transition-colors"
+                          >
+                            Download
+                          </button>
                         </div>
                       ) : (
                         <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-500 bg-gray-100 rounded-full border border-gray-200">
@@ -1020,19 +1079,26 @@ export const Courses = () => {
                   <div><span className="font-medium">Fee:</span> ₹{course.courseFee?.toLocaleString() || '0'}</div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium">Syllabus:</span>
-                    {course.syllabusFile ? (
-                      <div className="flex items-center">
-                        <svg className="w-4 h-4 text-red-600 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    {course.syllabus ? (
+                      <div className="flex items-center space-x-2">
+                        <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
                         </svg>
                         <a 
-                          href={course.syllabusFile} 
+                          href={course.syllabus} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-xs"
+                          className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                         >
-                          View PDF
+                          View
                         </a>
+                        <span className="text-gray-300">|</span>
+                        <button 
+                          onClick={() => handleDownloadSyllabus(course)}
+                          className="text-gray-600 hover:text-orange-600 text-xs font-semibold transition-colors"
+                        >
+                          Download
+                        </button>
                       </div>
                     ) : (
                       <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-500 bg-gray-100 rounded-full border border-gray-200">
@@ -1126,13 +1192,12 @@ export const Courses = () => {
     <form onSubmit={async (e) => {
       e.preventDefault();
       setError('');
-      const formDataObj = new FormData(e.currentTarget);
-
-      const courseName = formDataObj.get('courseName');
-      const duration = formDataObj.get('duration');
-      const category = formDataObj.get('category');
-      const courseType = formDataObj.get('courseType');
-      const courseFee = formDataObj.get('courseFee');
+      
+      const courseName = formData.courseName;
+      const duration = formData.duration;
+      const category = formData.category;
+      const courseType = formData.courseType;
+      const courseFee = formData.courseFee;
 
       // Validate required fields
       if (!courseName || !duration || !category || !courseType || !courseFee) {
@@ -1140,14 +1205,20 @@ export const Courses = () => {
         return;
       }
 
-      const payload = {
-        courseName: courseName.trim(),
-        duration: duration,
-        category: category,
-        courseType: courseType,
-        courseFee: Number(courseFee),
-        syllabusFile: formData.syllabusFile || null,
-      };
+      // Build FormData for file uploads (Multer expects multipart/form-data)
+      const payload = new FormData();
+      payload.append('courseName', String(courseName).trim());
+      payload.append('duration', duration);
+      payload.append('category', category);
+      payload.append('courseType', courseType);
+      payload.append('courseFee', Number(courseFee));
+
+      if (formData.syllabusFile instanceof File) {
+        payload.append('syllabus', formData.syllabusFile);
+      } else if (formData.syllabusFile && typeof formData.syllabusFile === 'string') {
+        payload.append('syllabus', formData.syllabusFile);
+      }
+
       try {
         setLoading(true);
         let res;
@@ -1168,7 +1239,7 @@ export const Courses = () => {
         setFormData({
           syllabusFile: null
         });
-        // e.currentTarget.reset();
+        setSyllabusPreview(null);
       } catch (err) {
         showNotification('error', 'Error', err?.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} course`);
       } finally {
@@ -1245,60 +1316,102 @@ export const Courses = () => {
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-2">Course Syllabus <span className="text-gray-400">(PDF only, Max 10MB)</span></label>
-          <div className="flex items-center w-full px-4 py-2 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-transparent">
-            <span className="text-gray-500 flex-1">
-              {formData.syllabusFile ? formData.syllabusFile.name : 'Upload PDF Syllabus'}
+          <div className="relative flex items-center w-full px-4 py-2 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-transparent bg-white">
+            <span className="text-gray-500 flex-1 truncate pr-2">
+              {formData?.syllabusFile instanceof File
+                ? formData.syllabusFile.name
+                : formData?.syllabusFile && typeof formData.syllabusFile === 'string'
+                  ? 'Existing syllabus (click to change)'
+                  : 'Upload PDF Syllabus'}
             </span>
             <input 
               type="file" 
-              name="syllabusFile"
-              accept=".pdf"
+              name="syllabus"
+              accept="application/pdf,.pdf"
               onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) {
-                  // Validate file type
-                  if (file.type !== 'application/pdf') {
-                    showNotification('error', 'Validation Error', 'Please upload only PDF files');
-                    return;
+                try {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    // Validate file type
+                    const isValidPdf = file.type === 'application/pdf' || 
+                      (file.name && file.name.toLowerCase().endsWith('.pdf'));
+                    if (!isValidPdf) {
+                      showNotification('error', 'Validation Error', 'Please upload only PDF files');
+                      e.target.value = ''; // Reset
+                      return;
+                    }
+                    // Validate file size (10MB)
+                    if (file.size > 10 * 1024 * 1024) {
+                      showNotification('error', 'Validation Error', 'File size must be less than 10MB');
+                      e.target.value = ''; // Reset
+                      return;
+                    }
+                    setFormData(prev => ({...prev, syllabusFile: file}));
+                    if (syllabusPreview && syllabusPreview.startsWith('blob:')) {
+                      URL.revokeObjectURL(syllabusPreview);
+                    }
+                    setSyllabusPreview(URL.createObjectURL(file));
+                    setError(''); // Clear any previous errors
                   }
-                  // Validate file size (10MB = 10 * 1024 * 1024 bytes)
-                  if (file.size > 10 * 1024 * 1024) {
-                    showNotification('error', 'Validation Error', 'File size must be less than 10MB');
-                    return;
+                } catch (error) {
+                  console.error('Error handling syllabus upload:', error);
+                  showNotification('error', 'Upload Error', 'An error occurred while processing the file');
+                  if (e.target) {
+                    e.target.value = '';
                   }
-                  setFormData(prev => ({...prev, syllabusFile: file}));
-                  setError(''); // Clear any previous errors
                 }
               }}
-              className="sr-only" 
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
               id="syllabus-upload" 
             />
-            <label htmlFor="syllabus-upload" className="cursor-pointer text-gray-500 hover:text-orange-500 transition-colors">
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm3-4a1 1 0 011-1h6a1 1 0 011 1v2a1 1 0 01-1 1H7a1 1 0 01-1-1v-2z" clipRule="evenodd"></path>
+            <div className="pointer-events-none flex-shrink-0">
+              <svg className="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm3-4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
               </svg>
-            </label>
+            </div>
           </div>
-          {formData.syllabusFile && (
-            <div className="mt-2 flex items-center justify-between bg-green-50 border border-green-200 rounded-md px-3 py-2">
-              <div className="flex items-center">
-                <svg className="w-4 h-4 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
+          {formData?.syllabusFile && (
+            <div className="mt-3 p-3 bg-gray-50 border border-dashed border-orange-300 rounded-md flex items-center justify-between gap-4">
+              <div className="flex items-center min-w-0">
+                <svg className="w-8 h-8 text-red-500 flex-shrink-0 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
                 </svg>
-                <span className="text-sm text-green-800 font-medium">{formData.syllabusFile.name}</span>
-                <span className="text-xs text-green-600 ml-2">
-                  ({(formData.syllabusFile.size / (1024 * 1024)).toFixed(2)} MB)
-                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-800 truncate">
+                    {formData.syllabusFile instanceof File ? formData.syllabusFile.name : 'Current_Syllabus.pdf'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formData.syllabusFile instanceof File ? formatFileSize(formData.syllabusFile.size) : 'Uploaded to server'}
+                  </p>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setFormData(prev => ({...prev, syllabusFile: null}))}
-                className="text-red-500 hover:text-red-700 focus:outline-none"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = formData.syllabusFile instanceof File 
+                      ? syllabusPreview 
+                      : formData.syllabusFile;
+                    if (url) {
+                      window.open(url, '_blank');
+                    } else {
+                      showNotification('error', 'Error', 'No preview URL available');
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded hover:bg-orange-100 transition-colors"
+                >
+                  Preview
+                </button>
+                {!(formData.syllabusFile instanceof File) && editingCourse && (
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadSyllabus(editingCourse)}
+                    className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 transition-colors"
+                  >
+                    Download
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -1579,25 +1692,40 @@ export const Courses = () => {
               </div>
 
               {/* Syllabus */}
-              <div className="mt-4 sm:mt-5">
-                <h2 className="text-[#f7931e] font-semibold mb-3 text-sm sm:text-base italic">Syllabus</h2>
-                {viewingCourse.syllabusFile ? (
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
-                    </svg>
-                    <span className="text-xs sm:text-sm text-red-600 font-medium">PDF</span>
-                    <a 
-                      href={viewingCourse.syllabusFile} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="ml-2 text-blue-600 hover:text-blue-800 text-xs"
-                    >
-                      View
-                    </a>
+              <div className="mt-4 sm:mt-5 bg-gray-50 p-4 border border-dashed border-gray-300 rounded-lg">
+                <h2 className="text-[#f7931e] font-semibold mb-3 text-sm sm:text-base italic">Syllabus Documents</h2>
+                {viewingCourse.syllabus ? (
+                  <div className="flex items-center justify-between bg-white border border-gray-200 rounded-md p-3">
+                    <div className="flex items-center min-w-0">
+                      <svg className="w-8 h-8 text-red-500 flex-shrink-0 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
+                      </svg>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-800 truncate">
+                          {viewingCourse.courseName ? `${viewingCourse.courseName}_Syllabus.pdf` : 'Syllabus.pdf'}
+                        </p>
+                        <p className="text-xs text-gray-500">Secure PDF Syllabus</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <a 
+                        href={viewingCourse.syllabus} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded hover:bg-orange-100 transition-colors"
+                      >
+                        View
+                      </a>
+                      <button 
+                        onClick={() => handleDownloadSyllabus(viewingCourse)}
+                        className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 transition-colors"
+                      >
+                        Download
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <p className="text-xs sm:text-sm text-gray-500">No syllabus uploaded.</p>
+                  <p className="text-xs sm:text-sm text-gray-500">No syllabus uploaded for this course.</p>
                 )}
               </div>
             </div>

@@ -1,4 +1,31 @@
 const Task = require("../../models/task-management/taskModel");
+const { cloudinary } = require("../../uploads/multer");
+
+// Helper to extract Cloudinary public ID and delete the file
+const deleteFromCloudinary = async (url) => {
+  if (!url || typeof url !== 'string' || !url.includes('cloudinary.com')) return;
+  try {
+    const parts = url.split('/upload/');
+    if (parts.length < 2) return;
+    
+    let pathPart = parts[1].replace(/^v\d+\//, ''); // Remove version
+    const isRaw = url.includes('/raw/upload/');
+    
+    let publicId = pathPart;
+    if (!isRaw) {
+      // Remove extension for images
+      const lastDotIndex = pathPart.lastIndexOf('.');
+      if (lastDotIndex !== -1) {
+        publicId = pathPart.substring(0, lastDotIndex);
+      }
+    }
+    
+    await cloudinary.uploader.destroy(publicId, { resource_type: isRaw ? 'raw' : 'image' });
+    console.log(`Deleted from cloudinary: ${publicId}`);
+  } catch (err) {
+    console.error('Failed to delete from Cloudinary:', err);
+  }
+};
 
 // Helper function to validate that only one audience field has data
 const validateSingleAudienceField = (batches, courses, interns, individualInterns) => {
@@ -64,6 +91,7 @@ const createTask = async (req, res) => {
 
     // Validate required fields
     if (!title || !taskType || !module || !assignedMentor || !startDate || !dueDate || !description || !audience) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Title, task type, module, assigned mentor, start date, due date, description, and audience are required"
       });
@@ -71,6 +99,7 @@ const createTask = async (req, res) => {
 
     // Validate taskType enum
     if (!["Weekly Task", "Daily Task"].includes(taskType)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Task type must be either 'Weekly Task' or 'Daily Task'"
       });
@@ -78,6 +107,7 @@ const createTask = async (req, res) => {
 
     // Validate audience enum
     if (!["All interns", "By batches", "By courses", "Individual interns"].includes(audience)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Audience must be one of: 'All interns', 'By batches', 'By courses', 'Individual interns'"
       });
@@ -85,18 +115,21 @@ const createTask = async (req, res) => {
 
     // Validate audience-specific fields
     if (audience === "By batches" && (!batches || batches.length === 0)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Batches are required when audience is 'By batches'"
       });
     }
 
     if (audience === "By courses" && (!courses || courses.length === 0)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Courses are required when audience is 'By courses'"
       });
     }
 
     if (audience === "Individual interns" && (!individualInterns || individualInterns.length === 0)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Individual interns are required when audience is 'Individual interns'"
       });
@@ -105,6 +138,7 @@ const createTask = async (req, res) => {
     // Validate that only one audience field can have data at a time
     const audienceValidation = validateSingleAudienceField(batches, courses, interns, individualInterns);
     if (!audienceValidation.isValid) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: audienceValidation.message
       });
@@ -116,6 +150,7 @@ const createTask = async (req, res) => {
     
     // Check if dates are valid
     if (isNaN(start.getTime()) || isNaN(due.getTime())) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Invalid date format"
       });
@@ -123,6 +158,7 @@ const createTask = async (req, res) => {
     
     // Compare dates (due date should be after start date)
     if (start >= due) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Due date must be after start date"
       });
@@ -161,6 +197,7 @@ const createTask = async (req, res) => {
       data: newTask
     });
   } catch (error) {
+    if (req.file) await deleteFromCloudinary(req.file.path);
     console.log("Error creating task:", error);
     res.status(500).json({ message: error.message });
   }
@@ -286,6 +323,7 @@ const updateTask = async (req, res) => {
 
     // Validate taskType enum if provided
     if (taskType && !["Weekly Task", "Daily Task"].includes(taskType)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Task type must be either 'Weekly Task' or 'Daily Task'"
       });
@@ -293,6 +331,7 @@ const updateTask = async (req, res) => {
 
     // Validate audience enum if provided
     if (audience && !["All interns", "By batches", "By courses", "Individual interns"].includes(audience)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Audience must be one of: 'All interns', 'By batches', 'By courses', 'Individual interns'"
       });
@@ -300,18 +339,21 @@ const updateTask = async (req, res) => {
 
     // Validate audience-specific fields if audience is being updated
     if (audience === "By batches" && (!batches || batches.length === 0)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Batches are required when audience is 'By batches'"
       });
     }
 
     if (audience === "By courses" && (!courses || courses.length === 0)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Courses are required when audience is 'By courses'"
       });
     }
 
     if (audience === "Individual interns" && (!individualInterns || individualInterns.length === 0)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Individual interns are required when audience is 'Individual interns'"
       });
@@ -320,6 +362,7 @@ const updateTask = async (req, res) => {
     // Validate that only one audience field can have data at a time
     const audienceValidation = validateSingleAudienceField(batches, courses, interns, individualInterns);
     if (!audienceValidation.isValid) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: audienceValidation.message
       });
@@ -332,6 +375,7 @@ const updateTask = async (req, res) => {
       
       // Check if dates are valid
       if (isNaN(start.getTime()) || isNaN(due.getTime())) {
+        if (req.file) await deleteFromCloudinary(req.file.path);
         return res.status(400).json({
           message: "Invalid date format"
         });
@@ -339,6 +383,7 @@ const updateTask = async (req, res) => {
       
       // Compare dates (due date should be after start date)
       if (start >= due) {
+        if (req.file) await deleteFromCloudinary(req.file.path);
         return res.status(400).json({
           message: "Due date must be after start date"
         });
@@ -348,6 +393,7 @@ const updateTask = async (req, res) => {
     // Get current task to preserve existing attachment if no new file is uploaded
     const currentTask = await Task.findById(req.params.id);
     if (!currentTask) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(404).json({ message: "Task not found" });
     }
 
@@ -367,6 +413,9 @@ const updateTask = async (req, res) => {
     if (req.file) {
       // New file uploaded
       console.log('New attachment uploaded:', req.file.originalname, req.file.mimetype, req.file.path);
+      if (currentTask.attachments && currentTask.attachments !== req.file.path) {
+        await deleteFromCloudinary(currentTask.attachments);
+      }
       attachmentsValue = req.file.path; // Cloudinary URL
       updateData.attachments = attachmentsValue;
     } else if (attachments && typeof attachments === 'string' && attachments.trim() !== '') {
@@ -408,6 +457,7 @@ const updateTask = async (req, res) => {
       data: updated
     });
   } catch (error) {
+    if (req.file) await deleteFromCloudinary(req.file.path);
     console.log("Error updating task:", error);
     res.status(400).json({ message: error.message });
   }
@@ -643,6 +693,95 @@ const getTasksByType = async (req, res) => {
   }
 };
 
+// Download task attachment (proxy through backend to avoid CORS issues)
+const downloadTaskAttachment = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const task = await Task.findById(id);
+    if (!task || !task.attachments) {
+      return res.status(404).json({ message: "Task or attachment not found" });
+    }
+
+    const fileUrl = task.attachments;
+
+    // Use axios to fetch file from Cloudinary
+    const axios = require('axios');
+    const cleanAxios = axios.create(); // Create an isolated instance with no default headers or interceptors
+
+    try {
+      // Fetch file as stream from Cloudinary
+      const response = await cleanAxios.get(fileUrl, {
+        responseType: 'stream',
+        timeout: 30000, // 30 second timeout
+        maxRedirects: 5
+      });
+
+      // Extract filename from URL
+      const urlParts = fileUrl.split('/');
+      let filename = urlParts[urlParts.length - 1] || 'attachment.pdf';
+
+      // Clean up filename (remove query parameters if any)
+      if (filename.includes('?')) {
+        filename = filename.split('?')[0];
+      }
+
+      // Format filename with task title and original extension
+      if (task.title) {
+        const safeName = task.title.replace(/[^a-z0-9]/gi, '_');
+        const ext = filename.includes('.') ? filename.substring(filename.lastIndexOf('.')) : '.pdf';
+        filename = `${safeName}_Attachment${ext}`;
+      }
+
+      // Set headers for file download
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
+      res.setHeader('Content-Length', response.headers['content-length'] || '');
+
+      // Pipe the file stream to response
+      response.data.pipe(res);
+
+    } catch (fetchError) {
+      console.error('Error fetching file from Cloudinary:', fetchError.message);
+
+      // Fallback: try native http/https
+      const https = require('https');
+      const http = require('http');
+      const parsedUrl = new URL(fileUrl);
+      const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+      protocol.get(fileUrl, (response) => {
+        if (response.statusCode !== 200) {
+          return res.status(response.statusCode).json({
+            message: `Failed to fetch file from Cloudinary. Status: ${response.statusCode}`
+          });
+        }
+
+        const urlParts = fileUrl.split('/');
+        let filename = urlParts[urlParts.length - 1] || 'attachment.pdf';
+        if (task.title) {
+          const safeName = task.title.replace(/[^a-z0-9]/gi, '_');
+          const ext = filename.includes('.') ? filename.substring(filename.lastIndexOf('.')) : '.pdf';
+          filename = `${safeName}_Attachment${ext}`;
+        }
+
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
+
+        // Pipe the file stream to response
+        response.pipe(res);
+      }).on('error', (error) => {
+        console.error('Error downloading file:', error);
+        res.status(500).json({ message: 'Error downloading file from Cloudinary' });
+      });
+    }
+
+  } catch (error) {
+    console.error('Error in downloadTaskAttachment:', error);
+    res.status(500).json({ message: error.message || 'Error downloading file' });
+  }
+};
+
 module.exports = {
   createTask,
   getTasks,
@@ -657,5 +796,6 @@ module.exports = {
   getTasksByCourse,
   getTasksByIntern,
   getTasksByAudience,
-  getTasksByType
+  getTasksByType,
+  downloadTaskAttachment
 };

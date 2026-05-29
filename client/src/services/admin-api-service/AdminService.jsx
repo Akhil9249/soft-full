@@ -52,6 +52,13 @@ const AdminService = () => {
         return response?.data?.data
     };
 
+    const downloadStaffResume = async (staffId) => {
+        const response = await axiosPrivate.get(`/api/staff/${staffId}/resume/download`, {
+            responseType: 'blob'
+        });
+        return response;
+    };
+
 
 
     // ======================================== branch management ========================================
@@ -83,8 +90,11 @@ const AdminService = () => {
         const response = await axiosPrivate.get(url);
         return response.data;
     };
-    const getInternsDataSearch = async (searchTerm) => {
-        const response = await axiosPrivate.get(`/api/intern/search?q=${encodeURIComponent(searchTerm)}`);
+    const getInternsDataSearch = async (searchTerm, branch = '') => {
+        const url = branch 
+            ? `/api/intern/search?q=${encodeURIComponent(searchTerm)}&branch=${branch}`
+            : `/api/intern/search?q=${encodeURIComponent(searchTerm)}`;
+        const response = await axiosPrivate.get(url);
         return response.data;
     };
 
@@ -106,6 +116,13 @@ const AdminService = () => {
     const getInternByIdData = async (internId) => {
         const response = await axiosPrivate.get(`/api/intern/${internId}`);
         return response.data;
+    };
+
+    const downloadInternResume = async (internId) => {
+        const response = await axiosPrivate.get(`/api/intern/${internId}/resume/download`, {
+            responseType: 'blob'
+        });
+        return response;
     };
 
     // ======================================== days combination management ========================================
@@ -166,6 +183,13 @@ const AdminService = () => {
         return response.data;
     };
 
+    const downloadCourseSyllabus = async (courseId) => {
+        const response = await axiosPrivate.get(`/api/course/${courseId}/syllabus/download`, {
+            responseType: 'blob'
+        });
+        return response;
+    };
+
     // ======================================== category management ========================================
 
     const getCategoriesData = async (queryParams = '') => {
@@ -217,6 +241,13 @@ const AdminService = () => {
         return response.data;
     };
 
+    const downloadModuleFile = async (moduleId) => {
+        const response = await axiosPrivate.get(`/api/module/${moduleId}/download`, {
+            responseType: 'blob'
+        });
+        return response;
+    };
+
     // ======================================== topic management ========================================
 
     const getTopicsData = async (queryParams = '') => {
@@ -260,6 +291,13 @@ const AdminService = () => {
 
     const deleteTasksData = async (taskId) => {
         const response = await axiosPrivate.delete(`/api/tasks/${taskId}`);
+        return response;
+    };
+
+    const downloadTaskAttachment = async (taskId) => {
+        const response = await axiosPrivate.get(`/api/tasks/${taskId}/download`, {
+            responseType: 'blob'
+        });
         return response;
     };
 
@@ -598,6 +636,10 @@ const AdminService = () => {
         const response = await axiosPrivate.put(`/api/weekly-schedules/${scheduleId}/subject`, data);
         return response.data;
     };
+    const updateWeeklyScheduleNote = async (scheduleId, data) => {
+        const response = await axiosPrivate.put(`/api/weekly-schedules/${scheduleId}/note`, data);
+        return response.data;
+    };
 
     return {
         // ======== register and login
@@ -610,6 +652,7 @@ const AdminService = () => {
         putStaffData,
         postStaffData,
         deleteStaffData,
+        downloadStaffResume,
         //========== branch
         getBranchesData,
         postBranchesData,
@@ -622,6 +665,7 @@ const AdminService = () => {
         putInternsData,
         postInternsData,
         deleteInternsData,
+        downloadInternResume,
         //======= batch
         getBatchesData,
         getAllBatchesData,
@@ -638,11 +682,13 @@ const AdminService = () => {
         postCoursesData,
         putCoursesData,
         deleteCoursesData,
+        downloadCourseSyllabus,
         getModulesData,
         postModulesData,
         putModulesData,
         deleteModulesData,
         removeTopicFromModuleData,
+        downloadModuleFile,
         getTopicsData,
         postTopicsData,
         putTopicsData,
@@ -651,6 +697,7 @@ const AdminService = () => {
         postTasksData,
         putTasksData,
         deleteTasksData,
+        downloadTaskAttachment,
         getMaterialsData,
         postMaterialsData,
         putMaterialsData,
@@ -707,6 +754,7 @@ const AdminService = () => {
         deleteWeeklySchedulesData,
         deleteWeeklyScheduleDocument,
         updateWeeklyScheduleSubject,
+        updateWeeklyScheduleNote,
 
 
         // ======================================== mentor card ========================================

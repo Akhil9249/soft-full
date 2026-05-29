@@ -4,6 +4,33 @@ const Intern = require("../../models/administration/internModel");
 const { Staff } = require("../../models/administration/staffModel");
 const bcrypt = require("bcrypt");
 const { generatePasswordHash } = require("../../utils/bcrypt");
+const { cloudinary } = require("../../uploads/multer");
+
+// Helper to extract Cloudinary public ID and delete the file
+const deleteFromCloudinary = async (url) => {
+  if (!url || typeof url !== 'string' || !url.includes('cloudinary.com')) return;
+  try {
+    const parts = url.split('/upload/');
+    if (parts.length < 2) return;
+    
+    let pathPart = parts[1].replace(/^v\d+\//, ''); // Remove version
+    const isRaw = url.includes('/raw/upload/');
+    
+    let publicId = pathPart;
+    if (!isRaw) {
+      // Remove extension for images
+      const lastDotIndex = pathPart.lastIndexOf('.');
+      if (lastDotIndex !== -1) {
+        publicId = pathPart.substring(0, lastDotIndex);
+      }
+    }
+    
+    await cloudinary.uploader.destroy(publicId, { resource_type: isRaw ? 'raw' : 'image' });
+    console.log(`Deleted from cloudinary: ${publicId}`);
+  } catch (err) {
+    console.error('Failed to delete from Cloudinary:', err);
+  }
+};
 
 // -------------------- CREATE Intern --------------------
 const addIntern = async (req, res) => {
@@ -367,11 +394,17 @@ const updateIntern = async (req, res) => {
     if (req.files) {
       // Handle photo upload
       if (req.files.photo && req.files.photo[0]) {
+        if (existingIntern && existingIntern.photo && existingIntern.photo !== req.files.photo[0].path) {
+          await deleteFromCloudinary(existingIntern.photo);
+        }
         photoUrl = req.files.photo[0].path; // Cloudinary URL
       }
       
       // Handle resume upload
       if (req.files.resume && req.files.resume[0]) {
+        if (existingIntern && existingIntern.resume && existingIntern.resume !== req.files.resume[0].path) {
+          await deleteFromCloudinary(existingIntern.resume);
+        }
         resumeUrl = req.files.resume[0].path; // Cloudinary URL
       }
     }
@@ -452,8 +485,18 @@ const updateIntern = async (req, res) => {
 // -------------------- DELETE Intern --------------------
 const deleteIntern = async (req, res) => {
   try {
+    const internToDelete = await Intern.findById(req.params.id);
+    if (!internToDelete) return res.status(404).json({ message: "Intern not found" });
+
+    // Delete photo and resume from Cloudinary
+    if (internToDelete.photo) {
+      await deleteFromCloudinary(internToDelete.photo);
+    }
+    if (internToDelete.resume) {
+      await deleteFromCloudinary(internToDelete.resume);
+    }
+
     const intern = await Intern.findByIdAndDelete(req.params.id).select('-password');
-    if (!intern) return res.status(404).json({ message: "Intern not found" });
     res.status(200).json({ 
       message: "Intern deleted successfully",
       data: { deletedIntern: intern }
@@ -466,7 +509,7 @@ const deleteIntern = async (req, res) => {
 // -------------------- SEARCH Interns --------------------
 const searchInterns = async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, branch } = req.query;
     
     if (!q || q.trim() === '') {
       return res.status(400).json({ message: "Search query is required" });
@@ -497,7 +540,11 @@ const searchInterns = async (req, res) => {
         if (loggedInStaff.branch) {
           query.branch = loggedInStaff.branch;
         }
+      } else if (branch) {
+        query.branch = branch;
       }
+    } else if (branch) {
+      query.branch = branch;
     }
 
     const interns = await Intern.find(query)
@@ -620,6 +667,93 @@ const toggleInternStatus = async (req, res) => {
   }
 };
 
+// -------------------- DOWNLOAD INTERN RESUME --------------------
+const downloadResume = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const intern = await Intern.findById(id);
+    if (!intern || !intern.resume) {
+      return res.status(404).json({ message: "Student or resume not found" });
+    }
+
+    const resumeUrl = intern.resume;
+
+    // Use axios to fetch file from Cloudinary
+    const axios = require('axios');
+    const cleanAxios = axios.create(); // Create an isolated instance with no default headers or interceptors
+
+    try {
+      // Fetch file as stream from Cloudinary
+      const response = await cleanAxios.get(resumeUrl, {
+        responseType: 'stream',
+        timeout: 30000, // 30 second timeout
+        maxRedirects: 5
+      });
+
+      // Extract filename from URL or use student's name
+      const urlParts = resumeUrl.split('/');
+      let filename = urlParts[urlParts.length - 1] || 'resume.pdf';
+
+      // Clean up filename (remove query parameters if any)
+      if (filename.includes('?')) {
+        filename = filename.split('?')[0];
+      }
+
+      // Format filename with student's name
+      if (intern.fullName) {
+        const safeName = intern.fullName.replace(/[^a-z0-9]/gi, '_');
+        filename = `${safeName}_Resume.pdf`;
+      }
+
+      // Set headers for file download
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', response.headers['content-type'] || 'application/pdf');
+      res.setHeader('Content-Length', response.headers['content-length'] || '');
+
+      // Pipe the file stream to response
+      response.data.pipe(res);
+
+    } catch (fetchError) {
+      console.error('Error fetching file from Cloudinary:', fetchError.message);
+
+      // If axios fails, try native http/https as fallback
+      const https = require('https');
+      const http = require('http');
+      const parsedUrl = new URL(resumeUrl);
+      const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+      protocol.get(resumeUrl, (response) => {
+        if (response.statusCode !== 200) {
+          return res.status(response.statusCode).json({
+            message: `Failed to fetch file from Cloudinary. Status: ${response.statusCode}`
+          });
+        }
+
+        const urlParts = resumeUrl.split('/');
+        let filename = urlParts[urlParts.length - 1] || 'resume.pdf';
+        if (intern.fullName) {
+          const safeName = intern.fullName.replace(/[^a-z0-9]/gi, '_');
+          filename = `${safeName}_Resume.pdf`;
+        }
+
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Type', response.headers['content-type'] || 'application/pdf');
+
+        // Pipe the file stream to response
+        response.pipe(res);
+      }).on('error', (error) => {
+        console.error('Error downloading file:', error);
+        res.status(500).json({ message: 'Error downloading file from Cloudinary' });
+      });
+    }
+
+  } catch (error) {
+    console.error('Error in downloadResume:', error);
+    res.status(500).json({ message: error.message || 'Error downloading resume' });
+  }
+};
+
 module.exports = {
   addIntern,
   getInterns,
@@ -631,4 +765,5 @@ module.exports = {
   getInternsByStatus,
   getInternsByBranch,
   toggleInternStatus,
+  downloadResume,
 };

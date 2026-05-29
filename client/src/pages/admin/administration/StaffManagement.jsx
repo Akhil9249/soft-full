@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import useAuth from '../../../hooks/useAuth';
-import api from "../../../axios";
+// import api from "../../../axios";
 import Tabs from "../../../components/button/Tabs";
 import { Navbar } from "../../../components/admin/AdminNavBar";
 import AdminService from "../../../services/admin-api-service/AdminService";
@@ -12,7 +12,7 @@ import autoTable from 'jspdf-autotable';
 
 export const StaffManagement = () => {
     const navigate = useNavigate();
-    const { getStaffData,putStaffData,postStaffData,getBranchesData,deleteStaffData,getRolesData,getTimingsData } = AdminService();
+    const { getStaffData,putStaffData,postStaffData,getBranchesData,deleteStaffData,getRolesData,getTimingsData, downloadStaffResume } = AdminService();
 
 
     const [activeTab, setActiveTab] = useState('staffList');
@@ -32,6 +32,7 @@ export const StaffManagement = () => {
     const [deletingStaff, setDeletingStaff] = useState(null);
     const [showViewModal, setShowViewModal] = useState(false);
     const [photoPreview, setPhotoPreview] = useState(null);
+    const [resumePreview, setResumePreview] = useState(null);
     const [viewingStaff, setViewingStaff] = useState(null);
     const [notification, setNotification] = useState({
         show: false,
@@ -165,9 +166,21 @@ export const StaffManagement = () => {
             // Handle different response structures
             const branchesData = res.data?.data || res.data || [];
             setBranches(Array.isArray(branchesData) ? branchesData : []);
+            
+            if (branchesData.length > 0) {
+                const calicutBranch = branchesData.find(b => b.branchName.toLowerCase().includes('calicut'));
+                const defaultBranchId = calicutBranch ? calicutBranch._id : branchesData[0]._id;
+                setFilters(prev => ({
+                    ...prev,
+                    branch: defaultBranchId
+                }));
+            } else {
+                fetchStaff(1, searchTerm, filters.department, filters.employmentStatus, '');
+            }
         } catch (err) {
             console.error('Failed to load branches:', err);
             setBranches([]);
+            fetchStaff(1, searchTerm, filters.department, filters.employmentStatus, '');
         }
     };
 
@@ -221,7 +234,6 @@ export const StaffManagement = () => {
 
     // Load staff and branches when component mounts
     useEffect(() => {
-        fetchStaff(pagination.currentPage, searchTerm, filters.department, filters.employmentStatus, filters.branch);
         fetchBranches();
         fetchRoles();
         fetchTimings();
@@ -235,6 +247,56 @@ export const StaffManagement = () => {
             }
         };
     }, [photoPreview]);
+
+    // Cleanup object URLs for resume preview
+    useEffect(() => {
+        return () => {
+            if (resumePreview && resumePreview.startsWith('blob:')) {
+                URL.revokeObjectURL(resumePreview);
+            }
+        };
+    }, [resumePreview]);
+
+    const formatFileSize = (bytes) => {
+        if (!bytes) return '';
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    const handleDownloadResume = async (staffMember) => {
+        if (!staffMember || !staffMember._id) return;
+        try {
+            setLoading(true);
+            showNotification('info', 'Downloading', 'Downloading resume...');
+            const response = await downloadStaffResume(staffMember._id);
+            
+            // Create blob link to download
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            
+            const safeName = staffMember.fullName ? staffMember.fullName.replace(/[^a-z0-9]/gi, '_') : 'Staff';
+            link.setAttribute('download', `${safeName}_Resume.pdf`);
+            
+            document.body.appendChild(link);
+            link.click();
+            
+            // Cleanup
+            link.parentNode.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            
+            showNotification('success', 'Download Successful', 'Resume downloaded successfully.');
+        } catch (err) {
+            console.error('Failed to download resume:', err);
+            showNotification('error', 'Download Failed', err?.response?.data?.message || 'Failed to download resume.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const isFirstRender = useRef(true);
 
@@ -316,6 +378,7 @@ export const StaffManagement = () => {
             time: staffMember.time?.map(t => typeof t === 'object' ? t._id : t) || [],
         });
         setPhotoPreview(staffMember.photo || null);
+        setResumePreview(staffMember.resume || null);
         setActiveTab('newStaff');
     };
 
@@ -349,6 +412,7 @@ export const StaffManagement = () => {
             time: [],
         });
         setPhotoPreview(null);
+        setResumePreview(null);
         setActiveTab('staffList');
     };
 
@@ -612,6 +676,7 @@ export const StaffManagement = () => {
                 time: [],
             });
             setPhotoPreview(null);
+            setResumePreview(null);
         } catch (err) {
             console.error('Staff operation error:', err);
             console.error('Error response:', err?.response?.data);
@@ -660,7 +725,6 @@ export const StaffManagement = () => {
                             onChange={(e) => handleFilterChange('branch', e.target.value)}
                             className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         >
-                            <option value="">All Branches</option>
                             {branches.map(branch => (
                                 <option key={branch._id} value={branch._id}>{branch.branchName}</option>
                             ))}
@@ -1103,6 +1167,10 @@ export const StaffManagement = () => {
                                         return;
                                     }
                                     setFormData((p) => ({ ...p, resume: file }));
+                                    if (resumePreview && resumePreview.startsWith('blob:')) {
+                                        URL.revokeObjectURL(resumePreview);
+                                    }
+                                    setResumePreview(URL.createObjectURL(file));
                                     setError(''); // Clear any previous errors
                                 }
                             }} 
@@ -1118,6 +1186,50 @@ export const StaffManagement = () => {
                             </svg>
                         </div>
                     </div>
+                    {formData?.resume && (
+                        <div className="mt-3 p-3 bg-gray-50 border border-dashed border-orange-300 rounded-md flex items-center justify-between gap-4">
+                            <div className="flex items-center min-w-0">
+                                <svg className="w-8 h-8 text-red-500 flex-shrink-0 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                </svg>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-semibold text-gray-800 truncate">
+                                        {formData.resume instanceof File ? formData.resume.name : 'Current_Resume.pdf'}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        {formData.resume instanceof File ? formatFileSize(formData.resume.size) : 'Uploaded to server'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const url = formData.resume instanceof File 
+                                            ? resumePreview 
+                                            : formData.resume;
+                                        if (url) {
+                                            window.open(url, '_blank');
+                                        } else {
+                                            showNotification('error', 'Error', 'No preview URL available');
+                                        }
+                                    }}
+                                    className="px-3 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded hover:bg-orange-100 transition-colors"
+                                >
+                                    Preview
+                                </button>
+                                {!(formData.resume instanceof File) && editingStaff && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDownloadResume(editingStaff)}
+                                        className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 transition-colors"
+                                    >
+                                        Download
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div>
                 {/* <div className="md:col-span-2"> */}
@@ -1492,6 +1604,44 @@ export const StaffManagement = () => {
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* Resume & Documents */}
+                                    {viewingStaff.resume && (
+                                        <div className="print-hide">
+                                            <h2 className="text-[#f7931e] font-semibold mb-4 text-lg italic">
+                                                Resume & Documents
+                                            </h2>
+                                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between gap-4 max-w-md">
+                                                <div className="flex items-center min-w-0">
+                                                    <svg className="w-10 h-10 text-red-500 flex-shrink-0 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                                    </svg>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-semibold text-gray-800 truncate">
+                                                            {viewingStaff.fullName ? `${viewingStaff.fullName}_Resume.pdf` : 'Staff_Resume.pdf'}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">PDF Document</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2 flex-shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => window.open(viewingStaff.resume, '_blank')}
+                                                        className="px-3 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors"
+                                                    >
+                                                        View
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDownloadResume(viewingStaff)}
+                                                        className="px-3 py-1.5 text-xs font-semibold text-white bg-[#f7931e] rounded-lg hover:bg-[#e67c00] transition-colors"
+                                                    >
+                                                        Download
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Right Column - Profile Image */}

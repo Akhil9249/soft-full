@@ -21,7 +21,8 @@ export const Category = () => {
   const [newCourse, setNewCourse] = useState({ courseName: '', description: '' });
   const [editingCategory, setEditingCategory] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState({ categoryName: '', branch: [] });
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingCategory, setDeletingCategory] = useState(null);
   const [notification, setNotification] = useState({
@@ -115,7 +116,9 @@ export const Category = () => {
       // Table data
       const tableData = allCategories.map(cat => [
         cat.categoryName || 'N/A',
-        cat.branch || 'N/A',
+        Array.isArray(cat.branch)
+          ? cat.branch.map(b => typeof b === 'object' ? b.branchName : b).join(', ')
+          : (cat.branch || 'N/A'),
         Array.isArray(cat.courses) ? cat.courses.length : (cat.totalCourses ?? 0),
         cat.createdAt ? new Date(cat.createdAt).toLocaleDateString('en-GB') : 'N/A'
       ]);
@@ -256,7 +259,16 @@ export const Category = () => {
     setSuccess('');
   }, [activeTab]);
 
-  // No client-side filtering needed - server handles it
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isDropdownOpen && !event.target.closest('.branch-dropdown-container')) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDropdownOpen]);
 
   // Debug: Log branches whenever they change
   useEffect(() => {
@@ -279,7 +291,9 @@ export const Category = () => {
     setIsEditMode(true);
     setFormData({
       categoryName: category.categoryName || "",
-      branch: category.branch || "",
+      branch: Array.isArray(category.branch)
+        ? category.branch.map(b => typeof b === 'object' ? b._id : b)
+        : (category.branch ? [category.branch] : []),
     });
     setCourses(category.courses || []);
     setActiveTab('new-category');
@@ -288,7 +302,7 @@ export const Category = () => {
   const handleCancelEdit = () => {
     setEditingCategory(null);
     setIsEditMode(false);
-    setFormData({});
+    setFormData({ categoryName: '', branch: [] });
     setCourses([]);
     setActiveTab('category-list');
   };
@@ -334,11 +348,10 @@ export const Category = () => {
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     setError('');
-    const formDataObj = new FormData(e.currentTarget);
 
     const payload = {
-      categoryName: formDataObj.get('categoryName') || undefined,
-      branch: formDataObj.get('branch') || undefined,
+      categoryName: formData.categoryName || undefined,
+      branch: Array.isArray(formData.branch) ? formData.branch : [],
       courses: courses
     };
 
@@ -360,7 +373,7 @@ export const Category = () => {
       setActiveTab('category-list');
       setEditingCategory(null);
       setIsEditMode(false);
-      setFormData({});
+      setFormData({ categoryName: '', branch: [] });
       setCourses([]);
       // e.currentTarget.reset();
     } catch (err) {
@@ -554,9 +567,17 @@ export const Category = () => {
                             </div>
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                              {category.branch}
-                            </span>
+                            <div className="flex flex-wrap gap-1 max-w-[220px]">
+                              {Array.isArray(category.branch) && category.branch.length > 0 ? (
+                                category.branch.map((b, bIdx) => (
+                                  <span key={b._id || bIdx} className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    {typeof b === 'object' ? b.branchName : b}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-gray-400 text-xs">—</span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
@@ -612,11 +633,17 @@ export const Category = () => {
                         </div>
                       </div>
                       <div className="space-y-2 text-sm text-gray-600 mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Branch:</span>
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                            {category.branch}
-                          </span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="font-medium">Branches:</span>
+                          {Array.isArray(category.branch) && category.branch.length > 0 ? (
+                            category.branch.map((b, bIdx) => (
+                              <span key={b._id || bIdx} className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                {typeof b === 'object' ? b.branchName : b}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-gray-400 text-xs">—</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">Total Courses:</span>
@@ -728,26 +755,93 @@ export const Category = () => {
                   <label className="block text-sm font-medium text-gray-700">Total Courses</label>
                   <input type="number" value={courses.length} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500" disabled />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Branch</label>
-                  <select
-                    name="branch"
-                    value={formData.branch || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, branch: e.target.value}))}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                    required
-                    disabled={branchesLoading}
+                <div className="branch-dropdown-container relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Branches</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full flex justify-between items-center p-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-left min-h-[42px]"
                   >
-                    {branchesLoading ? (
-                      <option>Loading branches...</option>
-                    ) : (
-                      branches.map(branch => (
-                        <option key={branch._id} value={branch.branchName}>
-                          {branch.branchName}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                    <span className="text-gray-700 block truncate">
+                      {Array.isArray(formData.branch) && formData.branch.length > 0
+                        ? `${formData.branch.length} Branch${formData.branch.length > 1 ? 'es' : ''} Selected`
+                        : "Select Branches"}
+                    </span>
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </button>
+
+                  {isDropdownOpen && (
+                    <div className="absolute left-0 mt-1 w-full bg-white rounded-md shadow-lg z-50 border border-gray-200 max-h-60 overflow-y-auto p-2 space-y-1">
+                      {branchesLoading ? (
+                        <p className="text-sm text-gray-500 p-2">Loading branches...</p>
+                      ) : branches.length === 0 ? (
+                        <p className="text-sm text-gray-500 p-2">No branches available</p>
+                      ) : (
+                        branches.map(branch => {
+                          const isSelected = Array.isArray(formData.branch) && formData.branch.includes(branch._id);
+                          return (
+                            <label
+                              key={branch._id}
+                              className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-50 cursor-pointer select-none"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  const selectedBranches = Array.isArray(formData.branch) ? [...formData.branch] : [];
+                                  if (isSelected) {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      branch: selectedBranches.filter(id => id !== branch._id)
+                                    }));
+                                  } else {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      branch: [...selectedBranches, branch._id]
+                                    }));
+                                  }
+                                }}
+                                className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
+                              />
+                              <span className="text-sm text-gray-700">{branch.branchName}</span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+
+                  {/* Render selected branch chips underneath the input */}
+                  {Array.isArray(formData.branch) && formData.branch.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {formData.branch.map(branchId => {
+                        const branchObj = branches.find(b => b._id === branchId);
+                        if (!branchObj) return null;
+                        return (
+                          <span
+                            key={branchId}
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200"
+                          >
+                            {branchObj.branchName}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  branch: formData.branch.filter(id => id !== branchId)
+                                }));
+                              }}
+                              className="ml-1.5 text-orange-600 hover:text-orange-900 focus:outline-none"
+                            >
+                              ✕
+                            </button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -915,7 +1009,18 @@ export const Category = () => {
             <div className="px-4 sm:px-6 py-4 sm:py-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 text-xs sm:text-sm">
                 <p className="leading-6"><span className="font-semibold text-gray-900">Category Name:</span> <span className="text-gray-600">{viewingCategory.categoryName || 'N/A'}</span></p>
-                <p className="leading-6"><span className="font-semibold text-gray-900">Branch:</span> <span className="text-gray-600">{viewingCategory.branch || 'N/A'}</span></p>
+                <div className="leading-6 flex flex-wrap items-center gap-1.5">
+                  <span className="font-semibold text-gray-900">Branches:</span>
+                  {Array.isArray(viewingCategory.branch) && viewingCategory.branch.length > 0 ? (
+                    viewingCategory.branch.map((b, bIdx) => (
+                      <span key={b._id || bIdx} className="inline-flex px-2.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {typeof b === 'object' ? b.branchName : b}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-600">{viewingCategory.branch || 'N/A'}</span>
+                  )}
+                </div>
                 <p className="leading-6"><span className="font-semibold text-gray-900">Total Courses:</span> <span className="text-gray-600">{Array.isArray(viewingCategory.courses) ? viewingCategory.courses.length : (viewingCategory.totalCourses || 0)}</span></p>
                 <p className="leading-6"><span className="font-semibold text-gray-900">Created:</span> <span className="text-gray-600">{viewingCategory.createdAt ? new Date(viewingCategory.createdAt).toLocaleDateString('en-GB') : 'N/A'}</span></p>
               </div>

@@ -214,12 +214,12 @@ export const Timings = () => {
                 className="bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-full flex items-center gap-2 sm:space-x-2 text-xs sm:text-sm"
               >
                 <span className="font-medium">{timing.timeSlot}</span>
-                <span className="text-xs sm:text-sm text-gray-500 border-r border-gray-300 pr-2 mr-1">
+                {/* <span className="text-xs sm:text-sm text-gray-500 border-r border-gray-300 pr-2 mr-1">
                   {typeof timing.branch === 'object' && timing.branch 
                     ? timing.branch.branchName 
                     : 'Unknown Branch'
                   }
-                </span>
+                </span> */}
                 <Edit2
                   className="w-4 h-4 text-gray-500 cursor-pointer hover:text-blue-500 flex-shrink-0"
                   onClick={() => handleEditClick(timing)}

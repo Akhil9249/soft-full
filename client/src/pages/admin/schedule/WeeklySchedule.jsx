@@ -41,8 +41,22 @@ export const WeeklySchedule = () => {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingScheduleId, setDeletingScheduleId] = useState(null);
+
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [cloneTargetDate, setCloneTargetDate] = useState('');
+  const [cloningSchedules, setCloningSchedules] = useState(false);
+
+  const [showRemoveBatchModal, setShowRemoveBatchModal] = useState(false);
+  const [removingBatchInfo, setRemovingBatchInfo] = useState(null);
+
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [editingNoteScheduleId, setEditingNoteScheduleId] = useState(null);
+  const [noteModalTarget, setNoteModalTarget] = useState(null);
+  const [noteValue, setNoteValue] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
   
   const [hoveredBatchInfo, setHoveredBatchInfo] = useState(null);
+  const [hoveredNoteInfo, setHoveredNoteInfo] = useState(null);
 
   const [weeklySchedules, setWeeklySchedules] = useState([]);
   const [mentors, setMentors] = useState([]);
@@ -57,7 +71,7 @@ export const WeeklySchedule = () => {
   const defaultDates = getDefaultDates();
   const [startDate, setStartDate] = useState(defaultDates.startDate);
   const [endDate, setEndDate] = useState(defaultDates.endDate);
-  const { getBatchesData, getAllBatchesData, getWeeklySchedulesData, postWeeklySchedulesData, putWeeklySchedulesData, deleteWeeklySchedulesData, deleteWeeklyScheduleDocument, getAllActiveStaffData, getModulesData, getTopicsData, updateWeeklyScheduleSubject, getBranchesData, getTimingsData, getDaysCombinationsData } = AdminService();
+  const { getBatchesData, getAllBatchesData, getWeeklySchedulesData, postWeeklySchedulesData, putWeeklySchedulesData, deleteWeeklySchedulesData, deleteWeeklyScheduleDocument, getAllActiveStaffData, getModulesData, getTopicsData, updateWeeklyScheduleSubject, updateWeeklyScheduleNote, getBranchesData, getTimingsData, getDaysCombinationsData } = AdminService();
 
   const showModalMessage = (message, type = 'info') => {
     setModalMessage(message);
@@ -69,6 +83,93 @@ export const WeeklySchedule = () => {
     setShowModal(false);
     setModalMessage('');
     setModalType('info');
+  };
+
+  const getWeekRange = (dateString) => {
+    const dateObj = new Date(dateString);
+    const day = dateObj.getDay();
+    
+    const sunday = new Date(dateObj);
+    sunday.setDate(dateObj.getDate() - day);
+    
+    const saturday = new Date(sunday);
+    saturday.setDate(sunday.getDate() + 6);
+
+    const getLocalYYYYMMDD = (date) => {
+      const offset = date.getTimezoneOffset();
+      const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+      return localDate.toISOString().split('T')[0];
+    };
+
+    return { 
+      startDate: getLocalYYYYMMDD(sunday), 
+      endDate: getLocalYYYYMMDD(saturday) 
+    };
+  };
+
+  const openCloneModal = () => {
+    if (startDate) {
+      const nextWeekDate = new Date(startDate);
+      nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+      setCloneTargetDate(nextWeekDate.toISOString().split('T')[0]);
+    } else {
+      const today = new Date();
+      setCloneTargetDate(today.toISOString().split('T')[0]);
+    }
+    setShowCloneModal(true);
+  };
+
+  const handleCloneSchedule = async () => {
+    if (!cloneTargetDate) {
+      showModalMessage('Please select a target date first!', 'warning');
+      return;
+    }
+
+    if (weeklySchedules.length === 0) {
+      showModalMessage('The current week has no schedule blocks to clone!', 'warning');
+      return;
+    }
+
+    const { startDate: targetStart, endDate: targetEnd } = getWeekRange(cloneTargetDate);
+
+    try {
+      setCloningSchedules(true);
+
+      // Create new schedule objects
+      const clonePromises = weeklySchedules.map(async (scheduleDoc) => {
+        const batchIds = scheduleDoc.schedule?.sub_details?.batch?.map(b => b._id) || [];
+        
+        const newScheduleData = {
+          startDate: targetStart,
+          endDate: targetEnd,
+          mentor: scheduleDoc.mentor?._id,
+          schedule: {
+            time: scheduleDoc.schedule?.time?._id,
+            sub_details: {
+              day: scheduleDoc.schedule?.sub_details?.day?._id,
+              branch: scheduleDoc.schedule?.sub_details?.branch?._id || selectedBranch,
+              subject: scheduleDoc.schedule?.sub_details?.subject?._id || null,
+              batch: batchIds
+            }
+          }
+        };
+
+        return postWeeklySchedulesData(newScheduleData);
+      });
+
+      await Promise.all(clonePromises);
+      showToastMessage('Schedule successfully cloned to the target week!', 'success');
+      setShowCloneModal(false);
+      
+      // Navigate to the target cloned week
+      setStartDate(targetStart);
+      setEndDate(targetEnd);
+    } catch (err) {
+      console.error('Failed to clone weekly schedules:', err);
+      showModalMessage('Failed to clone schedule blocks to the target week.', 'error');
+    } finally {
+      setCloningSchedules(false);
+    }
   };
 
   const showToastMessage = (message, type = 'success') => {
@@ -281,6 +382,95 @@ export const WeeklySchedule = () => {
     setDraggingItem(dragItem);
   };
 
+  const openNoteModal = (scheduleId, currentNote, targetInfo = null) => {
+    setHoveredNoteInfo(null);
+    setEditingNoteScheduleId(scheduleId);
+    setNoteModalTarget(targetInfo);
+    setNoteValue(currentNote || '');
+    setShowNoteModal(true);
+  };
+
+  const closeNoteModal = () => {
+    setShowNoteModal(false);
+    setEditingNoteScheduleId(null);
+    setNoteModalTarget(null);
+    setNoteValue('');
+  };
+
+  const handleSaveNote = async () => {
+    if (!editingNoteScheduleId && !noteModalTarget) return;
+    try {
+      setSavingNote(true);
+      if (editingNoteScheduleId) {
+        const response = await updateWeeklyScheduleNote(editingNoteScheduleId, { note: noteValue });
+        const message = response?.message || 'Note updated successfully!';
+        showToastMessage(message, 'success');
+      } else {
+        const { mentor, timeSlot, dayCombo } = noteModalTarget;
+        if (!selectedBranch) {
+          showModalMessage('Please select a branch first to add notes!', 'warning');
+          return;
+        }
+        if (!startDate || !endDate) {
+          showModalMessage('Please select a start date first to add notes!', 'warning');
+          return;
+        }
+        const newScheduleData = {
+          startDate,
+          endDate,
+          mentor: mentor._id,
+          schedule: {
+            time: timeSlot._id,
+            sub_details: {
+              day: dayCombo._id,
+              branch: selectedBranch,
+              note: noteValue,
+              batch: []
+            }
+          }
+        };
+        await postWeeklySchedulesData(newScheduleData);
+        showToastMessage('Schedule created with note successfully!', 'success');
+      }
+      await fetchWeeklySchedules();
+      closeNoteModal();
+    } catch (err) {
+      console.error('Failed to save schedule note:', err);
+      showModalMessage('Failed to save note. Please try again.', 'error');
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleRemoveBatchClick = (scheduleId, batchId, batchName) => {
+    setRemovingBatchInfo({ scheduleId, batchId, batchName });
+    setShowRemoveBatchModal(true);
+  };
+
+  const confirmRemoveBatch = async () => {
+    if (!removingBatchInfo) return;
+    const { scheduleId, batchId } = removingBatchInfo;
+
+    try {
+      const response = await deleteWeeklySchedulesData(scheduleId, { batchId });
+      const message = response?.message || 'Batch successfully removed from schedule!';
+      showToastMessage(message, 'success');
+      await fetchWeeklySchedules();
+      setShowRemoveBatchModal(false);
+      setRemovingBatchInfo(null);
+    } catch (error) {
+      console.error('Error removing batch from schedule:', error);
+      showModalMessage('Failed to remove batch from schedule. Please try again.', 'error');
+      setShowRemoveBatchModal(false);
+      setRemovingBatchInfo(null);
+    }
+  };
+
+  const cancelRemoveBatch = () => {
+    setShowRemoveBatchModal(false);
+    setRemovingBatchInfo(null);
+  };
+
   const handleDeleteScheduleClick = (scheduleId) => {
     setDeletingScheduleId(scheduleId);
     setShowDeleteModal(true);
@@ -324,6 +514,20 @@ export const WeeklySchedule = () => {
 
   const handleBatchLeave = () => {
     setHoveredBatchInfo(null);
+  };
+
+  const handleNoteHover = (e, note) => {
+    if (!note) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setHoveredNoteInfo({
+      note,
+      x: rect.left + rect.width / 2,
+      y: rect.top,
+    });
+  };
+
+  const handleNoteLeave = () => {
+    setHoveredNoteInfo(null);
   };
 
   const handleSubjectChange = async (scheduleId, newSubject) => {
@@ -786,8 +990,15 @@ export const WeeklySchedule = () => {
                   )}
                 </div>
                 <button className="flex items-center justify-center space-x-2 py-2 px-3 sm:px-4 rounded-lg bg-white border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50">
-                  <Icon path="M4 16v1a3 3 0 00 6h16a3 3 0 00-6v-1m-4-4l-4 4m0 0l-4-4m4 4V4" className="w-4 h-4 sm:w-5 sm:h-5" />
+                  {/* <Icon path="M4 16v1a3 3 0 00 6h16a3 3 0 00-6v-1m-4-4l-4 4m0 0l-4-4m4 4V4" className="w-4 h-4 sm:w-5 sm:h-5" /> */}
                   <span className="text-xs sm:text-sm">Export</span>
+                </button>
+                <button
+                  onClick={openCloneModal}
+                  className="flex items-center justify-center space-x-2 py-2 px-3 sm:px-4 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition shadow-sm"
+                >
+                  <Icon path="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-xs sm:text-sm font-semibold">Add Next Schedule</span>
                 </button>
               </div>
             </div>
@@ -800,7 +1011,7 @@ export const WeeklySchedule = () => {
                     <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky left-[120px] sm:left-[150px] bg-orange-500 z-20 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] border-r border-orange-400 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]">Time</th>
                     {displayedDayCombinations.map((dayCombo) => (
                       <React.Fragment key={dayCombo._id}>
-                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider">{dayCombo.name}</th>
+                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left w-[150px] min-w-[150px] max-w-[150px] text-[10px] sm:text-xs font-medium uppercase tracking-wider">{dayCombo.name}</th>
                         <th className="px-2 sm:px-4 py-2 sm:py-3 text-left w-[150px] min-w-[150px] text-[10px] sm:text-xs font-medium uppercase tracking-wider">Subject</th>
                       </React.Fragment>
                     ))}
@@ -859,14 +1070,35 @@ export const WeeklySchedule = () => {
                               return (
                                 <React.Fragment key={dayCombo._id}>
                                   <td
-                                    className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 relative group drop-zone min-h-[50px] sm:min-h-[60px] border-2 border-dashed border-gray-200 hover:border-orange-300 transition-colors"
+                                    className="px-2 sm:px-4 py-3 sm:py-4 w-[150px] min-w-[150px] max-w-[150px] text-xs sm:text-sm text-gray-500 relative group drop-zone min-h-[50px] sm:min-h-[60px] border-2 border-dashed border-gray-200 hover:border-orange-300 transition-colors"
                                     onDrop={handleDrop}
                                     onDragOver={handleDragOver}
                                     data-zone-id={`${mentorIndex}-${slotIndex}-${dayCombo._id}`}
                                   >
                                     {/* Batches */}
                                     {batches.length === 0 ? (
-                                      <span className="cursor-pointer text-[10px] sm:text-xs text-gray-400">No batches assigned</span>
+                                      <div className="flex flex-col items-center justify-center space-y-1 py-1">
+                                        <span className="text-[10px] sm:text-xs text-gray-400">No batches assigned</span>
+                                        {!currentSchedule?.schedule?.sub_details?.note && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (currentSchedule) {
+                                                openNoteModal(currentSchedule._id, currentSchedule.schedule?.sub_details?.note || '');
+                                              } else {
+                                                openNoteModal(null, '', { mentor, timeSlot, dayCombo });
+                                              }
+                                            }}
+                                            className="text-gray-400 hover:text-orange-500 transition-colors duration-200 mt-1 flex items-center space-x-1"
+                                            title="Add Note"
+                                          >
+                                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            <span className="text-[10px]">Add Note</span>
+                                          </button>
+                                        )}
+                                      </div>
                                     ) : (
                                       <div className="space-y-1">
                                         {batches.map((batch, index) => (
@@ -878,13 +1110,40 @@ export const WeeklySchedule = () => {
                                           >
                                             <span className="truncate">{batch.batchName}</span>
                                             <button
-                                              onClick={() => handleDeleteScheduleClick(currentSchedule._id)}
+                                              onClick={() => handleRemoveBatchClick(currentSchedule._id, batch._id, batch.batchName)}
                                               className="bg-red-600 text-white rounded-full w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center font-bold text-[10px] sm:text-xs leading-none transition-transform duration-200 hover:scale-110 flex-shrink-0 ml-1"
                                             >
                                               &times;
                                             </button>
                                           </div>
                                         ))}
+                                      </div>
+                                    )}
+
+                                    {currentSchedule && (batches.length > 0 || currentSchedule.schedule?.sub_details?.note) && (
+                                      <div className="mt-2 pt-1 border-t border-gray-100 flex items-center justify-between text-[10px] sm:text-xs">
+                                        <div
+                                          className={`text-gray-500 truncate max-w-[80%] ${currentSchedule.schedule?.sub_details?.note ? 'cursor-help font-medium' : ''}`}
+                                          onMouseEnter={(e) => handleNoteHover(e, currentSchedule.schedule?.sub_details?.note)}
+                                          onMouseLeave={handleNoteLeave}
+                                        >
+                                          {currentSchedule.schedule?.sub_details?.note ? (
+                                            <span className="italic font-medium">
+                                              📝 {currentSchedule.schedule.sub_details.note}
+                                            </span>
+                                          ) : (
+                                            <span className="text-gray-300">Add note...</span>
+                                          )}
+                                        </div>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openNoteModal(currentSchedule._id, currentSchedule.schedule?.sub_details?.note || '');
+                                          }}
+                                          className="text-orange-500 hover:text-orange-600 font-medium transition ml-1"
+                                        >
+                                          Edit
+                                        </button>
                                       </div>
                                     )}
                                   </td>
@@ -952,6 +1211,27 @@ export const WeeklySchedule = () => {
             </div>
           </div>
         )}
+
+        {/* Hover Note Modal */}
+        {hoveredNoteInfo && (
+          <div
+            className="fixed z-[100] bg-white border border-gray-200 rounded-lg shadow-xl p-4 w-64 text-gray-800 pointer-events-none transform -translate-x-1/2 -translate-y-full"
+            style={{
+              top: `${hoveredNoteInfo.y - 10}px`,
+              left: `${hoveredNoteInfo.x}px`,
+            }}
+          >
+            <div className="flex items-center space-x-2 border-b pb-2 mb-2 text-orange-600">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <h4 className="font-bold text-xs sm:text-sm">Schedule Note</h4>
+            </div>
+            <p className="text-xs text-gray-600 font-medium whitespace-pre-wrap leading-relaxed break-words">
+              {hoveredNoteInfo.note}
+            </p>
+          </div>
+        )}
       </div>
     );
   };
@@ -968,6 +1248,167 @@ export const WeeklySchedule = () => {
       <Toast />
       <Modal />
       {renderContent()}
+
+      {/* Clone Confirmation Modal */}
+      {showCloneModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => !cloningSchedules && setShowCloneModal(false)}></div>
+          <div className="relative bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all w-full max-w-md">
+            <div className="bg-white px-6 pt-6 pb-4">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-orange-100">
+                  <Icon path="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" className="w-5 h-5 text-orange-600" />
+                </div>
+                <h3 className="text-lg leading-6 font-semibold text-gray-900" id="modal-title">
+                  Add Next Schedule
+                </h3>
+              </div>
+              <div className="mt-2 space-y-4">
+                <p className="text-sm text-gray-500">
+                  This will clone the current week's schedule ({new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}) to a target week containing the date you select below.
+                </p>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-600 uppercase">Select Target Date</label>
+                  <input
+                    type="date"
+                    disabled={cloningSchedules}
+                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+                    value={cloneTargetDate}
+                    onChange={(e) => setCloneTargetDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex justify-end items-center gap-3 border-t border-gray-100">
+              <button
+                type="button"
+                disabled={cloningSchedules}
+                className="inline-flex justify-center items-center rounded-lg border border-gray-300 px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition disabled:opacity-50"
+                onClick={() => setShowCloneModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={cloningSchedules || !cloneTargetDate}
+                className="inline-flex justify-center items-center rounded-lg border border-transparent px-4 py-2 bg-orange-500 text-sm font-medium text-white hover:bg-orange-600 focus:outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleCloneSchedule}
+              >
+                {cloningSchedules ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Creating...
+                  </>
+                ) : (
+                  'Create Schedule'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Batch Confirmation Modal */}
+      {showRemoveBatchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={cancelRemoveBatch}></div>
+          <div className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all w-full max-w-lg">
+            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <div className="sm:flex sm:items-start">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                  <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                  <h3 className="text-lg leading-6 font-semibold text-gray-900" id="modal-title">
+                    Remove Batch from Schedule
+                  </h3>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Are you sure you want to remove the batch <strong className="text-gray-900">"{removingBatchInfo?.batchName}"</strong> from this schedule slot?
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-4 py-3 sm:px-6 flex justify-end items-center gap-3">
+              <button
+                type="button"
+                className="inline-flex justify-center items-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition sm:text-sm h-fit"
+                onClick={cancelRemoveBatch}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none transition sm:text-sm h-fit"
+                onClick={confirmRemoveBatch}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Note Editing Modal */}
+      {showNoteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => !savingNote && closeNoteModal()}></div>
+          <div className="relative bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all w-full max-w-md">
+            <div className="bg-white px-6 pt-6 pb-4">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="flex-shrink-0 flex items-center justify-center h-10 w-10 rounded-full bg-orange-100">
+                  <svg className="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg leading-6 font-semibold text-gray-900" id="modal-title">
+                  Edit Schedule Note
+                </h3>
+              </div>
+              <div className="mt-2 space-y-3">
+                <p className="text-sm text-gray-500">
+                  Add a note to this weekly schedule box (e.g. batch instructions, mentor changes, or topics coverage reminder).
+                </p>
+                <div className="space-y-1">
+                  <label className="block text-xs font-semibold text-gray-600 uppercase">Note details</label>
+                  <textarea
+                    disabled={savingNote}
+                    rows={4}
+                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition resize-none"
+                    placeholder="Enter notes for this schedule..."
+                    value={noteValue}
+                    onChange={(e) => setNoteValue(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex justify-end items-center gap-3 border-t border-gray-100">
+              <button
+                type="button"
+                disabled={savingNote}
+                className="inline-flex justify-center items-center rounded-lg border border-gray-300 px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition disabled:opacity-50"
+                onClick={closeNoteModal}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingNote}
+                className="inline-flex justify-center items-center rounded-lg border border-transparent px-4 py-2 bg-orange-500 text-sm font-medium text-white hover:bg-orange-600 focus:outline-none transition disabled:opacity-50"
+                onClick={handleSaveNote}
+              >
+                {savingNote ? 'Saving...' : 'Save Note'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (

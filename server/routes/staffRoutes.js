@@ -11,7 +11,9 @@ router.get("/",checkAuth, checkPermission('mentorManagement', 'viewMentor'), sta
 router.get("/all", checkAuth, checkPermission('mentorManagement', 'viewMentor'), staffController.getAllStaff); // Get all staff without pagination
 router.get("/active/all", checkAuth, checkPermission('mentorManagement', 'viewMentor'), staffController.getAllActiveStaff); // Get all active staff without pagination
 router.post("/",checkAuth, checkPermission('mentorManagement', 'addMentor'), upload.fields([{ name: 'photo', maxCount: 1 },{ name: 'resume', maxCount: 1 }]), staffController.addStaff); // Create staff
+// router.post("/",checkAuth,checkPermission("mentorManagement", "addMentor"),upload.fields([{ name: "photo", maxCount: 1 },{ name: "resume", maxCount: 1 },{ name: "video", maxCount: 1 },]),staffController.addStaff);
 router.get("/:id",checkAuth, checkPermission('mentorManagement', 'viewMentor'), staffController.getStaffById); // Get single staff
+router.get("/:id/resume/download", checkAuth, checkPermission('mentorManagement', 'viewMentor'), staffController.downloadResume);
 router.put("/:id",checkAuth, checkPermission('mentorManagement', 'editMentor'), upload.fields([{ name: 'photo', maxCount: 1 },{ name: 'resume', maxCount: 1 }]), staffController.updateStaff); // Update staff
 router.delete("/:id",checkAuth, checkPermission('mentorManagement', 'deleteMentor'), staffController.deleteStaff); // Delete staff
 

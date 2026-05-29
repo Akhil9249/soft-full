@@ -46,6 +46,7 @@ export const TaskManagement = () => {
   // View modal state
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingTask, setViewingTask] = useState(null);
+  const [attachmentPreview, setAttachmentPreview] = useState(null);
   
  
   // Pagination state
@@ -140,7 +141,7 @@ export const TaskManagement = () => {
     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0006 0v-1m-4-4l4-4m0 0l4 4m-4-4v12"></path></svg>
   );
 
-  const { getBatchesData, getModulesData, getStaffData, getTasksData, putTasksData, postTasksData, getInternsData, getCoursesData, deleteTasksData } = AdminService();
+  const { getBatchesData, getModulesData, getStaffData, getTasksData, putTasksData, postTasksData, getInternsData, getCoursesData, deleteTasksData, downloadTaskAttachment } = AdminService();
 
   // API functions to fetch data
   const fetchTasks = async (page = 1, search = '', taskType = '', status = '', audience = '') => {
@@ -417,6 +418,66 @@ export const TaskManagement = () => {
     }
   };
 
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleDownloadAttachment = async (task) => {
+    if (!task || !task.attachments) return;
+    
+    try {
+      showNotification('info', 'Downloading', 'Starting download of task attachment...');
+      const response = await downloadTaskAttachment(task._id);
+      
+      // Get filename from header or construct a beautiful safe one
+      let filename = 'task_attachment';
+      const contentDisposition = response.headers['content-disposition'];
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
+      } else {
+        const fileUrl = task.attachments;
+        const urlParts = fileUrl.split('/');
+        const originalFilename = urlParts[urlParts.length - 1] || 'attachment';
+        const safeName = task.title ? task.title.replace(/[^a-z0-9]/gi, '_') : 'Task';
+        const ext = originalFilename.includes('.') ? originalFilename.substring(originalFilename.lastIndexOf('.')) : '';
+        filename = `${safeName}_Attachment${ext}`;
+      }
+      
+      // Create blob URL and trigger download
+      const blob = new Blob([response.data], { type: response.headers['content-type'] });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showNotification('success', 'Download Successful', 'Task attachment downloaded successfully.');
+    } catch (err) {
+      console.error('Failed to download task attachment:', err);
+      showNotification('error', 'Download Failed', err?.response?.data?.message || 'Failed to download task attachment.');
+    }
+  };
+
+  // Cleanup object URLs to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      if (attachmentPreview && attachmentPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(attachmentPreview);
+      }
+    };
+  }, [attachmentPreview]);
+
   // Load data when component mounts
   useEffect(() => {
     fetchTasks(pagination.currentPage, searchTerm, filters.taskType, filters.status, filters.audience);
@@ -517,6 +578,7 @@ export const TaskManagement = () => {
       status: task.status || "",
       audience: task.audience || "",
     });
+    setAttachmentPreview(task.attachments || null);
     
     // Clear all selected items first
     setSelectedBatches([]);
@@ -587,6 +649,7 @@ export const TaskManagement = () => {
     setEditingTask(null);
     setIsEditMode(false);
     setFormData({});
+    setAttachmentPreview(null);
     setSelectedInterns([]);
     setInternSearchTerm('');
     setSelectedBatches([]);
@@ -832,6 +895,7 @@ export const TaskManagement = () => {
       setEditingTask(null);
       setIsEditMode(false);
       setFormData({});
+      setAttachmentPreview(null);
       setSelectedInterns([]);
       setInternSearchTerm('');
       setSelectedBatches([]);
@@ -1412,6 +1476,8 @@ export const TaskManagement = () => {
                               return;
                             }
                             setFormData((p) => ({ ...p, attachments: file }));
+                            const objectUrl = URL.createObjectURL(file);
+                            setAttachmentPreview(objectUrl);
                             setError(''); // Clear any previous errors
                           }
                         } catch (error) {
@@ -1434,6 +1500,86 @@ export const TaskManagement = () => {
                       </svg>
                     </div>
                   </div>
+
+                  {attachmentPreview && (
+                    <div className="mt-3 p-4 bg-gray-50 border border-dashed border-gray-300 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all duration-200">
+                      <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
+                        {/* File Icon */}
+                        <div className="p-2.5 bg-orange-100 rounded-lg text-orange-600 flex-shrink-0">
+                          {formData.attachments instanceof File ? (
+                            formData.attachments.type.startsWith('image/') ? (
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            ) : formData.attachments.type === 'application/pdf' ? (
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                              </svg>
+                            ) : (
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                              </svg>
+                            )
+                          ) : (
+                            attachmentPreview.toLowerCase().match(/\.(jpg|jpeg|png|webp|gif)/) ? (
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            ) : (
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                              </svg>
+                            )
+                          )}
+                        </div>
+                        
+                        {/* File Info */}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {formData.attachments instanceof File 
+                              ? formData.attachments.name 
+                              : attachmentPreview.split('/').pop()?.split('?')[0] || 'Attachment'}
+                          </p>
+                          <p className="text-xs text-gray-500 font-medium">
+                            {formData.attachments instanceof File 
+                              ? formatFileSize(formData.attachments.size) 
+                              : 'Cloudinary Hosted File'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:justify-start">
+                        <a 
+                          href={attachmentPreview} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="px-3 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-md border border-orange-200 transition-colors flex items-center gap-1"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          Preview
+                        </a>
+                        {!isEditMode && (
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setFormData(p => ({ ...p, attachments: null }));
+                              setAttachmentPreview(null);
+                            }}
+                            className="px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-md border border-red-200 transition-colors flex items-center gap-1"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Total Marks</label>
@@ -2032,20 +2178,43 @@ export const TaskManagement = () => {
               )}
 
               {viewingTask.attachments && (
-                <div className="mt-4 sm:mt-5">
-                  <h2 className="text-[#f7931e] font-semibold mb-2 text-sm sm:text-base italic">Attachments</h2>
-                  <div className="flex items-center gap-2">
-                    <a 
-                      href={viewingTask.attachments} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 underline flex items-center gap-2 text-xs sm:text-sm"
-                    >
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                      </svg>
-                      View Attachment
-                    </a>
+                <div className="mt-6 border border-gray-200 rounded-xl p-4 bg-gray-50/50 shadow-sm">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                    </svg>
+                    Task Documents
+                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {viewingTask.attachments.split('/').pop()?.split('?')[0] || 'Attachment'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5 font-medium">Secure Cloudinary Document</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a 
+                        href={viewingTask.attachments} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-2 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all flex items-center gap-1.5"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        View Document
+                      </a>
+                      <button 
+                        onClick={() => handleDownloadAttachment(viewingTask)}
+                        className="px-3.5 py-2 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-all flex items-center gap-1.5"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Download
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

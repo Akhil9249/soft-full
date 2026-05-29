@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Check, X, ChevronDown, CalendarDays } from 'lucide-react';
@@ -158,6 +158,9 @@ const Report = ({ activeTab, setActiveTab }) => {
       if (response?.data) {
         setBranches(response.data);
         console.log('Branches loaded:', response.data.length, 'branches available');
+        if (response.data.length > 0) {
+          setSelectedBranch(response.data[0]._id);
+        }
       }
     } catch (err) {
       console.error('Failed to load branches:', err);
@@ -184,6 +187,11 @@ const Report = ({ activeTab, setActiveTab }) => {
     } finally {
       setMentorsLoading(false);
     }
+  };
+
+  const handleBranchChange = (branchId) => {
+    setSelectedBranch(branchId);
+    setSelectedMentor('');
   };
 
   // Fetch attendance data for selected month
@@ -258,14 +266,24 @@ const Report = ({ activeTab, setActiveTab }) => {
   // Fetch attendance data when month, branch, or mentor changes
   useEffect(() => {
     if (selectedMonth && selectedYear) {
+      // If not a mentor, we MUST have a selected branch to fetch
+      if (!isMentor && !selectedBranch) {
+        return;
+      }
       fetchAttendanceData(
         selectedMonth,
         selectedYear,
-        isMentor ? null : (selectedBranch || null),
+        isMentor ? null : selectedBranch,
         isMentor ? loggedInUserId : (selectedMentor || null)
       );
     }
   }, [selectedMonth, selectedYear, selectedBranch, selectedMentor]);
+
+  const filteredMentors = mentors.filter(mentor => {
+    if (!selectedBranch) return true;
+    const mentorBranchId = mentor.branch?._id || mentor.branch;
+    return mentorBranchId === selectedBranch;
+  });
 
   const filteredAttendanceData = attendanceData.filter(student => {
     if (!searchTerm) return true;
@@ -273,6 +291,31 @@ const Report = ({ activeTab, setActiveTab }) => {
     return student.fullName?.toLowerCase().includes(term) || 
            student._id?.slice(-4).includes(term);
   });
+
+  const displaySummary = useMemo(() => {
+    if (!filteredAttendanceData || filteredAttendanceData.length === 0) return null;
+    
+    const calculated = {
+      totalInterns: filteredAttendanceData.length,
+      presentCount: 0,
+      absentCount: 0,
+      notMarkedCount: 0
+    };
+
+    filteredAttendanceData.forEach(student => {
+      student.attendance.forEach(status => {
+        if (status === 1) {
+          calculated.presentCount++;
+        } else if (status === 0) {
+          calculated.absentCount++;
+        } else if (status === -1) {
+          calculated.notMarkedCount++;
+        }
+      });
+    });
+
+    return calculated;
+  }, [filteredAttendanceData]);
 
   const handleExport = async () => {
     if (!filteredAttendanceData || filteredAttendanceData.length === 0) return;
@@ -388,18 +431,21 @@ const Report = ({ activeTab, setActiveTab }) => {
               <div className="relative">
                 <select
                   value={selectedBranch}
-                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  onChange={(e) => handleBranchChange(e.target.value)}
                   disabled={branchesLoading}
-                  className="appearance-none block w-full bg-white border border-gray-300 rounded-lg py-2 pl-4 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-sm text-sm"
+                  className="appearance-none block w-full bg-white border border-gray-300 rounded-lg py-2 pl-4 pr-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition shadow-sm text-sm font-medium"
                 >
-                  <option value="">
-                    {branchesLoading ? 'Loading branches...' : 'All Branches'}
-                  </option>
-                  {branches.map((branch) => (
-                    <option key={branch._id} value={branch._id}>
-                      {branch.branchName}
-                    </option>
-                  ))}
+                  {branchesLoading ? (
+                    <option value="" disabled>Loading branches...</option>
+                  ) : branches.length === 0 ? (
+                    <option value="" disabled>No branches available</option>
+                  ) : (
+                    branches.map((branch) => (
+                      <option key={branch._id} value={branch._id}>
+                        {branch.branchName}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <ChevronDown className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 w-5 h-5 text-gray-400" />
               </div>
@@ -417,7 +463,7 @@ const Report = ({ activeTab, setActiveTab }) => {
                   <option value="">
                     {mentorsLoading ? 'Loading mentors...' : 'All Mentors'}
                   </option>
-                  {mentors.map((mentor) => (
+                  {filteredMentors.map((mentor) => (
                     <option key={mentor._id} value={mentor._id}>
                       {mentor.fullName}
                     </option>
@@ -482,35 +528,6 @@ const Report = ({ activeTab, setActiveTab }) => {
         {/* Attendance Key / Legend */}
         {activeTab === 'attendance' && <AttendanceKey />}
 
-        {/* Summary Statistics */}
-        {summary && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
-            <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl shadow-sm flex flex-col justify-center items-center">
-              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 mb-1">Total Interns</div>
-              <div className="text-xl sm:text-2xl font-extrabold text-gray-800">
-                {summary.totalInterns}
-              </div>
-            </div>
-            <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl shadow-sm flex flex-col justify-center items-center">
-              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 mb-1">Present</div>
-              <div className="text-xl sm:text-2xl font-extrabold text-green-600">
-                {summary.presentCount}
-              </div>
-            </div>
-            <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl shadow-sm flex flex-col justify-center items-center">
-              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 mb-1">Absent</div>
-              <div className="text-xl sm:text-2xl font-extrabold text-red-500">
-                {summary.absentCount}
-              </div>
-            </div>
-            <div className="p-3 sm:p-4 bg-white rounded-lg sm:rounded-xl shadow-sm flex flex-col justify-center items-center">
-              <div className="text-[10px] sm:text-xs font-semibold text-gray-500 mb-1">Not Marked</div>
-              <div className="text-xl sm:text-2xl font-extrabold text-gray-500">
-                {summary.notMarkedCount}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Attendance Grid/Table */}
         {attendanceLoading ? (

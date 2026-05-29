@@ -245,6 +245,15 @@ const removeBatchFromSubDetails = async (req, res) => {
     }
 
     batchArray.splice(batchIndex, 1);
+
+    const isNoteEmpty = !weeklySchedule.schedule.sub_details.note || weeklySchedule.schedule.sub_details.note.trim() === '';
+    const isBatchesEmpty = batchArray.length === 0;
+
+    if (isNoteEmpty && isBatchesEmpty) {
+      await WeeklySchedule.findByIdAndDelete(id);
+      return res.status(200).json({ message: "Schedule automatically deleted as it has no assigned batches or notes", deleted: true });
+    }
+
     await weeklySchedule.save();
 
     const updatedSchedule = await WeeklySchedule.findById(id)
@@ -323,6 +332,66 @@ const updateSubjectInSubDetails = async (req, res) => {
     res.status(200).json({ message: "Subject updated successfully", data: updatedSchedule });
   } catch (error) {
     console.error('Error updating subject in sub details:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Update Note in Sub Details
+const updateNoteInSubDetails = async (req, res) => {
+  try {
+    const { note } = req.body;
+    const { id } = req.params; // weekly schedule id
+
+    console.log('Updating note in sub details:', { note });
+
+    const weeklySchedule = await WeeklySchedule.findById(id);
+    if (!weeklySchedule) {
+      return res.status(404).json({ message: "Weekly schedule not found" });
+    }
+
+    if (!weeklySchedule.schedule || !weeklySchedule.schedule.sub_details) {
+      return res.status(404).json({ message: "Specified schedule path not found" });
+    }
+
+    // Check if we should automatically delete the schedule
+    const isNoteEmpty = !note || note.trim() === '';
+    const isBatchesEmpty = !weeklySchedule.schedule.sub_details.batch || weeklySchedule.schedule.sub_details.batch.length === 0;
+
+    if (isNoteEmpty && isBatchesEmpty) {
+      await WeeklySchedule.findByIdAndDelete(id);
+      return res.status(200).json({ message: "Schedule automatically deleted because it has no note and no assigned batches", deleted: true });
+    }
+
+    // Update the note
+    weeklySchedule.schedule.sub_details.note = note || '';
+
+    await weeklySchedule.save();
+
+    const updatedSchedule = await WeeklySchedule.findById(id)
+      .populate({
+        path: 'mentor',
+        select: 'fullName email'
+      })
+      .populate({
+        path: 'schedule.time',
+      })
+      .populate({
+        path: 'schedule.sub_details.day',
+      })
+      .populate({
+        path: 'schedule.sub_details.branch',
+      })
+      .populate({
+        path: 'schedule.sub_details.subject',
+      })
+      .populate({
+        path: 'schedule.sub_details.batch',
+        select: 'batchName branchName'
+      });
+
+    res.status(200).json({ message: "Note updated successfully", data: updatedSchedule });
+  } catch (error) {
+    console.error('Error updating note in sub details:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -425,6 +494,7 @@ const getAllMentorsWithBatches = async (req, res) => {
             day: subDetail.day,
             branch: subDetail.branch,
             subject: subDetail.subject?.moduleName || 'N/A',
+            note: subDetail.note || "",
             batches: []
           };
 
@@ -585,5 +655,6 @@ module.exports = {
   addBatchToSubDetails,
   removeBatchFromSubDetails,
   updateSubjectInSubDetails,
+  updateNoteInSubDetails,
   getAllMentorsWithBatches,
 };

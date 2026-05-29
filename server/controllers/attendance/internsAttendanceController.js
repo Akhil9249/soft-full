@@ -617,15 +617,30 @@ const createDailyAttendanceForAllInterns = async (req, res) => {
         const batchDoc = await Batch.findById(batchId);
         allowedInternIds = batchDoc ? batchDoc.interns.map(id => id.toString()) : [];
       } else if (courseId || branchId || days || timingId) {
-        const weeklyScheduleResult = await getInternsByWeeklyScheduleFilters({
-          timingId,
-          days,
-          courseId,
-          branchId,
-          mentorId: null
-        });
+        let weeklyScheduleInternIds = [];
+        if (courseId || days || timingId) {
+          const weeklyScheduleResult = await getInternsByWeeklyScheduleFilters({
+            timingId,
+            days,
+            courseId,
+            branchId,
+            mentorId: null
+          });
+          weeklyScheduleInternIds = weeklyScheduleResult.interns.map(intern => intern._id.toString());
+        } else if (branchId) {
+          // If only branchId is provided, find all active interns for this branch directly
+          const branchInterns = await Intern.find({
+            branch: branchId,
+            $or: [
+              { courseStatus: "Active" },
+              { courseStatus: "Ongoing" }
+            ],
+            isActive: { $ne: false }
+          });
+          weeklyScheduleInternIds = branchInterns.map(intern => intern._id.toString());
+        }
 
-        allowedInternIds = weeklyScheduleResult.interns.map(intern => intern._id);
+        allowedInternIds = weeklyScheduleInternIds;
         if (allowedInternIds.length === 0) {
           return res.status(200).json({
             message: "No interns found matching the specified filters"
@@ -657,15 +672,29 @@ const createDailyAttendanceForAllInterns = async (req, res) => {
       }
 
       if (courseId || branchId || days || timingId) {
-        const weeklyScheduleResult = await getInternsByWeeklyScheduleFilters({
-          timingId,
-          days,
-          courseId,
-          branchId,
-          mentorId: userId
-        });
-
-        const filteredIds = weeklyScheduleResult.interns.map(intern => intern._id.toString());
+        let filteredIds = [];
+        if (courseId || days || timingId) {
+          const weeklyScheduleResult = await getInternsByWeeklyScheduleFilters({
+            timingId,
+            days,
+            courseId,
+            branchId,
+            mentorId: userId
+          });
+          filteredIds = weeklyScheduleResult.interns.map(intern => intern._id.toString());
+        } else if (branchId) {
+          // If only branchId is provided, filter mentor's interns by branch directly
+          const branchInterns = await Intern.find({
+            branch: branchId,
+            _id: { $in: allowedInternIds },
+            $or: [
+              { courseStatus: "Active" },
+              { courseStatus: "Ongoing" }
+            ],
+            isActive: { $ne: false }
+          });
+          filteredIds = branchInterns.map(intern => intern._id.toString());
+        }
         allowedInternIds = allowedInternIds.filter(id => filteredIds.includes(id.toString()));
       }
 
@@ -1144,6 +1173,11 @@ const getInternsByAttendanceDate = async (req, res) => {
     // If mentor or filters applied `query.intern` might exist
     if (query.intern) {
       internQuery._id = query.intern;
+    }
+
+    // Filter directly by branch if branchId is provided
+    if (branchId) {
+      internQuery.branch = branchId;
     }
 
     // If batch ID is provided, retrieve interns in that batch and filter

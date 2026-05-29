@@ -103,6 +103,16 @@ export const RoleManagement = () => {
       ]
     },
     {
+      key: 'mentorCard',
+      title: 'Mentor Card',
+      permissions: [
+        { key: 'addMentorCard', label: 'Add Mentor Card' },
+        { key: 'viewMentorCard', label: 'View Mentor Card' },
+        { key: 'editMentorCard', label: 'Edit Mentor Card' },
+        { key: 'deleteMentorCard', label: 'Delete Mentor Card' }
+      ]
+    },
+    {
       key: 'courseManagement',
       title: 'Course Management',
       permissions: [
@@ -149,7 +159,8 @@ export const RoleManagement = () => {
         { key: 'addTask', label: 'Add Task' },
         { key: 'viewTask', label: 'View Task' },
         { key: 'editTask', label: 'Edit Task' },
-        { key: 'deleteTask', label: 'Delete Task' }
+        { key: 'deleteTask', label: 'Delete Task' },
+        { key: 'downloadTask', label: 'Download Task' }
       ]
     },
     {
@@ -259,6 +270,10 @@ export const RoleManagement = () => {
         'Mentor Management - View',
         'Mentor Management - Edit',
         'Mentor Management - Delete',
+        'Mentor Card - Add',
+        'Mentor Card - View',
+        'Mentor Card - Edit',
+        'Mentor Card - Delete',
         'Course Management - Add',
         'Course Management - View',
         'Course Management - Edit',
@@ -279,6 +294,7 @@ export const RoleManagement = () => {
         'Task Management - View',
         'Task Management - Edit',
         'Task Management - Delete',
+        'Task Management - Download',
         'Weekly Schedule - Add',
         'Weekly Schedule - View',
         'Weekly Schedule - Edit',
@@ -321,6 +337,10 @@ export const RoleManagement = () => {
           getPermissionValue('mentorManagement', 'viewMentor'),
           getPermissionValue('mentorManagement', 'editMentor'),
           getPermissionValue('mentorManagement', 'deleteMentor'),
+          getPermissionValue('mentorCard', 'addMentorCard'),
+          getPermissionValue('mentorCard', 'viewMentorCard'),
+          getPermissionValue('mentorCard', 'editMentorCard'),
+          getPermissionValue('mentorCard', 'deleteMentorCard'),
           getPermissionValue('courseManagement', 'addCourse'),
           getPermissionValue('courseManagement', 'viewCourse'),
           getPermissionValue('courseManagement', 'editCourse'),
@@ -341,6 +361,7 @@ export const RoleManagement = () => {
           getPermissionValue('taskManagement', 'viewTask'),
           getPermissionValue('taskManagement', 'editTask'),
           getPermissionValue('taskManagement', 'deleteTask'),
+          getPermissionValue('taskManagement', 'downloadTask'),
           getPermissionValue('weeklySchedule', 'addSchedule'),
           getPermissionValue('weeklySchedule', 'viewSchedule'),
           getPermissionValue('weeklySchedule', 'editSchedule'),

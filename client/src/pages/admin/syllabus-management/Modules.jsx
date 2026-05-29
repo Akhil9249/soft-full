@@ -9,7 +9,7 @@ import autoTable from 'jspdf-autotable';
 export const Modules = () => {
 
   // const axiosPrivate = useAxiosPrivate();
-  const { getCoursesData, getModulesData, putModulesData, postModulesData, deleteModulesData, getTopicsData, removeTopicFromModuleData } = AdminService();
+  const { getCoursesData, getModulesData, putModulesData, postModulesData, deleteModulesData, getTopicsData, removeTopicFromModuleData, downloadModuleFile } = AdminService();
 
   // State to manage the active tab. 'modules-list' is the default.
   const [activeTab, setActiveTab] = useState('modules-list');
@@ -22,6 +22,7 @@ export const Modules = () => {
   const [editingModule, setEditingModule] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({});
+  const [moduleImagePreview, setModuleImagePreview] = useState(null);
   const [deletingModule, setDeletingModule] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [moduleTopics, setModuleTopics] = useState([]);
@@ -299,6 +300,60 @@ export const Modules = () => {
     setSuccess('');
   }, [activeTab]);
 
+  // Cleanup object URLs for module file preview
+  useEffect(() => {
+    return () => {
+      if (moduleImagePreview && moduleImagePreview.startsWith('blob:')) {
+        URL.revokeObjectURL(moduleImagePreview);
+      }
+    };
+  }, [moduleImagePreview]);
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return '';
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleDownloadModuleFile = async (module) => {
+    if (!module || !module._id) return;
+    try {
+      setLoading(true);
+      showNotification('info', 'Downloading', 'Downloading document...');
+      const response = await downloadModuleFile(module._id);
+      
+      const fileUrl = module.moduleImage;
+      const urlParts = fileUrl.split('/');
+      const filename = urlParts[urlParts.length - 1] || 'document.pdf';
+      const ext = filename.includes('.') ? filename.substring(filename.lastIndexOf('.')) : '.pdf';
+      
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const safeName = module.moduleName ? module.moduleName.replace(/[^a-z0-9]/gi, '_') : 'Module';
+      link.setAttribute('download', `${safeName}_Document${ext}`);
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      showNotification('success', 'Download Successful', 'Document downloaded successfully.');
+    } catch (err) {
+      console.error('Failed to download module document:', err);
+      showNotification('error', 'Download Failed', err?.response?.data?.message || 'Failed to download module document.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // No client-side filtering needed - server handles it
 
   const handleEditModule = (module) => {
@@ -307,8 +362,9 @@ export const Modules = () => {
     setFormData({
       moduleName: module.moduleName || "",
       course: typeof module.course === 'object' ? module.course._id : module.course || "",
-      moduleImage: module.moduleImage || null, // Store as URL string or null
+      moduleImage: module.moduleImage || null,
     });
+    setModuleImagePreview(module.moduleImage || null);
     // Fetch topics for this module
     fetchModuleTopics(module._id);
     setActiveTab('new-module');
@@ -318,6 +374,7 @@ export const Modules = () => {
     setEditingModule(null);
     setIsEditMode(false);
     setFormData({});
+    setModuleImagePreview(null);
     setModuleTopics([]);
     setActiveTab('modules-list');
   };
@@ -622,6 +679,7 @@ export const Modules = () => {
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Module Name</th>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Topics</th>
+                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document</th>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
@@ -654,6 +712,34 @@ export const Modules = () => {
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                               {module.totalTopics || 0}
                             </span>
+                          </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {module.moduleImage ? (
+                              <div className="flex items-center space-x-2">
+                                <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
+                                </svg>
+                                <a 
+                                  href={module.moduleImage} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+                                >
+                                  View
+                                </a>
+                                <span className="text-gray-300">|</span>
+                                <button 
+                                  onClick={() => handleDownloadModuleFile(module)}
+                                  className="text-gray-600 hover:text-orange-600 text-xs font-semibold transition-colors"
+                                >
+                                  Download
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-500 bg-gray-100 rounded-full border border-gray-200">
+                                No File
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {module.createdAt ? new Date(module.createdAt).toLocaleDateString() : 'N/A'}
@@ -715,6 +801,35 @@ export const Modules = () => {
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                             {module.totalTopics || 0}
                           </span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium">Document:</span>
+                          {module.moduleImage ? (
+                            <div className="flex items-center space-x-2">
+                              <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
+                              </svg>
+                              <a 
+                                href={module.moduleImage} 
+                                target="_blank" 
+                                  rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
+                              >
+                                View
+                              </a>
+                              <span className="text-gray-300">|</span>
+                              <button 
+                                onClick={() => handleDownloadModuleFile(module)}
+                                className="text-gray-600 hover:text-orange-600 text-xs font-semibold transition-colors"
+                              >
+                                Download
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-500 bg-gray-100 rounded-full border border-gray-200">
+                              No File
+                            </span>
+                          )}
                         </div>
                         <div><span className="font-medium">Created:</span> {module.createdAt ? new Date(module.createdAt).toLocaleDateString() : 'N/A'}</div>
                       </div>
@@ -843,7 +958,7 @@ export const Modules = () => {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Module Image/PDF <span className="text-gray-400">(Optional - JPG/PNG/PDF only)</span></label>
+                  <label className="block text-sm font-medium text-gray-700">Module Image/PDF <span className="text-gray-400">(Optional - JPG/PNG/PDF only, Max 10MB)</span></label>
                   <div className="relative flex items-center w-full px-4 py-2 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-transparent bg-white">
                     <span className="text-gray-500 flex-1 truncate pr-2">
                       {formData?.moduleImage instanceof File 
@@ -858,7 +973,7 @@ export const Modules = () => {
                         try {
                           const file = e.target.files?.[0];
                           if (file) {
-                            // Validate file type - check MIME type and file extension
+                            // Validate file type
                             const isValidFile = file.type.match('image/(jpeg|jpg|png)') || 
                                               file.type === 'application/pdf' ||
                                               (file.name && (file.name.toLowerCase().endsWith('.jpg') || 
@@ -870,21 +985,22 @@ export const Modules = () => {
                               e.target.value = ''; // Reset input to allow retry
                               return;
                             }
-                            // Validate file size (10MB = 10 * 1024 * 1024 bytes)
+                            // Validate file size (10MB)
                             if (file.size > 10 * 1024 * 1024) {
                               showNotification('error', 'Validation Error', 'File size must be less than 10MB');
                               e.target.value = ''; // Reset input to allow retry
                               return;
                             }
                             setFormData((p) => ({ ...p, moduleImage: file }));
+                            if (moduleImagePreview && moduleImagePreview.startsWith('blob:')) {
+                              URL.revokeObjectURL(moduleImagePreview);
+                            }
+                            setModuleImagePreview(URL.createObjectURL(file));
                             setError(''); // Clear any previous errors
                           }
                         } catch (error) {
                           console.error('Error handling file upload:', error);
                           showNotification('error', 'Upload Error', 'An error occurred while processing the file');
-                          if (e.target) {
-                            e.target.value = '';
-                          }
                         }
                       }}
                       type="file" 
@@ -899,6 +1015,50 @@ export const Modules = () => {
                       </svg>
                     </div>
                   </div>
+                  {formData?.moduleImage && (
+                    <div className="mt-3 p-3 bg-gray-50 border border-dashed border-orange-300 rounded-md flex items-center justify-between gap-4">
+                      <div className="flex items-center min-w-0">
+                        <svg className="w-8 h-8 text-red-500 flex-shrink-0 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                        </svg>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-800 truncate">
+                            {formData.moduleImage instanceof File ? formData.moduleImage.name : 'Current_Document.pdf'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {formData.moduleImage instanceof File ? formatFileSize(formData.moduleImage.size) : 'Uploaded to server'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = formData.moduleImage instanceof File 
+                              ? moduleImagePreview 
+                              : formData.moduleImage;
+                            if (url) {
+                              window.open(url, '_blank');
+                            } else {
+                              showNotification('error', 'Error', 'No preview URL available');
+                            }
+                          }}
+                          className="px-3 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded hover:bg-orange-100 transition-colors"
+                        >
+                          Preview
+                        </button>
+                        {!(formData.moduleImage instanceof File) && editingModule && (
+                          <button
+                            type="button"
+                            onClick={() => handleDownloadModuleFile(editingModule)}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 transition-colors"
+                          >
+                            Download
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1139,6 +1299,44 @@ export const Modules = () => {
                   </div>
                 ) : (
                   <p className="text-xs sm:text-sm text-gray-500">No topics available for this module.</p>
+                )}
+              </div>
+
+              {/* Documents */}
+              <div className="mt-5 bg-gray-50 p-4 border border-dashed border-gray-300 rounded-lg">
+                <h2 className="text-[#f7931e] font-semibold mb-3 text-sm sm:text-base italic">Module Documents</h2>
+                {viewingModule.moduleImage ? (
+                  <div className="flex items-center justify-between bg-white border border-gray-200 rounded-md p-3">
+                    <div className="flex items-center min-w-0">
+                      <svg className="w-8 h-8 text-red-500 flex-shrink-0 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
+                      </svg>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-800 truncate">
+                          {viewingModule.moduleName ? `${viewingModule.moduleName}_Document` : 'Document'}
+                        </p>
+                        <p className="text-xs text-gray-500">Secure Module File</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <a 
+                        href={viewingModule.moduleImage} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded hover:bg-orange-100 transition-colors"
+                      >
+                        View
+                      </a>
+                      <button 
+                        onClick={() => handleDownloadModuleFile(viewingModule)}
+                        className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 transition-colors"
+                      >
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs sm:text-sm text-gray-500">No document uploaded for this module.</p>
                 )}
               </div>
             </div>
