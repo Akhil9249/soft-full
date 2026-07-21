@@ -553,7 +553,7 @@ const LeaveRequest = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -585,8 +585,8 @@ const LeaveRequest = () => {
                         <div>{hasSlash ? `${batchStr.split('/')[0]}/` : batchStr}</div>
                         {hasSlash && <div className="text-[10px] text-gray-400">{batchStr.split('/')[1]}</div>}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={request.reason}>
-                        {request.reason}
+                      <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={request.leaveType}>
+                        {request.leaveType}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-500">
                         {request.totalDays}
