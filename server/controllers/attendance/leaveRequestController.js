@@ -89,7 +89,8 @@ const getMyLeaveRequests = async (req, res) => {
 const getAllLeaveRequests = async (req, res) => {
   try {
     const leaveRequests = await LeaveRequest.find()
-      .populate("user", "name email fullName")
+      .populate("user", "name email fullName batch course time")
+      .populate("branch", "branchName")
       .populate("reviewedBy", "name fullName")
       .sort({ createdAt: -1 });
 

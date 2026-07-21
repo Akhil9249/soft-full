@@ -778,6 +778,17 @@ const AdminService = () => {
         putMentorCardData: async (id, data) => {
             const response = await axiosPrivate.put(`/api/mentor-card/${id}`, data);
             return response.data;
+        },
+
+        // ======================================== leave request management ========================================
+        getAllLeaveRequests: async () => {
+            const response = await axiosPrivate.get("/api/leave-requests/all");
+            return response.data;
+        },
+
+        updateLeaveRequestStatus: async (id, data) => {
+            const response = await axiosPrivate.patch(`/api/leave-requests/${id}/status`, data);
+            return response.data;
         }
 
     };
