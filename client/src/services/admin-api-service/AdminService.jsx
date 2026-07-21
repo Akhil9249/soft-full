@@ -789,6 +789,11 @@ const AdminService = () => {
         updateLeaveRequestStatus: async (id, data) => {
             const response = await axiosPrivate.patch(`/api/leave-requests/${id}/status`, data);
             return response.data;
+        },
+
+        postLeaveRequest: async (data) => {
+            const response = await axiosPrivate.post("/api/leave-requests", data);
+            return response.data;
         }
 
     };
