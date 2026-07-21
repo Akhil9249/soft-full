@@ -1,6 +1,6 @@
 // controllers/roleController.js
 const Role = require("../../models/administration/roleModel");
-const { User } = require("../../models/userModel");
+const { User } = require("../../models/administration/userModel");
 
 // Create new role (excluding Super Admin)
 const createRole = async (req, res) => {

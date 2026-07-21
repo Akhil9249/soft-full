@@ -15,7 +15,7 @@ try {
 }
 
 try {
-  const userModel = require("../models/userModel");
+  const userModel = require("../models/administration/userModel");
   User = userModel.User || userModel;
 } catch (error) {
   console.error("Failed to load User model:", error);

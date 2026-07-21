@@ -95,4 +95,3 @@ module.exports = {
   User,
   dropUsernameIndex, // Export for manual execution if needed
 };
-

@@ -1,7 +1,7 @@
 // controllers/attendance/internsAttendanceController.js
 const InternsAttendance = require("../../models/attendance/internsAttendanceModel");
 const { Staff } = require("../../models/administration/staffModel");
-const { User } = require("../../models/userModel");
+const { User } = require("../../models/administration/userModel");
 const Intern = require("../../models/administration/internModel");
 const Batch = require("../../models/schedule/batchModel");
 const WeeklySchedule = require("../../models/schedule/weeklyScheduleModel");

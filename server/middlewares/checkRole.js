@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { User } = require("../models/userModel");
+const { User } = require("../models/administration/userModel");
 const { Staff } = require("../models/administration/staffModel");
 const Role = require("../models/administration/roleModel");
 let Intern;

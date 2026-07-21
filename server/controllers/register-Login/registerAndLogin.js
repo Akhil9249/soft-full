@@ -1,4 +1,4 @@
-const { User } = require("../../models/userModel.js");
+const { User } = require("../../models/administration/userModel.js");
 const Role = require("../../models/administration/roleModel.js");
 require('dotenv').config()
 const { OAuth2Client } = require('google-auth-library');
