@@ -2,6 +2,12 @@ const jwt = require("jsonwebtoken");
 const { User } = require("../models/userModel");
 const { Staff } = require("../models/administration/staffModel");
 const Role = require("../models/administration/roleModel");
+let Intern;
+try {
+  Intern = require("../models/administration/internModel");
+} catch (error) {
+  console.error("Failed to load Intern model in checkRole:", error);
+}
 
 // Helper function to get user role name
 const getUserRoleName = async (userId) => {
@@ -19,6 +25,14 @@ const getUserRoleName = async (userId) => {
   
     if (user && user.role) {
       return user.role.role;
+    }
+
+    // Check if user is in Intern collection
+    if (Intern) {
+      user = await Intern.findById(userId);
+      if (user && user.role) {
+        return user.role;
+      }
     }
     
     return null;

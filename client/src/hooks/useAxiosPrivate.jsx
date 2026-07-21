@@ -18,17 +18,8 @@ const useAxiosPrivate = () => {
                   }
 
                 if (!config.headers['Authorization']) {
-                    // config.headers['Authorization'] = Token ${auth?.accessToken};
                     config.headers['Authorization'] = auth?.accessToken;
-                    // config.headers['Authorization'] = localStorage.getItem("accessToken");
                 }
-
-                // const token = localStorage.getItem("accessToken");
-
-                // if (token) {
-                //     request.withCredentials = true;
-                //     request.headers.Authorization = token;
-                // }
 
                 return config;
             },

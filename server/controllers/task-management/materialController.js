@@ -1,5 +1,6 @@
 const Material = require("../../models/task-management/material");
 const { cloudinary } = require("../../uploads/multer");
+const mongoose = require("mongoose");
 
 // Helper to extract Cloudinary public ID and delete the file
 const deleteFromCloudinary = async (url) => {
@@ -35,8 +36,8 @@ const createMaterial = async (req, res) => {
       mentor,
       attachments,
       audience,
+      branch,
       batches,
-      courses,
       interns,
       individualInterns
     } = req.body;
@@ -46,16 +47,34 @@ const createMaterial = async (req, res) => {
       mentor,
       attachments,
       audience,
+      branch,
       batches,
-      courses,
       interns,
       individualInterns
     });
 
-    // Validate required fields (attachments is now optional if file is uploaded)
+    // Validate required fields
     if (!title || !mentor || !audience) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Title, mentor, and audience are required"
+      });
+    }
+
+    // Parse branch safely (supports raw arrays and JSON strings)
+    let branchArray = [];
+    if (branch) {
+      try {
+        branchArray = Array.isArray(branch) ? branch : JSON.parse(branch);
+      } catch (e) {
+        branchArray = [branch];
+      }
+    }
+
+    if (!branchArray || branchArray.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "At least one branch must be selected"
       });
     }
 
@@ -69,26 +88,33 @@ const createMaterial = async (req, res) => {
     }
 
     // Validate audience enum
-    if (!["All interns", "By batches", "By courses", "Individual interns"].includes(audience)) {
+    if (!["All interns", "By batches", "Individual interns"].includes(audience)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'All interns', 'By batches', 'By courses', 'Individual interns'"
+        message: "Audience must be one of: 'All interns', 'By batches', 'Individual interns'"
       });
     }
 
+    // Clean audience-specific fields based on selected audience
+    let cleanBatches = [];
+    let cleanIndividualInterns = [];
+
+    if (audience === "By batches") {
+      cleanBatches = batches || [];
+    } else if (audience === "Individual interns") {
+      cleanIndividualInterns = individualInterns || [];
+    }
+
     // Validate audience-specific fields
-    if (audience === "By batches" && (!batches || batches.length === 0)) {
+    if (audience === "By batches" && cleanBatches.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Batches are required when audience is 'By batches'"
       });
     }
 
-    if (audience === "By courses" && (!courses || courses.length === 0)) {
-      return res.status(400).json({
-        message: "Courses are required when audience is 'By courses'"
-      });
-    }
-
-    if (audience === "Individual interns" && (!individualInterns || individualInterns.length === 0)) {
+    if (audience === "Individual interns" && cleanIndividualInterns.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Individual interns are required when audience is 'Individual interns'"
       });
@@ -99,10 +125,9 @@ const createMaterial = async (req, res) => {
       mentor: mentor,
       attachments: attachmentsValue,
       audience: audience,
-      batches: batches || [],
-      courses: courses || [],
-      interns: interns || [],
-      individualInterns: individualInterns || []
+      branch: branchArray,
+      batches: cleanBatches,
+      individualInterns: cleanIndividualInterns
     });
 
     res.status(201).json({
@@ -110,6 +135,7 @@ const createMaterial = async (req, res) => {
       data: newMaterial
     });
   } catch (error) {
+    if (req.file) await deleteFromCloudinary(req.file.path);
     console.error('Error creating material:', error);
     res.status(500).json({ message: error.message });
   }
@@ -127,9 +153,13 @@ const getMaterials = async (req, res) => {
     const search = req.query.search || '';
     const audience = req.query.audience || '';
     const mentor = req.query.mentor || '';
+    const branch = req.query.branch || '';
 
     // Build query object
-    let query = { isActive: true };
+    let query = { 
+      isActive: true,
+      branch: { $exists: true, $not: { $size: 0 } }
+    };
 
     // Add search functionality
     if (search) {
@@ -148,6 +178,21 @@ const getMaterials = async (req, res) => {
       query.mentor = mentor;
     }
 
+    // Role-based branch restriction: only super admin sees all
+    if (req.userId) {
+      const { Staff } = require("../../models/administration/staffModel");
+      const loggedInStaff = await Staff.findById(req.userId).populate('role');
+      if (loggedInStaff && loggedInStaff.role && loggedInStaff.role.role.toLowerCase() !== 'super admin') {
+        if (loggedInStaff.branch) {
+          query.branch = { $in: [loggedInStaff.branch] };
+        }
+      } else if (branch && mongoose.Types.ObjectId.isValid(branch)) {
+        query.branch = { $in: [new mongoose.Types.ObjectId(branch)] };
+      }
+    } else if (branch && mongoose.Types.ObjectId.isValid(branch)) {
+      query.branch = { $in: [new mongoose.Types.ObjectId(branch)] };
+    }
+
     // Get total count for pagination
     const totalCount = await Material.countDocuments(query);
     const totalPages = Math.ceil(totalCount / limit);
@@ -155,10 +200,13 @@ const getMaterials = async (req, res) => {
     // Get paginated results
     const materials = await Material.find(query)
       .populate('mentor', 'fullName email')
-      .populate('batches', 'batchName description')
-      .populate('courses', 'courseName description')
-      .populate('interns', 'fullName email')
-      .populate('individualInterns', 'fullName email')
+      .populate('branch', 'branchName location')
+      .populate('batches', 'batchName description branch')
+      .populate({
+        path: 'individualInterns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -188,10 +236,13 @@ const getMaterialById = async (req, res) => {
     const { id } = req.params;
     const material = await Material.findById(id)
       .populate('mentor', 'fullName email')
-      .populate('batches', 'batchName description')
-      .populate('courses', 'courseName description')
-      .populate('interns', 'fullName email')
-      .populate('individualInterns', 'fullName email');
+      .populate('branch', 'branchName location')
+      .populate('batches', 'batchName description branch')
+      .populate({
+        path: 'individualInterns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      });
 
     if (!material) {
       return res.status(404).json({
@@ -213,48 +264,75 @@ const getMaterialById = async (req, res) => {
 const updateMaterial = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    const currentMaterial = await Material.findById(id);
+    if (!currentMaterial) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(404).json({
+        message: "Material not found"
+      });
+    }
+
     const {
       title,
       mentor,
       attachments,
       audience,
+      branch,
       batches,
-      courses,
-      interns,
       individualInterns
     } = req.body;
 
     // Validate audience if provided
-    if (audience && !["All interns", "By batches", "By courses", "Individual interns"].includes(audience)) {
+    if (audience && !["All interns", "By batches", "Individual interns"].includes(audience)) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'All interns', 'By batches', 'By courses', 'Individual interns'"
+        message: "Audience must be one of: 'All interns', 'By batches', 'Individual interns'"
       });
     }
 
+    const activeAudience = audience || currentMaterial.audience;
+    const isAudienceChanged = audience && audience !== currentMaterial.audience;
+
+    // Clean audience-specific fields based on selected audience
+    let cleanBatches = [];
+    let cleanIndividualInterns = [];
+
+    if (activeAudience === "By batches") {
+      cleanBatches = batches !== undefined ? batches : (isAudienceChanged ? [] : currentMaterial.batches);
+    } else if (activeAudience === "Individual interns") {
+      cleanIndividualInterns = individualInterns !== undefined ? individualInterns : (isAudienceChanged ? [] : currentMaterial.individualInterns);
+    }
+
     // Validate audience-specific fields
-    if (audience === "By batches" && (!batches || batches.length === 0)) {
+    if (activeAudience === "By batches" && cleanBatches.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Batches are required when audience is 'By batches'"
       });
     }
 
-    if (audience === "By courses" && (!courses || courses.length === 0)) {
-      return res.status(400).json({
-        message: "Courses are required when audience is 'By courses'"
-      });
-    }
-
-    if (audience === "Individual interns" && (!individualInterns || individualInterns.length === 0)) {
+    if (activeAudience === "Individual interns" && cleanIndividualInterns.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Individual interns are required when audience is 'Individual interns'"
       });
     }
 
-    // Get current material to preserve existing attachment if no new file is uploaded
-    const currentMaterial = await Material.findById(id);
-    if (!currentMaterial) {
-      return res.status(404).json({
-        message: "Material not found"
+    // Parse branch safely (supports raw arrays and JSON strings)
+    let branchArray = undefined;
+    if (branch !== undefined) {
+      try {
+        branchArray = Array.isArray(branch) ? branch : JSON.parse(branch);
+      } catch (e) {
+        branchArray = [branch];
+      }
+    }
+
+    if (branchArray !== undefined && branchArray.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "At least one branch must be selected"
       });
     }
 
@@ -283,14 +361,11 @@ const updateMaterial = async (req, res) => {
       attachmentsValue = attachments.trim();
       updateData.attachments = attachmentsValue;
     }
-    // If neither req.file nor attachments string is provided, attachmentsValue stays as existing value
-    // and we don't add it to updateData, so the existing value is preserved
 
     if (audience) updateData.audience = audience;
-    if (batches !== undefined) updateData.batches = batches;
-    if (courses !== undefined) updateData.courses = courses;
-    if (interns !== undefined) updateData.interns = interns;
-    if (individualInterns !== undefined) updateData.individualInterns = individualInterns;
+    if (branchArray !== undefined) updateData.branch = branchArray;
+    updateData.batches = cleanBatches;
+    updateData.individualInterns = cleanIndividualInterns;
 
     const updatedMaterial = await Material.findByIdAndUpdate(
       id,
@@ -298,10 +373,13 @@ const updateMaterial = async (req, res) => {
       { new: true, runValidators: true }
     )
       .populate('mentor', 'fullName email')
-      .populate('batches', 'batchName description')
-      .populate('courses', 'courseName description')
-      .populate('interns', 'fullName email')
-      .populate('individualInterns', 'fullName email');
+      .populate('branch', 'branchName location')
+      .populate('batches', 'batchName description branch')
+      .populate({
+        path: 'individualInterns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      });
 
     if (!updatedMaterial) {
       return res.status(404).json({
@@ -314,6 +392,7 @@ const updateMaterial = async (req, res) => {
       data: updatedMaterial
     });
   } catch (error) {
+    if (req.file) await deleteFromCloudinary(req.file.path);
     console.error('Error updating material:', error);
     res.status(500).json({ message: error.message });
   }
@@ -363,10 +442,13 @@ const getMaterialsByMentor = async (req, res) => {
       isActive: true
     })
       .populate('mentor', 'fullName email')
-      .populate('batches', 'batchName description')
-      .populate('courses', 'courseName description')
-      .populate('interns', 'fullName email')
-      .populate('individualInterns', 'fullName email')
+      .populate('branch', 'branchName location')
+      .populate('batches', 'batchName description branch')
+      .populate({
+        path: 'individualInterns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -391,10 +473,13 @@ const getMaterialsByBatch = async (req, res) => {
       isActive: true
     })
       .populate('mentor', 'fullName email')
-      .populate('batches', 'batchName description')
-      .populate('courses', 'courseName description')
-      .populate('interns', 'fullName email')
-      .populate('individualInterns', 'fullName email')
+      .populate('branch', 'branchName location')
+      .populate('batches', 'batchName description branch')
+      .populate({
+        path: 'individualInterns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
       .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -410,24 +495,9 @@ const getMaterialsByBatch = async (req, res) => {
 // Get materials by course
 const getMaterialsByCourse = async (req, res) => {
   try {
-    const { courseId } = req.params;
-    const materials = await Material.find({
-      $or: [
-        { audience: "All interns" },
-        { audience: "By courses", courses: courseId }
-      ],
-      isActive: true
-    })
-      .populate('mentor', 'fullName email')
-      .populate('batches', 'batchName description')
-      .populate('courses', 'courseName description')
-      .populate('interns', 'fullName email')
-      .populate('individualInterns', 'fullName email')
-      .sort({ createdAt: -1 });
-
     res.status(200).json({
-      message: "Materials retrieved successfully",
-      data: materials
+      message: "Courses audience is deprecated and courses are no longer supported.",
+      data: []
     });
   } catch (error) {
     console.error('Error fetching materials by course:', error);
@@ -444,10 +514,13 @@ const getMaterialsByAudience = async (req, res) => {
       isActive: true
     })
       .populate('mentor', 'fullName email')
-      .populate('batches', 'batchName description')
-      .populate('courses', 'courseName description')
-      .populate('interns', 'fullName email')
-      .populate('individualInterns', 'fullName email')
+      .populate('branch', 'branchName location')
+      .populate('batches', 'batchName description branch')
+      .populate({
+        path: 'individualInterns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
       .sort({ createdAt: -1 });
 
     res.status(200).json({

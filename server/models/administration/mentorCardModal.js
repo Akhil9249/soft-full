@@ -24,6 +24,15 @@ const mentorCardSchema = new mongoose.Schema({
     // band: { type: String },
     note: { type: String },
     mentorId: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
+      isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null,
+  },
 }, { timestamps: true });
 
 mentorCardSchema.index({ internId: 1, week: 1, mentorId: 1 }, { unique: true });

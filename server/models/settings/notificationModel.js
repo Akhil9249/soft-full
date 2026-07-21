@@ -31,9 +31,18 @@ const notificationSchema = new mongoose.Schema({
     type: [mongoose.Schema.Types.ObjectId],
     ref: "Intern",
     default: []
-  },
+  },  
   pushNotification: { type: Boolean, default: false },
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+    isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null,
+  }   
 }, { timestamps: true });
 
 module.exports = mongoose.model("Notification", notificationSchema);

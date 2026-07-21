@@ -11,6 +11,15 @@ const moduleSchema = new mongoose.Schema({
     default: true 
   },
   moduleImage: { type: String }, // file/image URL
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null,
+  }     
 }, { timestamps: true });
 
 moduleSchema.pre("save", function (next) {

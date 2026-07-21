@@ -195,7 +195,7 @@ export const Category = () => {
       setBranchesLoading(true);
       // const res = await axiosPrivate.get('http://localhost:3000/api/branches');
       const res = await getBranchesData();
-      setBranches(res?.data || []);
+      setBranches((res?.data || []).filter(b => b.isActive !== false));
     } catch (err) {
       console.error('Failed to load branches:', err);
       console.error('Error details:', err.response?.data);
@@ -541,10 +541,10 @@ export const Category = () => {
                       <tr>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category Name</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Courses</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Courses</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -566,8 +566,8 @@ export const Category = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                            <div className="flex flex-wrap gap-1 max-w-[220px]">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
+                            <div className="flex flex-wrap justify-center gap-1 max-w-[220px] mx-auto">
                               {Array.isArray(category.branch) && category.branch.length > 0 ? (
                                 category.branch.map((b, bIdx) => (
                                   <span key={b._id || bIdx} className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -579,16 +579,16 @@ export const Category = () => {
                               )}
                             </div>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                               {category.totalCourses || 0}
                             </span>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                             {category.createdAt ? new Date(category.createdAt).toLocaleDateString() : 'N/A'}
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
+                            <div className="flex justify-center space-x-2">
                               <button 
                                 onClick={() => handleViewCategory(category)}
                                 className="text-blue-600 hover:text-blue-900"

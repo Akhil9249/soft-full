@@ -891,23 +891,49 @@ const getMentorBatches = async (req, res) => {
 
     const weeklySchedules = await WeeklySchedule.find({ mentor: targetMentorId })
       .populate({
+        path: 'schedule.time'
+      })
+      .populate({
         path: 'schedule.sub_details.batch',
-        select: 'batchName branchName'
+        select: 'batchName branchName interns',
+        populate: {
+          path: 'interns',
+          select: 'fullName email course'
+        }
       });
 
-    const uniqueBatches = [];
-    const batchIds = new Set();
+    const batchMap = new Map();
 
     weeklySchedules.forEach(scheduleDoc => {
       if (scheduleDoc.schedule && scheduleDoc.schedule.sub_details && scheduleDoc.schedule.sub_details.batch) {
+        const timeSlotObj = scheduleDoc.schedule.time;
+        
         scheduleDoc.schedule.sub_details.batch.forEach(batch => {
-          if (batch && !batchIds.has(batch._id.toString())) {
-            batchIds.add(batch._id.toString());
-            uniqueBatches.push(batch);
+          if (batch) {
+            const batchId = batch._id.toString();
+            if (!batchMap.has(batchId)) {
+              // Convert to object if it's a Mongoose document
+              const batchData = batch.toObject ? batch.toObject() : { ...batch };
+              batchData.timings = [];
+              batchMap.set(batchId, batchData);
+            }
+            
+            const cachedBatch = batchMap.get(batchId);
+            if (timeSlotObj) {
+              const hasTiming = cachedBatch.timings.some(t => t._id.toString() === timeSlotObj._id.toString());
+              if (!hasTiming) {
+                cachedBatch.timings.push({
+                  _id: timeSlotObj._id.toString(),
+                  timeSlot: timeSlotObj.timeSlot
+                });
+              }
+            }
           }
         });
       }
     });
+
+    const uniqueBatches = Array.from(batchMap.values());
 
     res.status(200).json({
       message: "Mentor's batches retrieved successfully",
@@ -1184,7 +1210,7 @@ const getInternsByAttendanceDate = async (req, res) => {
     if (req.query.batchId) {
       const batchDoc = await Batch.findById(req.query.batchId);
       const batchInternIds = batchDoc ? batchDoc.interns.map(id => id.toString()) : [];
-      
+
       if (internQuery._id) {
         if (internQuery._id.$in) {
           const currentAllowedIds = internQuery._id.$in.map(id => id.toString());

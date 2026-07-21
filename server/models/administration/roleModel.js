@@ -8,8 +8,8 @@ const roleSchema = new mongoose.Schema({
     trim: true,
     unique: true
   },
-  description: { 
-    type: String, 
+  description: {
+    type: String,
     required: true,
     // trim: true 
   },
@@ -81,6 +81,18 @@ const roleSchema = new mongoose.Schema({
       editTiming: { type: Boolean, default: false },
       deleteTiming: { type: Boolean, default: false }
     },
+    //     timingManagement: {
+    //   addTiming: { type: Boolean, default: false },
+    //   viewTiming: { type: Boolean, default: false },
+    //   editTiming: { type: Boolean, default: false },
+    //   deleteTiming: { type: Boolean, default: false }
+    // },
+    batchManagement: {
+      addBatch: { type: Boolean, default: false },
+      viewBatch: { type: Boolean, default: false },
+      editBatch: { type: Boolean, default: false },
+      deleteBatch: { type: Boolean, default: false }
+    },
     staticPage: {
       addPage: { type: Boolean, default: false },
       viewPage: { type: Boolean, default: false },
@@ -111,12 +123,6 @@ const roleSchema = new mongoose.Schema({
       editReport: { type: Boolean, default: false },
       deleteReport: { type: Boolean, default: false }
     },
-    // timingManagement: {
-    //   addTiming: { type: Boolean, default: false },
-    //   viewTiming: { type: Boolean, default: false },
-    //   editTiming: { type: Boolean, default: false },
-    //   deleteTiming: { type: Boolean, default: false }
-    // },
     attendanceManagement: {
       addAttendance: { type: Boolean, default: false },
       viewAttendance: { type: Boolean, default: false },
@@ -129,49 +135,28 @@ const roleSchema = new mongoose.Schema({
       editLeaveRequest: { type: Boolean, default: false },
       deleteLeaveRequest: { type: Boolean, default: false }
     },
-    batchManagement: {
-      addBatch: { type: Boolean, default: false },
-      viewBatch: { type: Boolean, default: false },
-      editBatch: { type: Boolean, default: false },
-      deleteBatch: { type: Boolean, default: false }
+    branchManagement: {
+      addBranch: { type: Boolean, default: false },
+      viewBranch: { type: Boolean, default: false },
+      editBranch: { type: Boolean, default: false },
+      deleteBranch: { type: Boolean, default: false }
+    }
+
   },
-  accountantManagement: {
-    addAccountant: { type: Boolean, default: false },
-    viewAccountant: { type: Boolean, default: false },
-    editAccountant: { type: Boolean, default: false },
-    deleteAccountant: { type: Boolean, default: false }
+  isActive: { type: Boolean, default: true },
+  isDeleted: {
+    type: Boolean,
+    default: false,
   },
-                                                                                                                                                                                                                                                                                                            
-},
-isActive: { type: Boolean, default: true },
 
-  // role: {
-  //   type: mongoose.Schema.Types.ObjectId,
-  //   ref: "Role",
-  //   required: true
-  // },
-
-  // privilegeName: { 
-  //   type: String, 
-  //   required: true, 
-  //   trim: true,
-  //   unique: true,
-  //   enum: ["Student Management", "Mentor Management", "Course Management", "Category Management", "Module Management", "Topic Management", "Task Management", "Weekly Schedule", "Schedule Timing", "Static Page"]
-  // },
-
-  // createdBy: { 
-  //   type: mongoose.Schema.Types.ObjectId, 
-  //   ref: "User",
-  //   required: true 
-  // },
-  // updatedBy: { 
-  //   type: mongoose.Schema.Types.ObjectId, 
-  //   ref: "User" 
-  // }
+  deletedAt: {
+    type: Date,
+    default: null,
+  }
 }, { timestamps: true });
 
 // Pre-save middleware to set updatedBy
-roleSchema.pre('save', function(next) {
+roleSchema.pre('save', function (next) {
   if (this.isModified() && !this.isNew) {
     this.updatedBy = this.createdBy; // You can modify this logic as needed
   }

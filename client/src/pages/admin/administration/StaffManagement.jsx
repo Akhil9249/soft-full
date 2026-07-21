@@ -52,7 +52,7 @@ export const StaffManagement = () => {
     });
     const [filters, setFilters] = useState({
         department: '',
-        employmentStatus: '',
+        employmentStatus: 'Active',
         branch: ''
     });
     const [formData, setFormData] = useState({
@@ -137,7 +137,7 @@ export const StaffManagement = () => {
             
             if (search) queryParams.append('search', search);
             if (department) queryParams.append('department', department);
-            if (employmentStatus) queryParams.append('employmentStatus', employmentStatus);
+            if (employmentStatus !== undefined && employmentStatus !== null) queryParams.append('employmentStatus', employmentStatus);
             if (branch) queryParams.append('branch', branch);
             
             const res = await getStaffData(queryParams.toString());
@@ -164,7 +164,7 @@ export const StaffManagement = () => {
             // const res = await api.get('http://localhost:3000/api/branches');
             const res = await getBranchesData();
             // Handle different response structures
-            const branchesData = res.data?.data || res.data || [];
+            const branchesData = (res.data?.data || res.data || []).filter(b => b.isActive !== false);
             setBranches(Array.isArray(branchesData) ? branchesData : []);
             
             if (branchesData.length > 0) {

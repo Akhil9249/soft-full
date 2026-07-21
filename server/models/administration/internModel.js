@@ -26,21 +26,9 @@ const internSchema = new mongoose.Schema({
   courseStartedDate: { type: Date, required: true },
   completionDate: { type: Date },
   batch: { type: String },
-  courseStatus: { type: String, enum: ["Active", "Inactive","Ongoing","Pause", "Dropped", "Completed", "Long leave"], default: "Active" },
+  courseStatus: { type: String, enum: ["Inactive","Ongoing","Pause", "Dropped", "Completed", "Long leave"], default: "Ongoing" },
   careerAdvisor: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
   remarks: { type: String },
-  // mentorCard: {
-  //   score: { type: Number },
-  //   remarks: { type: String },
-  //   week: [
-  //   {
-  //     mentorId: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
-  //     score: { type: Number },
-  //     remarks: { type: String },
-  //     weeklevel: { type: String },
-  //   }
-  // ]
-  // },
 
   // Intern Syllabus
   internSyllabusStatus: { type: String, enum: ["Not Started", "Learning", "mini Project","Main Project"], default: "Not Started" },
@@ -57,7 +45,16 @@ const internSchema = new mongoose.Schema({
   // Login & Access
   officialEmail: { type: String, required: true, unique: true, lowercase: true },
   password: { type: String, required: true }, // will be hashed
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+    isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null,
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Intern", internSchema);

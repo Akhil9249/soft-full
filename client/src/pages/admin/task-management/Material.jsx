@@ -10,8 +10,11 @@ const Material = () => {
   const [materials, setMaterials] = useState([]);
   const [mentors, setMentors] = useState([]);
   const [batches, setBatches] = useState([]);
-  const [courses, setCourses] = useState([]);
   const [interns, setInterns] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [selectedBranches, setSelectedBranches] = useState([]);
+  const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -23,24 +26,15 @@ const Material = () => {
 
   // Audience-specific selections
   const [selectedBatches, setSelectedBatches] = useState([]);
-  const [selectedCourses, setSelectedCourses] = useState([]);
   const [selectedInterns, setSelectedInterns] = useState([]);
-  const [selectedIndividualInterns, setSelectedIndividualInterns] = useState([]);
 
   // Search states
   const [batchSearchTerm, setBatchSearchTerm] = useState('');
-  const [courseSearchTerm, setCourseSearchTerm] = useState('');
   const [internSearchTerm, setInternSearchTerm] = useState('');
 
   // Loading states
   const [batchesLoading, setBatchesLoading] = useState(false);
-  const [coursesLoading, setCoursesLoading] = useState(false);
   const [internsLoading, setInternsLoading] = useState(false);
-
-  // Filtered data
-  const [filteredBatches, setFilteredBatches] = useState([]);
-  const [filteredCourses, setFilteredCourses] = useState([]);
-  const [filteredInterns, setFilteredInterns] = useState([]);
 
   // File upload - will store File object or URL string
   const [selectedFile, setSelectedFile] = useState(null);
@@ -73,10 +67,11 @@ const Material = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     audience: '',
-    mentor: ''
+    mentor: '',
+    branch: ''
   });
 
-  const audiences = ['All interns', 'By batches', 'By courses', 'Individual interns'];
+  const audiences = ['All interns', 'By batches', 'Individual interns'];
   const tabOptions = [
     { value: "materialList", label: "Material List" },
     { value: "new-material", label: "New Material" }
@@ -108,7 +103,7 @@ const Material = () => {
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setPagination(prev => ({ ...prev, currentPage: newPage }));
-      loadMaterials(newPage, searchTerm, filters.audience, filters.mentor);
+      loadMaterials(newPage, searchTerm, filters.audience, filters.mentor, filters.branch);
     }
   };
 
@@ -125,12 +120,66 @@ const Material = () => {
 
   // Load initial data
   useEffect(() => {
-    loadMaterials(pagination.currentPage, searchTerm, filters.audience, filters.mentor);
+    loadMaterials(pagination.currentPage, searchTerm, filters.audience, filters.mentor, filters.branch);
     loadMentors();
     loadBatches();
-    loadCourses();
+    loadBranches();
     loadInterns();
   }, []);
+
+  // Close branch dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isBranchDropdownOpen && !event.target.closest('.branch-dropdown-container')) {
+        setIsBranchDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isBranchDropdownOpen]);
+
+  // Automatically clear selected audience items (batches, interns) that do not belong to the selected branches
+  useEffect(() => {
+    if (selectedBranches.length > 0) {
+      // Clear batches
+      setSelectedBatches(prev => prev.filter(batch => {
+        const branchId = batch.branch?._id || batch.branch;
+        return selectedBranches.some(b => b._id === branchId);
+      }));
+
+      // Clear interns
+      setSelectedInterns(prev => prev.filter(intern => {
+        const branchId = intern.branch?._id || intern.branch;
+        return selectedBranches.some(b => b._id === branchId);
+      }));
+    } else {
+      // If no branches are selected, clear all audience selections
+      setSelectedBatches([]);
+      setSelectedInterns([]);
+    }
+  }, [selectedBranches]);
+
+  // Set default branch filter based on user role and details once mentors/staff list and branches are loaded
+  useEffect(() => {
+    const role = localStorage.getItem("role")?.toLowerCase() || "";
+    if (role === "super admin") {
+      if (branches.length > 0 && !filters.branch) {
+        const defaultBranch = branches[0]._id;
+        setFilters(prev => ({ ...prev, branch: defaultBranch }));
+        loadMaterials(1, searchTerm, filters.audience, filters.mentor, defaultBranch);
+      }
+    } else {
+      const loggedInUserId = localStorage.getItem("userId");
+      if (loggedInUserId && mentors.length > 0) {
+        const loggedInStaff = mentors.find(m => m._id === loggedInUserId);
+        const ownBranchId = loggedInStaff?.branch?._id || loggedInStaff?.branch || "";
+        if (ownBranchId && !filters.branch) {
+          setFilters(prev => ({ ...prev, branch: ownBranchId }));
+          loadMaterials(1, searchTerm, filters.audience, filters.mentor, ownBranchId);
+        }
+      }
+    }
+  }, [mentors, branches]);
 
   const isFirstRender = useRef(true);
 
@@ -142,14 +191,14 @@ const Material = () => {
     }
 
     const timeoutId = setTimeout(() => {
-      loadMaterials(1, searchTerm, filters.audience, filters.mentor);
+      loadMaterials(1, searchTerm, filters.audience, filters.mentor, filters.branch);
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
   }, [searchTerm, filters]);
 
   // Load materials
-  const loadMaterials = async (page = 1, search = '', audience = '', mentor = '') => {
+  const loadMaterials = async (page = 1, search = '', audience = '', mentor = '', branch = '') => {
     try {
       setLoading(true);
 
@@ -162,6 +211,7 @@ const Material = () => {
       if (search) queryParams.append('search', search);
       if (audience) queryParams.append('audience', audience);
       if (mentor) queryParams.append('mentor', mentor);
+      if (branch) queryParams.append('branch', branch);
 
       const response = await adminService.getMaterialsData(queryParams.toString());
       setMaterials(response.data || []);
@@ -204,31 +254,32 @@ const Material = () => {
   // Load batches
   const loadBatches = async () => {
     try {
-      const response = await adminService.getBatchesData();
+      const response = await adminService.getBatchesData('page=1&limit=10000');
       setBatches(response.data || []);
-      setFilteredBatches(response.data || []);
     } catch (error) {
       console.error('Error loading batches:', error);
     }
   };
 
-  // Load courses
-  const loadCourses = async () => {
+  // Load branches
+  const loadBranches = async () => {
     try {
-      const response = await adminService.getCoursesData();
-      setCourses(response.data || []);
-      setFilteredCourses(response.data || []);
+      setBranchesLoading(true);
+      const response = await adminService.getBranchesData();
+      const branchesData = (response?.data || []).filter(b => b.isActive !== false);
+      setBranches(branchesData);
     } catch (error) {
-      console.error('Error loading courses:', error);
+      console.error('Error loading branches:', error);
+    } finally {
+      setBranchesLoading(false);
     }
   };
 
   // Load interns
   const loadInterns = async () => {
     try {
-      const response = await adminService.getInternsData();
+      const response = await adminService.getInternsData('page=1&limit=10000&courseStatus=Ongoing');
       setInterns(response.data || []);
-      setFilteredInterns(response.data || []);
     } catch (error) {
       console.error('Error loading interns:', error);
     }
@@ -245,9 +296,7 @@ const Material = () => {
     // Clear selections when audience changes
     if (name === 'audience') {
       setSelectedBatches([]);
-      setSelectedCourses([]);
       setSelectedInterns([]);
-      setSelectedIndividualInterns([]);
     }
   };
 
@@ -293,11 +342,6 @@ const Material = () => {
   // Batch search and selection
   const handleBatchSearch = (term) => {
     setBatchSearchTerm(term);
-    const filtered = batches.filter(batch =>
-      batch.batchName.toLowerCase().includes(term.toLowerCase()) ||
-      (batch.description && batch.description.toLowerCase().includes(term.toLowerCase()))
-    );
-    setFilteredBatches(filtered);
   };
 
   const handleBatchSelect = (batch) => {
@@ -313,37 +357,9 @@ const Material = () => {
     setSelectedBatches([]);
   };
 
-  // Course search and selection
-  const handleCourseSearch = (term) => {
-    setCourseSearchTerm(term);
-    const filtered = courses.filter(course =>
-      course.courseName.toLowerCase().includes(term.toLowerCase()) ||
-      (course.description && course.description.toLowerCase().includes(term.toLowerCase()))
-    );
-    setFilteredCourses(filtered);
-  };
-
-  const handleCourseSelect = (course) => {
-    const isSelected = selectedCourses.find(c => c._id === course._id);
-    if (isSelected) {
-      setSelectedCourses(selectedCourses.filter(c => c._id !== course._id));
-    } else {
-      setSelectedCourses([...selectedCourses, course]);
-    }
-  };
-
-  const handleClearAllCourses = () => {
-    setSelectedCourses([]);
-  };
-
   // Intern search and selection
   const handleInternSearch = (term) => {
     setInternSearchTerm(term);
-    const filtered = interns.filter(intern =>
-      intern.fullName.toLowerCase().includes(term.toLowerCase()) ||
-      intern.email.toLowerCase().includes(term.toLowerCase())
-    );
-    setFilteredInterns(filtered);
   };
 
   const handleInternSelect = (intern) => {
@@ -359,10 +375,40 @@ const Material = () => {
     setSelectedInterns([]);
   };
 
+  const filteredInterns = interns.filter(intern => {
+    const matchesSearch = intern.fullName?.toLowerCase().includes(internSearchTerm.toLowerCase()) ||
+      intern.email?.toLowerCase().includes(internSearchTerm.toLowerCase());
+    
+    const matchesBranch = selectedBranches.length > 0 && selectedBranches.some(b => {
+      const branchId = intern.branch?._id || intern.branch;
+      return b._id === branchId;
+    });
+
+    return matchesSearch && matchesBranch;
+  });
+
+  const filteredBatches = batches.filter(batch => {
+    const matchesSearch = batch.batchName?.toLowerCase().includes(batchSearchTerm.toLowerCase()) ||
+      batch.description?.toLowerCase().includes(batchSearchTerm.toLowerCase());
+
+    const matchesBranch = selectedBranches.length > 0 && selectedBranches.some(b => {
+      const branchId = batch.branch?._id || batch.branch;
+      return b._id === branchId;
+    });
+
+    return matchesSearch && matchesBranch;
+  });
+
   // Form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    if (selectedBranches.length === 0) {
+      showNotification('error', 'Validation Error', 'At least one branch must be selected');
+      setLoading(false);
+      return;
+    }
 
     try {
       // Build FormData for file uploads
@@ -383,18 +429,15 @@ const Material = () => {
         payload.append('attachments', formData.attachments);
       }
 
+      // Add branches
+      selectedBranches.forEach(br => payload.append('branch', br._id));
+
       // Add audience-specific arrays
-      if (selectedBatches.length > 0) {
+      if (formData.audience === 'By batches' && selectedBatches.length > 0) {
         selectedBatches.forEach(batch => payload.append('batches', batch._id));
       }
-      if (selectedCourses.length > 0) {
-        selectedCourses.forEach(course => payload.append('courses', course._id));
-      }
-      if (selectedInterns.length > 0) {
-        selectedInterns.forEach(intern => payload.append('interns', intern._id));
-      }
-      if (selectedIndividualInterns.length > 0) {
-        selectedIndividualInterns.forEach(intern => payload.append('individualInterns', intern._id));
+      if (formData.audience === 'Individual interns' && selectedInterns.length > 0) {
+        selectedInterns.forEach(intern => payload.append('individualInterns', intern._id));
       }
 
       if (editingMaterial) {
@@ -407,7 +450,7 @@ const Material = () => {
 
       // Reset form
       resetForm();
-      await loadMaterials(pagination.currentPage, searchTerm, filters.audience, filters.mentor);
+      await loadMaterials(pagination.currentPage, searchTerm, filters.audience, filters.mentor, filters.branch);
       setActiveTab('materialList');
     } catch (error) {
       showNotification('error', 'Error', error?.response?.data?.message || 'Failed to save material');
@@ -425,13 +468,49 @@ const Material = () => {
       audience: 'All interns',
     });
     setSelectedBatches([]);
-    setSelectedCourses([]);
     setSelectedInterns([]);
-    setSelectedIndividualInterns([]);
+    setSelectedBranches([]);
+    setIsBranchDropdownOpen(false);
     setSelectedFile(null);
     setFileName('');
     setEditingMaterial(null);
   };
+
+  // Handle data population when editing material and data becomes available
+  useEffect(() => {
+    if (editingMaterial) {
+      if (editingMaterial.audience === "By batches" && editingMaterial.batches && editingMaterial.batches.length > 0 && batches.length > 0) {
+        const selectedBatchObjects = editingMaterial.batches.map(batch => {
+          const batchId = typeof batch === 'object' ? batch._id : batch;
+          return batches.find(b => b._id === batchId) || (typeof batch === 'object' ? batch : null);
+        }).filter(Boolean);
+        if (selectedBatchObjects.length > 0) {
+          setSelectedBatches(selectedBatchObjects);
+        }
+      }
+      
+      if (editingMaterial.audience === "Individual interns" && (editingMaterial.individualInterns || editingMaterial.interns) && interns.length > 0) {
+        const sourceInterns = editingMaterial.individualInterns || editingMaterial.interns || [];
+        const selectedInternObjects = sourceInterns.map(intern => {
+          const internId = typeof intern === 'object' ? intern._id : intern;
+          return interns.find(i => i._id === internId) || (typeof intern === 'object' ? intern : null);
+        }).filter(Boolean);
+        if (selectedInternObjects.length > 0) {
+          setSelectedInterns(selectedInternObjects);
+        }
+      }
+
+      if (editingMaterial.branch && editingMaterial.branch.length > 0 && branches.length > 0) {
+        const selectedBranchObjects = editingMaterial.branch.map(br => {
+          const branchId = typeof br === 'object' ? br._id : br;
+          return branches.find(b => b._id === branchId) || (typeof br === 'object' ? br : null);
+        }).filter(Boolean);
+        if (selectedBranchObjects.length > 0) {
+          setSelectedBranches(selectedBranchObjects);
+        }
+      }
+    }
+  }, [editingMaterial, batches, interns, branches]);
 
   const handleView = (material) => {
     setViewingMaterial(material);
@@ -461,9 +540,16 @@ const Material = () => {
 
     // Set selections based on material data
     setSelectedBatches(material.batches || []);
-    setSelectedCourses(material.courses || []);
-    setSelectedInterns(material.interns || []);
-    setSelectedIndividualInterns(material.individualInterns || []);
+    setSelectedInterns(material.individualInterns || material.interns || []);
+    setSelectedBranches([]);
+
+    if (material.branch && material.branch.length > 0) {
+      const selectedBranchObjects = material.branch.map(br => {
+        const branchId = typeof br === 'object' ? br._id : br;
+        return branches.find(b => b._id === branchId) || (typeof br === 'object' ? br : null);
+      }).filter(Boolean);
+      setSelectedBranches(selectedBranchObjects);
+    }
 
     setActiveTab('new-material');
   };
@@ -479,7 +565,7 @@ const Material = () => {
 
     try {
       await adminService.deleteMaterialsData(deletingMaterial._id);
-      await loadMaterials(pagination.currentPage, searchTerm, filters.audience, filters.mentor);
+      await loadMaterials(pagination.currentPage, searchTerm, filters.audience, filters.mentor, filters.branch);
       showNotification('success', 'Success', 'Material deleted successfully!');
       setShowDeleteModal(false);
       setDeletingMaterial(null);
@@ -689,6 +775,20 @@ const Material = () => {
               </div>
             </div>
 
+            {/* Branches Info */}
+            {material.branch && material.branch.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Branches ({material.branch.length})</h4>
+                <div className="flex flex-wrap gap-2">
+                  {material.branch.map((branch, index) => (
+                    <span key={index} className="px-3 py-1 bg-orange-50 text-orange-700 text-xs font-medium rounded-lg border border-orange-100">
+                      {branch.branchName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Audience Info */}
             <div className="space-y-2">
               <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Audience Type</h4>
@@ -696,7 +796,6 @@ const Material = () => {
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
                   material.audience === 'All interns' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
                   material.audience === 'By batches' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                  material.audience === 'By courses' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
                   'bg-green-100 text-green-800 border border-green-200'
                 }`}>
                   {material.audience}
@@ -712,19 +811,6 @@ const Material = () => {
                   {material.batches.map((batch, index) => (
                     <span key={index} className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-lg border border-purple-100">
                       {batch.batchName}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {material.audience === 'By courses' && material.courses?.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Assigned Courses ({material.courses.length})</h4>
-                <div className="flex flex-wrap gap-2">
-                  {material.courses.map((course, index) => (
-                    <span key={index} className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-medium rounded-lg border border-indigo-100">
-                      {course.courseName}
                     </span>
                   ))}
                 </div>
@@ -942,7 +1028,6 @@ const Material = () => {
                   <option value="">All Audience</option>
                   <option value="All interns">All interns</option>
                   <option value="By batches">By batches</option>
-                  <option value="By courses">By courses</option>
                   <option value="Individual interns">Individual interns</option>
                 </select>
                 <select
@@ -954,6 +1039,18 @@ const Material = () => {
                   {mentors.map(mentor => (
                     <option key={mentor._id} value={mentor._id}>
                       {mentor.fullName}
+                    </option>
+                  ))}
+                </select>
+                <select 
+                  value={filters.branch}
+                  onChange={(e) => handleFilterChange('branch', e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  disabled={localStorage.getItem("role")?.toLowerCase() !== 'super admin'}
+                >
+                  {branches.map(branch => (
+                    <option key={branch._id} value={branch._id}>
+                      {branch.branchName}
                     </option>
                   ))}
                 </select>
@@ -998,19 +1095,22 @@ const Material = () => {
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Title
                         </th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Mentor
                         </th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Branch
+                        </th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Audience
                         </th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Attachments
                         </th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Created Date
                         </th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
@@ -1023,20 +1123,38 @@ const Material = () => {
                               {material.title}
                             </div>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <div className="text-sm text-gray-900">
                               {material.mentor?.fullName || 'N/A'}
                             </div>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                            <div className="flex flex-col space-y-1">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
+                            <div className="flex flex-wrap justify-center gap-1 max-w-[150px] mx-auto">
+                              {material.branch && material.branch.length > 0 ? (
+                                material.branch.slice(0, 2).map((b, index) => (
+                                  <span key={index} className="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded-full border border-orange-100">
+                                    {b.branchName}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                              {material.branch && material.branch.length > 2 && (
+                                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                  +{material.branch.length - 2} more
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
+                            <div className="flex flex-col items-center justify-center space-y-1">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 {material.audience}
                               </span>
 
                               {/* Audience-specific details */}
                               {material.audience === 'By batches' && material.batches?.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap justify-center gap-1">
                                   {material.batches.slice(0, 2).map((batch, index) => (
                                     <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                                       {batch.batchName}
@@ -1050,23 +1168,8 @@ const Material = () => {
                                 </div>
                               )}
 
-                              {material.audience === 'By courses' && material.courses?.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {material.courses.slice(0, 2).map((course, index) => (
-                                    <span key={index} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
-                                      {course.courseName}
-                                    </span>
-                                  ))}
-                                  {material.courses.length > 2 && (
-                                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                      +{material.courses.length - 2} more
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-
                               {material.audience === 'Individual interns' && material.individualInterns?.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
+                                <div className="flex flex-wrap justify-center gap-1">
                                   {material.individualInterns.slice(0, 2).map((intern, index) => (
                                     <span key={index} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                                       {intern.fullName}
@@ -1081,7 +1184,7 @@ const Material = () => {
                               )}
                             </div>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <div className="flex items-center justify-center">
                               {material.attachments ? (
                                 <>
@@ -1110,13 +1213,13 @@ const Material = () => {
                               )}
                             </div>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <div className="text-sm text-gray-900">
                               {new Date(material.createdAt).toLocaleDateString()}
                             </div>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex space-x-2">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <div className="flex justify-center space-x-2">
                               <button
                                 onClick={() => handleView(material)}
                                 className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-100 transition-colors"
@@ -1197,6 +1300,18 @@ const Material = () => {
                       </div>
                       <div className="space-y-2 text-sm text-gray-600">
                         <div><span className="font-medium">Mentor:</span> {material.mentor?.fullName || 'N/A'}</div>
+                        {material.branch && material.branch.length > 0 && (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium">Branches:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {material.branch.map((b, index) => (
+                                <span key={index} className="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded-full border border-orange-100">
+                                  {b.branchName}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium">Audience:</span>
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -1214,20 +1329,6 @@ const Material = () => {
                             {material.batches.length > 3 && (
                               <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
                                 +{material.batches.length - 3} more
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {material.audience === 'By courses' && material.courses?.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {material.courses.slice(0, 3).map((course, index) => (
-                              <span key={index} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
-                                {course.courseName}
-                              </span>
-                            ))}
-                            {material.courses.length > 3 && (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                +{material.courses.length - 3} more
                               </span>
                             )}
                           </div>
@@ -1427,6 +1528,59 @@ const Material = () => {
                       <option key={audience} value={audience}>{audience}</option>
                     ))}
                   </select>
+                </div>
+
+                {/* Branches Dropdown */}
+                <div className="branch-dropdown-container relative">
+                  <label className="block text-sm font-medium text-gray-700">Branches</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
+                    className="w-full flex justify-between items-center p-3 border border-gray-300 rounded-lg shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left min-h-[48px] mt-1"
+                  >
+                    <span className="text-gray-700 text-sm block truncate">
+                      {selectedBranches.length > 0
+                        ? `${selectedBranches.length} Branch${selectedBranches.length > 1 ? 'es' : ''} Selected`
+                        : "Select Branches"}
+                    </span>
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </button>
+
+                  {isBranchDropdownOpen && (
+                    <div className="absolute left-0 mt-1 w-full bg-white rounded-md shadow-lg z-50 border border-gray-200 max-h-60 overflow-y-auto p-2 space-y-1">
+                      {branchesLoading ? (
+                        <p className="text-sm text-gray-500 p-2">Loading branches...</p>
+                      ) : branches.length === 0 ? (
+                        <p className="text-sm text-gray-500 p-2">No active branches available</p>
+                      ) : (
+                        branches.map(branch => {
+                          const isSelected = selectedBranches.some(b => b._id === branch._id);
+                          return (
+                            <label
+                              key={branch._id}
+                              className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-50 cursor-pointer select-none"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  if (isSelected) {
+                                    setSelectedBranches(selectedBranches.filter(b => b._id !== branch._id));
+                                  } else {
+                                    setSelectedBranches([...selectedBranches, branch]);
+                                  }
+                                }}
+                                className="h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                              />
+                              <span className="text-sm text-gray-700">{branch.branchName}</span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1665,131 +1819,6 @@ const Material = () => {
                               <button
                                 type="button"
                                 onClick={() => handleBatchSelect(batch)}
-                                className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors"
-                                title="Remove from selection"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Course Search Section - Only show when By courses is selected */}
-            {formData.audience === 'By courses' && (
-              <div className="mt-4 sm:mt-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  {/* Search Section */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Search Courses</label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Search by course name or description..."
-                        value={courseSearchTerm}
-                        onChange={(e) => handleCourseSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                      />
-                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                        <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"></path>
-                        </svg>
-                      </div>
-                    </div>
-
-                    {/* Search Results */}
-                    <div className="mt-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md">
-                      {coursesLoading ? (
-                        <div className="p-4 text-center text-gray-500">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto mb-2"></div>
-                          Loading courses...
-                        </div>
-                      ) : filteredCourses.length === 0 ? (
-                        <div className="p-4 text-center text-gray-500">
-                          {courseSearchTerm ? 'No courses found matching your search.' : 'No courses available.'}
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          {filteredCourses.map((course) => {
-                            const isSelected = selectedCourses.find(selected => selected._id === course._id);
-                            return (
-                              <div
-                                key={course._id}
-                                onClick={() => handleCourseSelect(course)}
-                                className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${isSelected ? 'bg-orange-50 border-orange-200' : ''
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
-                                    <div className="text-xs text-gray-500">{course.description || 'No description'}</div>
-                                  </div>
-                                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'
-                                    }`}>
-                                    {isSelected && (
-                                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
-                                      </svg>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Selected Courses */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Selected Courses ({selectedCourses.length})
-                      </label>
-                      {selectedCourses.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleClearAllCourses}
-                          className="text-xs text-red-600 hover:text-red-800 font-medium"
-                        >
-                          Clear All
-                        </button>
-                      )}
-                    </div>
-                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md bg-gray-50 p-3">
-                      {selectedCourses.length === 0 ? (
-                        <div className="text-center text-gray-500 py-4">
-                          <svg className="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.433 9.496 5 8 5c-4 0-8 3-8 8s4 8 8 8c.94 0 1.841-.213 2.684-.606m3.56-5.894C15.687 7.159 15.589 8 15 8s-1.5-.5-1.5-.5V5a2 2 00-2-2h-2c-1.5 0-2 1-2 2v2.5M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.402 2.572-1.065z"></path>
-                          </svg>
-                          No courses selected
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {selectedCourses.map((course) => (
-                            <div key={course._id} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg hover:bg-purple-50 transition-colors">
-                              <div className="flex items-center">
-                                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                                  <span className="text-purple-600 font-medium text-sm">
-                                    {course.courseName?.charAt(0)?.toUpperCase() || 'C'}
-                                  </span>
-                                </div>
-                                <div>
-                                  <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
-                                  <div className="text-xs text-gray-500">{course.description || 'No description'}</div>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleCourseSelect(course)}
                                 className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors"
                                 title="Remove from selection"
                               >

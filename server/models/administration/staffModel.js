@@ -32,7 +32,16 @@ const staffSchema = new mongoose.Schema({
   // Login & Access
   officialEmail: { type: String, required: true, unique: true, lowercase: true },
   password: { type: String, required: true }, // store hashed password
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+      isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null,
+  }
 },
   { timestamps: true }
 );

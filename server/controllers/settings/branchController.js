@@ -4,9 +4,10 @@ const Branch = require("../../models/settings/branchModel");
 // Create new branch
 const createBranch = async (req, res) => {
   try {
-    const { branchName, location, batchType, days, time } = req.body;
+    const { branchName, location, days, time, isActive } = req.body;
+    const batchType = req.body.batchType || 'Regular';
 
-    console.log("Creating branch:", { branchName, location, batchType, days, time });
+    console.log("Creating branch:", { branchName, location, batchType, days, time, isActive });
 
     if (!branchName || !location || !batchType) {
       return res.status(400).json({
@@ -27,7 +28,8 @@ const createBranch = async (req, res) => {
       location,
       batchType,
       days: days || [],
-      time: time || []
+      time: time || [],
+      isActive: isActive !== undefined ? isActive : true
     });
 
     const populatedBranch = await Branch.findById(newBranch._id).populate({
@@ -98,9 +100,18 @@ const updateBranch = async (req, res) => {
       }
     }
 
+    // Build the update object carefully, filtering out undefined fields
+    const updateFields = {};
+    if (branchName !== undefined) updateFields.branchName = branchName;
+    if (location !== undefined) updateFields.location = location;
+    if (batchType !== undefined) updateFields.batchType = batchType;
+    if (days !== undefined) updateFields.days = days;
+    if (time !== undefined) updateFields.time = time;
+    if (isActive !== undefined) updateFields.isActive = isActive;
+
     const updated = await Branch.findByIdAndUpdate(
       req.params.id,
-      { branchName, location, batchType, days, time, isActive },
+      updateFields,
       { new: true, runValidators: true }
     ).populate({
       path: "days",

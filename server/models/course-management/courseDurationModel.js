@@ -8,6 +8,15 @@ const courseDurationSchema = new mongoose.Schema({
     type: Boolean, 
     default: true 
   },
+      isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null,
+  }   
 }, { timestamps: true });
 
 module.exports = mongoose.model("CourseDuration", courseDurationSchema);

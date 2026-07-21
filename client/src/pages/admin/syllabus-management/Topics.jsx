@@ -545,9 +545,9 @@ export const Topics = () => {
                     <tr>
                       <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                       <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Topic Name</th>
-                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
-                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
+                      <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                      <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -569,16 +569,16 @@ export const Topics = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                             {typeof topic.module === 'object' && topic.module ? topic.module.moduleName : topic.module}
                           </span>
                         </td>
-                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                           {topic.createdAt ? new Date(topic.createdAt).toLocaleDateString() : 'N/A'}
                         </td>
                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
+                          <div className="flex justify-center space-x-2">
                             <button 
                               onClick={() => handleViewTopic(topic)}
                               className="text-blue-600 hover:text-blue-900"

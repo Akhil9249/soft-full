@@ -196,8 +196,9 @@ export const WeeklySchedule = () => {
       setLoading(true);
       setError('');
       const res = await getAllBatchesData();
-      setAllBatches(res.data || []);
-      setBatches(res.data || []);
+      const activeBatches = (res.data || []).filter(batch => batch.status === 'Active');
+      setAllBatches(activeBatches);
+      setBatches(activeBatches);
     } catch (err) {
       console.error('Failed to load batches:', err);
       setError('Failed to load batches');

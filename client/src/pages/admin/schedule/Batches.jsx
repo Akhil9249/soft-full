@@ -92,7 +92,10 @@ export const Batches = () => {
       // const res = await axiosPrivate.get('http://localhost:3000/api/branches');
       const res = await getBranchesData();
 
-      setBranches(res.data || []);
+      const activeBranches = (res.data || []).filter(
+        branch => branch.isActive !== false && !branch.isDeleted
+      );
+      setBranches(activeBranches);
     } catch (err) {
       console.error('Failed to load branches:', err);
       showNotification('error', 'Error', 'Failed to load branches');
@@ -179,7 +182,8 @@ export const Batches = () => {
       const res = await getInternsDataSearch(searchTerm, formData.branchName);
       // const res = await getInternsData(searchTerm);
       console.log("res======",res.data);
-      setFilteredInterns(res.data || []);
+      const ongoingInterns = (res.data || []).filter(intern => intern.courseStatus === "Ongoing");
+      setFilteredInterns(ongoingInterns);
     } catch (err) {
       console.error('Search error:', err);
       setFilteredInterns([]);
@@ -769,11 +773,11 @@ export const Batches = () => {
                       <tr>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch Name</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Interns</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Total Interns</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -795,12 +799,12 @@ export const Batches = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                               {typeof batch.branch === 'object' && batch.branch ? batch.branch.branchName : 'N/A'}
                             </span>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                               batch.status === 'Active'
                                 ? 'bg-green-100 text-green-800'
@@ -811,7 +815,7 @@ export const Batches = () => {
                               {batch.status}
                             </span>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <div className="text-sm text-gray-900">{batch.totalInterns || 0}</div>
                             {batch.interns && batch.interns.length > 0 && (
                               <div className="text-xs text-gray-500 mt-1">
@@ -819,11 +823,11 @@ export const Batches = () => {
                               </div>
                             )}
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                             {batch.createdAt ? new Date(batch.createdAt).toLocaleDateString() : 'N/A'}
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
+                            <div className="flex justify-center space-x-2">
                               <button 
                                 onClick={() => handleViewBatch(batch)}
                                 className="text-blue-600 hover:text-blue-900"
@@ -1015,6 +1019,13 @@ export const Batches = () => {
                       {branches.map(branch => (
                         <option key={branch._id} value={branch._id}>{branch.branchName}</option>
                       ))}
+                      {isEditMode && formData.branchName && !branches.some(b => b._id === formData.branchName) && (
+                        <option value={formData.branchName}>
+                          {typeof editingBatch?.branch === 'object' && editingBatch.branch?._id === formData.branchName
+                            ? `${editingBatch.branch.branchName} (Inactive)`
+                            : 'Current Branch (Inactive)'}
+                        </option>
+                      )}
                     </select>
                   </div>
                   <div>

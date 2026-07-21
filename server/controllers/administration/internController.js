@@ -136,7 +136,7 @@ const addIntern = async (req, res) => {
       courseStartedDate,
       completionDate,
       batch,
-      courseStatus: courseStatus || "Active",
+      courseStatus: courseStatus || "Ongoing",
       careerAdvisor,
       remarks,
       internSyllabusStatus: internSyllabusStatus || "Not Started",
@@ -261,6 +261,7 @@ const getInterns = async (req, res) => {
 // -------------------- READ Single Intern --------------------
 const getInternById = async (req, res) => {
   try {
+    console.log("req.params.id", req.params.id);
     const intern = await Intern.findById(req.params.id)
       .populate('course', 'courseName')
       .populate('branch', 'branchName')
@@ -344,8 +345,8 @@ const updateIntern = async (req, res) => {
     }
 
     // Validate courseStatus enum if provided
-    if (courseStatus && !["Active", "Inactive", "Ongoing", "Dropped", "Completed", "Long leave"].includes(courseStatus)) {
-      return res.status(400).json({ message: "Course status must be Active, Inactive, Ongoing, Dropped, Completed, or Long leave" });
+    if (courseStatus && !["Inactive", "Ongoing", "Pause", "Dropped", "Completed", "Long leave"].includes(courseStatus)) {
+      return res.status(400).json({ message: "Course status must be Inactive, Ongoing, Pause, Dropped, Completed, or Long leave" });
     }
 
     // Validate internSyllabusStatus enum if provided

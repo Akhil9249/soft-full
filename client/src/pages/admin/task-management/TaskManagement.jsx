@@ -15,6 +15,10 @@ export const TaskManagement = () => {
   const [modules, setModules] = useState([]);
   const [mentors, setMentors] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [selectedBranches, setSelectedBranches] = useState([]);
+  const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [batchesLoading, setBatchesLoading] = useState(false);
   const [modulesLoading, setModulesLoading] = useState(false);
@@ -61,7 +65,8 @@ export const TaskManagement = () => {
   const [filters, setFilters] = useState({
     taskType: '',
     status: '',
-    audience: ''
+    audience: '',
+    branch: ''
   });
 
   // const axiosPrivate = useAxiosPrivate();
@@ -141,10 +146,10 @@ export const TaskManagement = () => {
     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0006 0v-1m-4-4l4-4m0 0l4 4m-4-4v12"></path></svg>
   );
 
-  const { getBatchesData, getModulesData, getStaffData, getTasksData, putTasksData, postTasksData, getInternsData, getCoursesData, deleteTasksData, downloadTaskAttachment } = AdminService();
+  const { getBatchesData, getModulesData, getStaffData, getTasksData, putTasksData, postTasksData, getInternsData, getCoursesData, deleteTasksData, downloadTaskAttachment, getBranchesData } = AdminService();
 
   // API functions to fetch data
-  const fetchTasks = async (page = 1, search = '', taskType = '', status = '', audience = '') => {
+  const fetchTasks = async (page = 1, search = '', taskType = '', status = '', audience = '', branch = '') => {
     try {
       setLoading(true);
       setError('');
@@ -159,6 +164,7 @@ export const TaskManagement = () => {
       if (taskType) queryParams.append('taskType', taskType);
       if (status) queryParams.append('status', status);
       if (audience) queryParams.append('audience', audience);
+      if (branch) queryParams.append('branch', branch);
       
       const res = await getTasksData(queryParams.toString());
       console.log("tasks data==", res.data);
@@ -191,7 +197,7 @@ export const TaskManagement = () => {
     try {
       setBatchesLoading(true);
       // const res = await axiosPrivate.get('http://localhost:3000/api/batches');
-      const res = await getBatchesData();
+      const res = await getBatchesData('page=1&limit=10000');
       const batchesData =  res?.data || [];
       if (Array.isArray(batchesData)) {
         setBatches(batchesData);
@@ -263,7 +269,7 @@ export const TaskManagement = () => {
   const fetchInterns = async () => {
     try {
       setInternsLoading(true);
-      const res = await getInternsData();
+      const res = await getInternsData('page=1&limit=10000&courseStatus=Ongoing');
       const internsData = res?.data || [];
       if (Array.isArray(internsData)) {
         setInterns(internsData);
@@ -281,7 +287,7 @@ export const TaskManagement = () => {
   const fetchCourses = async () => {
     try {
       setCoursesLoading(true);
-      const res = await getCoursesData();
+      const res = await getCoursesData('page=1&limit=10000');
       const coursesData = res?.data || [];
       if (Array.isArray(coursesData)) {
         setCourses(coursesData);
@@ -296,11 +302,25 @@ export const TaskManagement = () => {
     }
   };
 
+  const fetchBranches = async () => {
+    try {
+      setBranchesLoading(true);
+      const res = await getBranchesData();
+      const branchesData = (res?.data || []).filter(b => b.isActive !== false);
+      setBranches(branchesData);
+    } catch (err) {
+      console.error('Failed to load branches:', err);
+      setBranches([]);
+    } finally {
+      setBranchesLoading(false);
+    }
+  };
+
   // Pagination handlers
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setPagination(prev => ({ ...prev, currentPage: newPage }));
-      fetchTasks(newPage, searchTerm, filters.taskType, filters.status, filters.audience);
+      fetchTasks(newPage, searchTerm, filters.taskType, filters.status, filters.audience, filters.branch);
     }
   };
 
@@ -309,10 +329,14 @@ export const TaskManagement = () => {
   };
 
   const handleFilterChange = (filterType, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        [filterType]: value
+      };
+      fetchTasks(1, searchTerm, newFilters.taskType, newFilters.status, newFilters.audience, newFilters.branch);
+      return newFilters;
+    });
   };
 
   const handleExport = async () => {
@@ -324,6 +348,7 @@ export const TaskManagement = () => {
       if (filters.taskType) queryParams.append('taskType', filters.taskType);
       if (filters.status) queryParams.append('status', filters.status);
       if (filters.audience) queryParams.append('audience', filters.audience);
+      if (filters.branch) queryParams.append('branch', filters.branch);
       if (searchTerm) queryParams.append('search', searchTerm);
 
       const res = await getTasksData(queryParams.toString());
@@ -480,11 +505,77 @@ export const TaskManagement = () => {
 
   // Load data when component mounts
   useEffect(() => {
-    fetchTasks(pagination.currentPage, searchTerm, filters.taskType, filters.status, filters.audience);
+    fetchTasks(pagination.currentPage, searchTerm, filters.taskType, filters.status, filters.audience, filters.branch);
     fetchBatches();
     fetchModules();
     fetchMentors();
+    fetchBranches();
   }, []);
+
+  // Close branch dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isBranchDropdownOpen && !event.target.closest('.branch-dropdown-container')) {
+        setIsBranchDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isBranchDropdownOpen]);
+
+  // Automatically clear selected audience items (batches, courses, interns) that do not belong to the selected branches
+  useEffect(() => {
+    if (selectedBranches.length > 0) {
+      // Clear batches
+      setSelectedBatches(prev => prev.filter(batch => {
+        const branchId = batch.branch?._id || batch.branch;
+        return selectedBranches.some(b => b._id === branchId);
+      }));
+
+      // Clear interns
+      setSelectedInterns(prev => prev.filter(intern => {
+        const branchId = intern.branch?._id || intern.branch;
+        return selectedBranches.some(b => b._id === branchId);
+      }));
+
+      // Clear courses
+      setSelectedCourses(prev => prev.filter(course => {
+        const catBranches = course.category?.branch || [];
+        return catBranches.some(cb => {
+          const cbId = cb?._id || cb;
+          return selectedBranches.some(b => b._id === cbId);
+        });
+      }));
+    } else {
+      // If no branches are selected, clear all audience selections and reset audience form field
+      setSelectedBatches([]);
+      setSelectedCourses([]);
+      setSelectedInterns([]);
+      setFormData(prev => ({ ...prev, audience: "" }));
+    }
+  }, [selectedBranches]);
+
+  // Set default branch filter based on user role and details once mentors/staff list and branches are loaded
+  useEffect(() => {
+    const role = localStorage.getItem("role")?.toLowerCase() || "";
+    if (role === "super admin") {
+      if (branches.length > 0 && !filters.branch) {
+        const defaultBranch = branches[0]._id;
+        setFilters(prev => ({ ...prev, branch: defaultBranch }));
+        fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, defaultBranch);
+      }
+    } else {
+      const loggedInUserId = localStorage.getItem("userId");
+      if (loggedInUserId && mentors.length > 0) {
+        const loggedInStaff = mentors.find(m => m._id === loggedInUserId);
+        const ownBranchId = loggedInStaff?.branch?._id || loggedInStaff?.branch || "";
+        if (ownBranchId && !filters.branch) {
+          setFilters(prev => ({ ...prev, branch: ownBranchId }));
+          fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, ownBranchId);
+        }
+      }
+    }
+  }, [mentors, branches]);
 
   const isFirstRender = useRef(true);
 
@@ -496,11 +587,11 @@ export const TaskManagement = () => {
     }
 
     const timeoutId = setTimeout(() => {
-      fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience);
+      fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, filters.branch);
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, filters]);
+  }, [searchTerm]);
 
   // Handle data population when editing task and data becomes available
   useEffect(() => {
@@ -508,11 +599,8 @@ export const TaskManagement = () => {
       // Re-populate selections when data becomes available
       if (editingTask.audience === "By batches" && editingTask.batches && editingTask.batches.length > 0 && batches.length > 0) {
         const selectedBatchObjects = editingTask.batches.map(batch => {
-          if (typeof batch === 'object' && batch._id) {
-            return batch;
-          } else {
-              return batches.find(b => b._id === batch);
-          }
+          const batchId = typeof batch === 'object' ? batch._id : batch;
+          return batches.find(b => b._id === batchId) || (typeof batch === 'object' ? batch : null);
         }).filter(Boolean);
         if (selectedBatchObjects.length > 0) {
           setSelectedBatches(selectedBatchObjects);
@@ -521,11 +609,8 @@ export const TaskManagement = () => {
       
       if (editingTask.audience === "By courses" && editingTask.courses && editingTask.courses.length > 0 && courses.length > 0) {
         const selectedCourseObjects = editingTask.courses.map(course => {
-          if (typeof course === 'object' && course._id) {
-            return course;
-          } else {
-            return courses.find(c => c._id === course);
-          }
+          const courseId = typeof course === 'object' ? course._id : course;
+          return courses.find(c => c._id === courseId) || (typeof course === 'object' ? course : null);
         }).filter(Boolean);
         if (selectedCourseObjects.length > 0) {
           setSelectedCourses(selectedCourseObjects);
@@ -534,18 +619,25 @@ export const TaskManagement = () => {
       
       if (editingTask.audience === "Individual interns" && editingTask.individualInterns && editingTask.individualInterns.length > 0 && interns.length > 0) {
         const selectedInternObjects = editingTask.individualInterns.map(intern => {
-          if (typeof intern === 'object' && intern._id) {
-            return intern;
-          } else {
-            return interns.find(i => i._id === intern);
-          }
+          const internId = typeof intern === 'object' ? intern._id : intern;
+          return interns.find(i => i._id === internId) || (typeof intern === 'object' ? intern : null);
         }).filter(Boolean);
         if (selectedInternObjects.length > 0) {
           setSelectedInterns(selectedInternObjects);
         }
       }
+
+      if (editingTask.branch && editingTask.branch.length > 0 && branches.length > 0) {
+        const selectedBranchObjects = editingTask.branch.map(br => {
+          const branchId = typeof br === 'object' ? br._id : br;
+          return branches.find(b => b._id === branchId) || (typeof br === 'object' ? br : null);
+        }).filter(Boolean);
+        if (selectedBranchObjects.length > 0) {
+          setSelectedBranches(selectedBranchObjects);
+        }
+      }
     }
-  }, [isEditMode, editingTask, batches, courses, interns]);
+  }, [isEditMode, editingTask, batches, courses, interns, branches]);
 
   // Clear messages when switching tabs
   useEffect(() => {
@@ -584,19 +676,25 @@ export const TaskManagement = () => {
     setSelectedBatches([]);
     setSelectedCourses([]);
     setSelectedInterns([]);
+    setSelectedBranches([]);
+    
+    // Set selected branches based on task data
+    if (task.branch && task.branch.length > 0) {
+      console.log('Task branches data:', task.branch);
+      const selectedBranchObjects = task.branch.map(br => {
+        const branchId = typeof br === 'object' ? br._id : br;
+        return branches.find(b => b._id === branchId) || (typeof br === 'object' ? br : null);
+      }).filter(Boolean);
+      console.log('Selected branch objects:', selectedBranchObjects);
+      setSelectedBranches(selectedBranchObjects);
+    }
     
     // Set selected items based on task data and audience type
     if (task.audience === "By batches" && task.batches && task.batches.length > 0) {
       console.log('Task batches data:', task.batches);
-      // Check if batches are already populated objects or just IDs
       const selectedBatchObjects = task.batches.map(batch => {
-        if (typeof batch === 'object' && batch._id) {
-          // Already populated object
-          return batch;
-        } else {
-          // ID string, find in local batches array
-          return batches.find(b => b._id === batch);
-        }
+        const batchId = typeof batch === 'object' ? batch._id : batch;
+        return batches.find(b => b._id === batchId) || (typeof batch === 'object' ? batch : null);
       }).filter(Boolean);
       console.log('Selected batch objects:', selectedBatchObjects);
       setSelectedBatches(selectedBatchObjects);
@@ -604,15 +702,9 @@ export const TaskManagement = () => {
     
     if (task.audience === "By courses" && task.courses && task.courses.length > 0) {
       console.log('Task courses data:', task.courses);
-      // Check if courses are already populated objects or just IDs
       const selectedCourseObjects = task.courses.map(course => {
-        if (typeof course === 'object' && course._id) {
-          // Already populated object
-          return course;
-        } else {
-          // ID string, find in local courses array
-          return courses.find(c => c._id === course);
-        }
+        const courseId = typeof course === 'object' ? course._id : course;
+        return courses.find(c => c._id === courseId) || (typeof course === 'object' ? course : null);
       }).filter(Boolean);
       console.log('Selected course objects:', selectedCourseObjects);
       setSelectedCourses(selectedCourseObjects);
@@ -620,15 +712,9 @@ export const TaskManagement = () => {
     
     if (task.audience === "Individual interns" && task.individualInterns && task.individualInterns.length > 0) {
       console.log('Task individualInterns data:', task.individualInterns);
-      // Check if interns are already populated objects or just IDs
       const selectedInternObjects = task.individualInterns.map(intern => {
-        if (typeof intern === 'object' && intern._id) {
-          // Already populated object
-          return intern;
-        } else {
-          // ID string, find in local interns array
-          return interns.find(i => i._id === intern);
-        }
+        const internId = typeof intern === 'object' ? intern._id : intern;
+        return interns.find(i => i._id === internId) || (typeof intern === 'object' ? intern : null);
       }).filter(Boolean);
       console.log('Selected intern objects:', selectedInternObjects);
       setSelectedInterns(selectedInternObjects);
@@ -656,6 +742,8 @@ export const TaskManagement = () => {
     setBatchSearchTerm('');
     setSelectedCourses([]);
     setCourseSearchTerm('');
+    setSelectedBranches([]);
+    setIsBranchDropdownOpen(false);
     setActiveTab('tasks-list');
     // Note: File input will be reset automatically by the key prop
   };
@@ -678,7 +766,7 @@ export const TaskManagement = () => {
       if (res.status === 200 || res.status === 201) {
         showNotification('success', 'Success', 'Task deleted successfully!');
         // Refresh the tasks list
-        await fetchTasks(pagination.currentPage, searchTerm, filters.taskType, filters.status, filters.audience);
+        await fetchTasks(pagination.currentPage, searchTerm, filters.taskType, filters.status, filters.audience, filters.branch);
         // Close modal
         setShowDeleteModal(false);
         setTaskToDelete(null);
@@ -717,10 +805,8 @@ export const TaskManagement = () => {
     const isSelected = selectedInterns.find(selected => selected._id === intern._id);
     if (isSelected) {
       setSelectedInterns(selectedInterns.filter(selected => selected._id !== intern._id));
-      showNotification('info', 'Selection Updated', `Removed ${intern.fullName} from selection`);
     } else {
       setSelectedInterns([...selectedInterns, intern]);
-      showNotification('info', 'Selection Updated', `Added ${intern.fullName} to selection`);
     }
   };
 
@@ -732,10 +818,8 @@ export const TaskManagement = () => {
     const isSelected = selectedBatches.find(selected => selected._id === batch._id);
     if (isSelected) {
       setSelectedBatches(selectedBatches.filter(selected => selected._id !== batch._id));
-      showNotification('info', 'Selection Updated', `Removed ${batch.batchName} from selection`);
     } else {
       setSelectedBatches([...selectedBatches, batch]);
-      showNotification('info', 'Selection Updated', `Added ${batch.batchName} to selection`);
     }
   };
 
@@ -747,10 +831,8 @@ export const TaskManagement = () => {
     const isSelected = selectedCourses.find(selected => selected._id === course._id);
     if (isSelected) {
       setSelectedCourses(selectedCourses.filter(selected => selected._id !== course._id));
-      showNotification('info', 'Selection Updated', `Removed ${course.courseName} from selection`);
     } else {
       setSelectedCourses([...selectedCourses, course]);
-      showNotification('info', 'Selection Updated', `Added ${course.courseName} to selection`);
     }
   };
 
@@ -770,20 +852,44 @@ export const TaskManagement = () => {
     showNotification('info', 'Selection Cleared', 'Cleared all selected courses');
   };
 
-  const filteredInterns = interns.filter(intern =>
-    intern.fullName?.toLowerCase().includes(internSearchTerm.toLowerCase()) ||
-    intern.email?.toLowerCase().includes(internSearchTerm.toLowerCase())
-  );
+  const filteredInterns = interns.filter(intern => {
+    const matchesSearch = intern.fullName?.toLowerCase().includes(internSearchTerm.toLowerCase()) ||
+      intern.email?.toLowerCase().includes(internSearchTerm.toLowerCase());
+    
+    const matchesBranch = selectedBranches.length > 0 && selectedBranches.some(b => {
+      const branchId = intern.branch?._id || intern.branch;
+      return b._id === branchId;
+    });
 
-  const filteredBatches = batches.filter(batch =>
-    batch.batchName?.toLowerCase().includes(batchSearchTerm.toLowerCase()) ||
-    batch.description?.toLowerCase().includes(batchSearchTerm.toLowerCase())
-  );
+    return matchesSearch && matchesBranch;
+  });
 
-  const filteredCourses = courses.filter(course =>
-    course.courseName?.toLowerCase().includes(courseSearchTerm.toLowerCase()) ||
-    course.description?.toLowerCase().includes(courseSearchTerm.toLowerCase())
-  );
+  const filteredBatches = batches.filter(batch => {
+    const matchesSearch = batch.batchName?.toLowerCase().includes(batchSearchTerm.toLowerCase()) ||
+      batch.description?.toLowerCase().includes(batchSearchTerm.toLowerCase());
+
+    const matchesBranch = selectedBranches.length > 0 && selectedBranches.some(b => {
+      const branchId = batch.branch?._id || batch.branch;
+      return b._id === branchId;
+    });
+
+    return matchesSearch && matchesBranch;
+  });
+
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = course.courseName?.toLowerCase().includes(courseSearchTerm.toLowerCase()) ||
+      course.description?.toLowerCase().includes(courseSearchTerm.toLowerCase());
+
+    const matchesBranch = selectedBranches.length > 0 && selectedBranches.some(b => {
+      const catBranches = course.category?.branch || [];
+      return catBranches.some(cb => {
+        const cbId = cb?._id || cb;
+        return b._id === cbId;
+      });
+    });
+
+    return matchesSearch && matchesBranch;
+  });
 
   // Handle form submission
   const handleCreateTask = async (e) => {
@@ -842,6 +948,17 @@ export const TaskManagement = () => {
       payload.append('attachments', formData.attachments);
     }
     
+    // Client-side validation for branches
+    if (selectedBranches.length === 0) {
+      showNotification('error', 'Validation Error', 'At least one branch must be selected');
+      setLoading(false);
+      return;
+    }
+
+    if (selectedBranches.length > 0) {
+      selectedBranches.forEach(br => payload.append('branch', br._id));
+    }
+
     if (formData.totalMarks) payload.append('totalMarks', formData.totalMarks);
     if (formData.achievedMarks) payload.append('achievedMarks', formData.achievedMarks);
     if (formData.status) payload.append('status', formData.status);
@@ -853,9 +970,7 @@ export const TaskManagement = () => {
     if (selectedBatches.length > 0) {
       selectedBatches.forEach(batch => payload.append('batches', batch._id));
     }
-    if (selectedCourses.length > 0) {
-      selectedCourses.forEach(course => payload.append('courses', course._id));
-    }
+
     // For empty interns array, don't append anything - backend will use default []
     if (selectedInterns.length > 0) {
       selectedInterns.forEach(intern => payload.append('individualInterns', intern._id));
@@ -890,7 +1005,7 @@ export const TaskManagement = () => {
         }
       }
       
-      await fetchTasks(pagination.currentPage, searchTerm, filters.taskType, filters.status, filters.audience); // Refresh the list
+      await fetchTasks(pagination.currentPage, searchTerm, filters.taskType, filters.status, filters.audience, filters.branch); // Refresh the list
       setActiveTab('tasks-list'); // Switch to tasks list tab
       setEditingTask(null);
       setIsEditMode(false);
@@ -902,6 +1017,8 @@ export const TaskManagement = () => {
       setBatchSearchTerm('');
       setSelectedCourses([]);
       setCourseSearchTerm('');
+      setSelectedBranches([]);
+      setIsBranchDropdownOpen(false);
     } catch (err) {
       console.error('Task operation error:', err);
       console.error('Error response:', err.response);
@@ -1065,8 +1182,19 @@ export const TaskManagement = () => {
                   <option value="">All Audience</option>
                   <option value="All interns">All interns</option>
                   <option value="By batches">By batches</option>
-                  <option value="By courses">By courses</option>
                   <option value="Individual interns">Individual interns</option>
+                </select>
+                <select 
+                  value={filters.branch}
+                  onChange={(e) => handleFilterChange('branch', e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  disabled={localStorage.getItem("role")?.toLowerCase() !== 'super admin'}
+                >
+                  {branches.map(branch => (
+                    <option key={branch._id} value={branch._id}>
+                      {branch.branchName}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -1094,13 +1222,13 @@ export const TaskManagement = () => {
                       <tr>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task Type</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mentor</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Audience</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
-                        <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Task Type</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Mentor</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Audience</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -1122,26 +1250,26 @@ export const TaskManagement = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                               {task.taskType}
                             </span>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
                               {task.module}
                             </span>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                             {typeof task.assignedMentor === 'object' ? task.assignedMentor.fullName : 
                              mentors.find(mentor => mentor._id === task.assignedMentor)?.fullName || task.assignedMentor || 'N/A'}
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
                               {task.audience || 'N/A'}
                             </span>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                               task.status === 'Completed'
                                 ? 'bg-green-100 text-green-800'
@@ -1154,11 +1282,11 @@ export const TaskManagement = () => {
                               {task.status}
                             </span>
                           </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                             {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
+                            <div className="flex justify-center space-x-2">
                               <button 
                                 onClick={() => handleViewTask(task)}
                                 className="text-blue-600 hover:text-blue-900"
@@ -1604,21 +1732,74 @@ export const TaskManagement = () => {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Status</label>
-                <select
-                  name="status"
-                  value={formData.status || ''}
-                  onChange={(e) => setFormData(prev => ({...prev, status: e.target.value}))}
-                  className="mt-1 block w-full sm:w-1/3 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                  required
-                >
-                  <option value="">Choose Status</option>
-                  <option value="Pending">Pending</option>
-                  <option value="In Progress">In Progress</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <select
+                    name="status"
+                    value={formData.status || ''}
+                    onChange={(e) => setFormData(prev => ({...prev, status: e.target.value}))}
+                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                    required
+                  >
+                    <option value="">Choose Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div className="branch-dropdown-container relative">
+                  <label className="block text-sm font-medium text-gray-700">Branches</label>
+                  <button
+                    type="button"
+                    onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
+                    className="w-full flex justify-between items-center p-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-left min-h-[38px] mt-1"
+                  >
+                    <span className="text-gray-700 text-sm block truncate">
+                      {selectedBranches.length > 0
+                        ? `${selectedBranches.length} Branch${selectedBranches.length > 1 ? 'es' : ''} Selected`
+                        : "Select Branches"}
+                    </span>
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </button>
+
+                  {isBranchDropdownOpen && (
+                    <div className="absolute left-0 mt-1 w-full bg-white rounded-md shadow-lg z-50 border border-gray-200 max-h-60 overflow-y-auto p-2 space-y-1">
+                      {branchesLoading ? (
+                        <p className="text-sm text-gray-500 p-2">Loading branches...</p>
+                      ) : branches.length === 0 ? (
+                        <p className="text-sm text-gray-500 p-2">No active branches available</p>
+                      ) : (
+                        branches.map(branch => {
+                          const isSelected = selectedBranches.some(b => b._id === branch._id);
+                          return (
+                            <label
+                              key={branch._id}
+                              className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-50 cursor-pointer select-none"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  if (isSelected) {
+                                    setSelectedBranches(selectedBranches.filter(b => b._id !== branch._id));
+                                  } else {
+                                    setSelectedBranches([...selectedBranches, branch]);
+                                  }
+                                }}
+                                className="h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                              />
+                              <span className="text-sm text-gray-700">{branch.branchName}</span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Task Details Section */}
@@ -1642,26 +1823,48 @@ export const TaskManagement = () => {
                 )} */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Audience</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Audience {selectedBranches.length === 0 && <span className="text-xs text-red-500 font-normal ml-2">(Select branches first)</span>}
+                    </label>
                     <select
                       name="audience"
                       value={formData.audience || ''}
                       onChange={(e) => {
-                        setFormData(prev => ({...prev, audience: e.target.value}));
-                        if (e.target.value === 'Individual interns') {
-                          fetchInterns();
-                        } else if (e.target.value === 'By courses') {
+                        const newAudience = e.target.value;
+                        setFormData(prev => ({...prev, audience: newAudience}));
+                        
+                        // Clear non-applicable selection states on the frontend
+                        if (newAudience === 'All interns') {
+                          setSelectedBatches([]);
+                          setSelectedCourses([]);
+                          setSelectedInterns([]);
+                        } else if (newAudience === 'By batches') {
+                          setSelectedCourses([]);
+                          setSelectedInterns([]);
+                        } else if (newAudience === 'By courses') {
+                          setSelectedBatches([]);
+                          setSelectedInterns([]);
                           fetchCourses();
+                        } else if (newAudience === 'Individual interns') {
+                          setSelectedBatches([]);
+                          setSelectedCourses([]);
+                          fetchInterns();
                         }
                       }}
-                      className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                      className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                       required
+                      disabled={selectedBranches.length === 0}
                     >
-                      <option value="">Choose Audience</option>
-                      <option value="All interns">All interns</option>
-                      <option value="By batches">By batches</option>
-                      <option value="By courses">By courses</option>
-                      <option value="Individual interns">Individual interns</option>
+                      {selectedBranches.length === 0 ? (
+                        <option value="">Choose branches first</option>
+                      ) : (
+                        <>
+                          <option value="">Choose Audience</option>
+                          <option value="All interns">All interns</option>
+                          <option value="By batches">By batches</option>
+                          <option value="Individual interns">Individual interns</option>
+                        </>
+                      )}
                     </select>
                   </div>
                 </div>
@@ -2168,6 +2371,17 @@ export const TaskManagement = () => {
                 {viewingTask._id && (
                   <p className="leading-6"><span className="font-semibold text-gray-900">ID:</span> <span className="text-gray-600">{viewingTask._id.slice(-6)}</span></p>
                 )}
+                <p className="leading-6 sm:col-span-2"><span className="font-semibold text-gray-900">Branches:</span> <span className="text-gray-600">
+                  {Array.isArray(viewingTask.branch) && viewingTask.branch.length > 0 ? (
+                    viewingTask.branch.map((b, bIdx) => (
+                      <span key={b._id || bIdx} className="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 mr-1.5 mb-1">
+                        {typeof b === 'object' ? b.branchName : (branches.find(x => x._id === b)?.branchName || b)}
+                      </span>
+                    ))
+                  ) : (
+                    'N/A'
+                  )}
+                </span></p>
               </div>
 
               {viewingTask.description && (

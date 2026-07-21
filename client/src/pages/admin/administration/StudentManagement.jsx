@@ -104,7 +104,7 @@ export const StudentManagement = () => {
 
   const departments = ['Choose Department', 'Computer Science', 'Electrical Engineering', 'Mechanical Engineering'];
   const employmentStatus = ['Choose Employment Status', 'Full-time', 'Part-time', 'Contract'];
-  const courseStatus = ['Choose Course Status', 'Active', 'Inactive', 'Ongoing', 'Dropped', 'Completed', 'Long leave'];
+  const courseStatus = ['Choose Course Status', 'Inactive', 'Ongoing', 'Pause', 'Dropped', 'Completed', 'Long leave'];
   const syllabusStatus = ['Choose Syllabus Status', 'Not Started', 'Learning', 'mini Project', 'Main Project'];
   const placementStatus = ['Choose Placement Status', 'To be started', 'In Progress', 'Offer Declined', 'Placed', 'Not Placed'];
   const roles = ['Choose Role', 'super admin', 'admin', 'mentor', 'intern'];
@@ -147,7 +147,7 @@ export const StudentManagement = () => {
       setBranchesLoading(true);
       // const res = await axiosPrivate.get('http://localhost:3000/api/branches');
       const res = await getBranchesData();
-      const branchesData = res?.data || [];
+      const branchesData = (res?.data || []).filter(b => b.isActive !== false);
       setBranches(branchesData);
       
       if (branchesData.length > 0) {
@@ -385,7 +385,7 @@ export const StudentManagement = () => {
       courseStartedDate: formatDateForInput(student.courseStartedDate),
       completionDate: formatDateForInput(student.completionDate),
       batch: student.batch || "",
-      courseStatus: student.courseStatus || 'Active',
+      courseStatus: student.courseStatus || 'Ongoing',
       careerAdvisor: student.careerAdvisor?._id || student.careerAdvisor || "",
       remarks: student.remarks || "",
       internSyllabusStatus: student.internSyllabusStatus || 'Not Started',
@@ -758,7 +758,6 @@ export const StudentManagement = () => {
             className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           >
             <option value="">All Status</option>
-            <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
             <option value="Pause">Pause</option>
             <option value="Ongoing">Ongoing</option>
@@ -887,11 +886,11 @@ export const StudentManagement = () => {
                     <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{intern.branch?.branchName || 'N/A'}</td>
                     <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{intern.batch}</td>
                     <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${intern.courseStatus === 'Active' || intern.courseStatus === 'Ongoing'
+                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${intern.courseStatus === 'Ongoing'
                           ? 'bg-green-100 text-green-800'
                           : intern.courseStatus === 'Completed'
                             ? 'bg-blue-100 text-blue-800'
-                            : intern.courseStatus === 'Long leave'
+                            : intern.courseStatus === 'Long leave' || intern.courseStatus === 'Pause'
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-red-100 text-red-800'
                         }`}>
@@ -949,11 +948,11 @@ export const StudentManagement = () => {
                     <p className="text-sm text-gray-500">{intern.internPhoneNumber}</p>
                     <p className="text-xs text-gray-500 truncate">{intern.email}</p>
                   </div>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${intern.courseStatus === 'Active' || intern.courseStatus === 'Ongoing'
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${intern.courseStatus === 'Ongoing'
                       ? 'bg-green-100 text-green-800'
                       : intern.courseStatus === 'Completed'
                         ? 'bg-blue-100 text-blue-800'
-                        : intern.courseStatus === 'Long leave'
+                        : intern.courseStatus === 'Long leave' || intern.courseStatus === 'Pause'
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-red-100 text-red-800'
                     }`}>

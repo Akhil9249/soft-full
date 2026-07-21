@@ -23,11 +23,6 @@ const branchSchema = new mongoose.Schema({
     ref: "Timing",
     default: []
   }],
-  // combination:{
-  //   type: String,
-  //   required: true,
-  //   enum: ["Morning", "Evening","Alternate","Weekend","Custom","Regular","Special"]
-  // },
   location: { 
     type: String, 
     required: true, 
@@ -37,6 +32,15 @@ const branchSchema = new mongoose.Schema({
     type: Boolean, 
     default: true 
   },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null,
+  } 
 
 }, { timestamps: true });
 

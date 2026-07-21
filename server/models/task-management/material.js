@@ -5,20 +5,20 @@ const materialSchema = new mongoose.Schema({
     title: { type: String, required: true, trim: true },
     mentor: { type: mongoose.Schema.Types.ObjectId, ref: "Staff", required: true },
     attachments: { type: String, required: true },
+      branch: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Branch",
+        required: true
+      }],
     audience: {
         type: String,
-        enum: ["All interns", "By batches", "By courses", "Individual interns"],
+        enum: ["All interns", "By batches", "Individual interns"],
         default: "All interns",
         required: true
     },
     batches: {
         type: [mongoose.Schema.Types.ObjectId],
         ref: "Batch",
-        default: []
-    },
-    courses: {
-        type: [mongoose.Schema.Types.ObjectId],
-        ref: "Course",
         default: []
     },
     interns: {
@@ -31,6 +31,15 @@ const materialSchema = new mongoose.Schema({
         ref: "Intern",
         default: []
     },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null,
+  }     
 }, { timestamps: true });
 module.exports = mongoose.model("Material", materialSchema);

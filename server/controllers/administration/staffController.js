@@ -239,7 +239,7 @@ const getStaff = async (req, res) => {
     // Search parameters
     const search = req.query.search || '';
     const department = req.query.department || '';
-    const employmentStatus = req.query.employmentStatus || '';
+    const employmentStatus = req.query.employmentStatus !== undefined ? req.query.employmentStatus : 'Active';
     let branch = req.query.branch || '';
 
     // Build query object

@@ -165,7 +165,10 @@ const ActionBar = ({
     batches,
     selectedBatch,
     onBatchChange,
-    batchesLoading
+    batchesLoading,
+    timings = [],
+    selectedTiming = '',
+    onTimingChange = () => {}
 }) => {
     return (
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4 sm:mb-6">
@@ -175,22 +178,41 @@ const ActionBar = ({
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 w-full lg:w-auto flex-wrap">
                 {isMentor ? (
-                    <select
-                        value={selectedBatch}
-                        onChange={onBatchChange}
-                        disabled={batchesLoading}
-                        className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
-                    >
-                        <option value="" disabled>
-                            {batchesLoading ? 'Loading batches...' : 'Select Batch'}
-                        </option>
-                        {batches.map((batch) => (
-                            <option key={batch._id} value={batch._id}>
-                                {/* {batch.batchName} {batch.branchName ? `(${batch.branchName})` : ''} */}
-                                {batch.batchName}
+                    <>
+                        {/* Timing Dropdown */}
+                        <select
+                            value={selectedTiming}
+                            onChange={onTimingChange}
+                            disabled={batchesLoading}
+                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
+                        >
+                            <option value="">
+                                {batchesLoading ? 'Loading timings...' : 'All Timings'}
                             </option>
-                        ))}
-                    </select>
+                            {timings.map((t) => (
+                                <option key={t._id} value={t._id}>
+                                    {t.timeSlot}
+                                </option>
+                            ))}
+                        </select>
+
+                        {/* Batch Dropdown */}
+                        <select
+                            value={selectedBatch}
+                            onChange={onBatchChange}
+                            disabled={batchesLoading}
+                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
+                        >
+                            <option value="">
+                                {batchesLoading ? 'Loading batches...' : 'Select Batch'}
+                            </option>
+                            {batches.map((batch) => (
+                                <option key={batch._id} value={batch._id}>
+                                    {batch.batchName}
+                                </option>
+                            ))}
+                        </select>
+                    </>
                 ) : (
                     <>
                         {/* Branch Dropdown */}
@@ -322,10 +344,35 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
     const [selectedBatch, setSelectedBatch] = useState('');
     const [batchesLoading, setBatchesLoading] = useState(false);
 
-    // Filter batches reactive to selected branch for admin/superadmin
+    // State for assigned timing (for mentor view)
+    const [selectedTiming, setSelectedTiming] = useState('');
+
+    // Extract unique timing slots from mentor's batches
+    const mentorTimings = useMemo(() => {
+        if (!isMentor) return [];
+        const timingMap = new Map();
+        batches.forEach(batch => {
+            if (Array.isArray(batch.timings)) {
+                batch.timings.forEach(t => {
+                    if (t && t._id) {
+                        timingMap.set(t._id.toString(), t);
+                    }
+                });
+            }
+        });
+        return Array.from(timingMap.values());
+    }, [isMentor, batches]);
+
+    // Filter batches reactive to selected branch (for admin) or selected timing (for mentor)
     const filteredBatches = useMemo(() => {
         if (isMentor) {
-            return batches;
+            if (!selectedTiming) {
+                return batches;
+            }
+            return batches.filter(batch => 
+                Array.isArray(batch.timings) && 
+                batch.timings.some(t => t._id === selectedTiming)
+            );
         }
         if (!selectedBranch) {
             return allBatches;
@@ -334,7 +381,7 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
             const branchId = typeof batch.branch === 'object' && batch.branch !== null ? batch.branch._id : batch.branch;
             return branchId === selectedBranch;
         });
-    }, [isMentor, batches, allBatches, selectedBranch]);
+    }, [isMentor, batches, allBatches, selectedBranch, selectedTiming]);
 
     // State for pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -424,11 +471,12 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
     };
 
     // Fetch attendance data for selected date and filters
-    const fetchAttendanceForDate = async (date, branchId = null, courseId = null, page = 1, batchId = null) => {
+    const fetchAttendanceForDate = async (date, branchId = null, courseId = null, page = 1, batchId = null, timingId = null) => {
         try {
             const activeBatchId = batchId || selectedBatch || null;
-            const response = await getInternsByAttendanceDate(date, branchId, null, courseId, null, activeBatchId);
-            console.log('Interns with attendance for date:', date, 'branch:', branchId, 'course:', courseId, 'batch:', activeBatchId, response);
+            const activeTimingId = timingId !== undefined ? timingId : (selectedTiming || null);
+            const response = await getInternsByAttendanceDate(date, branchId, null, courseId, activeTimingId, activeBatchId);
+            console.log('Interns with attendance for date:', date, 'branch:', branchId, 'course:', courseId, 'batch:', activeBatchId, 'timing:', activeTimingId, response);
 
             if (response?.data?.data && response.data.data.length > 0) {
                 // Transform the response data to match our expected format
@@ -642,6 +690,17 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         await fetchAttendanceForDate(selectedDate, branchId || null, null, 1, null);
     };
 
+    // Handle timing selection (for mentor view)
+    const handleTimingChange = async (e) => {
+        const timingId = e.target.value;
+        setSelectedTiming(timingId);
+        setSelectedBatch(''); // Reset batch selection when timing changes
+        setCurrentPage(1); // Reset to first page when filter changes
+
+        // Fetch attendance records for the selected timing (batch reset to null)
+        await fetchAttendanceForDate(selectedDate, null, null, 1, null, timingId || null);
+    };
+
     // Handle batch selection
     const handleBatchChange = async (e) => {
         const batchId = e.target.value;
@@ -660,7 +719,8 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
             isMentor ? null : (selectedBranch || null),
             null,
             page,
-            selectedBatch || null
+            selectedBatch || null,
+            isMentor ? selectedTiming : null
         );
     };
 
@@ -674,7 +734,8 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
             isMentor ? null : (selectedBranch || null),
             null,
             1,
-            selectedBatch || null
+            selectedBatch || null,
+            isMentor ? selectedTiming : null
         );
     };
 
@@ -697,6 +758,9 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                 selectedBatch={selectedBatch}
                 onBatchChange={handleBatchChange}
                 batchesLoading={batchesLoading}
+                timings={mentorTimings}
+                selectedTiming={selectedTiming}
+                onTimingChange={handleTimingChange}
             />
 
             {/* Create Daily Attendance Button */}

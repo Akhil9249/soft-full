@@ -78,6 +78,15 @@ const leaveRequestSchema = new mongoose.Schema(
         fileName: String,
       },
     ],
+        isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null,
+  }
   },
   { timestamps: true }
 );

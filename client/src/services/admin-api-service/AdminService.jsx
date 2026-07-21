@@ -83,6 +83,11 @@ const AdminService = () => {
         return response.data;
     };
 
+    const toggleBranchStatus = async (branchId) => {
+        const response = await axiosPrivate.patch(`/api/branches/${branchId}/toggle-status`);
+        return response.data;
+    };
+
     // ======================================== intern management ========================================
 
     const getInternsData = async (queryParams = '') => {
@@ -658,6 +663,7 @@ const AdminService = () => {
         postBranchesData,
         putBranchesData,
         deleteBranchesData,
+        toggleBranchStatus,
         //======== intern
         getInternsData,
         getInternByIdData,

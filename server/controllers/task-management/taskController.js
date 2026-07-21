@@ -1,5 +1,6 @@
 const Task = require("../../models/task-management/taskModel");
 const { cloudinary } = require("../../uploads/multer");
+const mongoose = require("mongoose");
 
 // Helper to extract Cloudinary public ID and delete the file
 const deleteFromCloudinary = async (url) => {
@@ -28,10 +29,9 @@ const deleteFromCloudinary = async (url) => {
 };
 
 // Helper function to validate that only one audience field has data
-const validateSingleAudienceField = (batches, courses, interns, individualInterns) => {
+const validateSingleAudienceField = (batches, interns, individualInterns) => {
   const audienceFields = [
     { field: 'batches', data: batches },
-    { field: 'courses', data: courses },
     { field: 'interns', data: interns },
     { field: 'individualInterns', data: individualInterns }
   ];
@@ -64,8 +64,8 @@ const createTask = async (req, res) => {
       achievedMarks,
       status,
       audience,
+      branch,
       batches,
-      courses,
       interns,
       individualInterns
     } = req.body;
@@ -83,8 +83,8 @@ const createTask = async (req, res) => {
       achievedMarks,
       status,
       audience,
+      branch,
       batches,
-      courses,
       interns,
       individualInterns
     });
@@ -97,6 +97,23 @@ const createTask = async (req, res) => {
       });
     }
 
+    // Parse branch safely (supports raw arrays and JSON strings)
+    let branchArray = [];
+    if (branch) {
+      try {
+        branchArray = Array.isArray(branch) ? branch : JSON.parse(branch);
+      } catch (e) {
+        branchArray = [branch];
+      }
+    }
+
+    if (!branchArray || branchArray.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "At least one branch must be selected"
+      });
+    }
+
     // Validate taskType enum
     if (!["Weekly Task", "Daily Task"].includes(taskType)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
@@ -106,37 +123,41 @@ const createTask = async (req, res) => {
     }
 
     // Validate audience enum
-    if (!["All interns", "By batches", "By courses", "Individual interns"].includes(audience)) {
+    if (!["All interns", "By batches", "Individual interns"].includes(audience)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'All interns', 'By batches', 'By courses', 'Individual interns'"
+        message: "Audience must be one of: 'All interns', 'By batches', 'Individual interns'"
       });
     }
 
+    // Clean audience-specific fields based on selected audience
+    let cleanBatches = [];
+    let cleanInterns = [];
+    let cleanIndividualInterns = [];
+
+    if (audience === "By batches") {
+      cleanBatches = batches || [];
+    } else if (audience === "Individual interns") {
+      cleanIndividualInterns = individualInterns || [];
+    }
+
     // Validate audience-specific fields
-    if (audience === "By batches" && (!batches || batches.length === 0)) {
+    if (audience === "By batches" && cleanBatches.length === 0) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Batches are required when audience is 'By batches'"
       });
     }
 
-    if (audience === "By courses" && (!courses || courses.length === 0)) {
-      if (req.file) await deleteFromCloudinary(req.file.path);
-      return res.status(400).json({
-        message: "Courses are required when audience is 'By courses'"
-      });
-    }
-
-    if (audience === "Individual interns" && (!individualInterns || individualInterns.length === 0)) {
+    if (audience === "Individual interns" && cleanIndividualInterns.length === 0) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Individual interns are required when audience is 'Individual interns'"
       });
     }
 
-    // Validate that only one audience field can have data at a time
-    const audienceValidation = validateSingleAudienceField(batches, courses, interns, individualInterns);
+    // Validate that only one audience field can have data at a time (using cleaned data)
+    const audienceValidation = validateSingleAudienceField(cleanBatches, cleanInterns, cleanIndividualInterns);
     if (!audienceValidation.isValid) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
@@ -186,10 +207,10 @@ const createTask = async (req, res) => {
       achievedMarks: achievedMarks ? Number(achievedMarks) : 0,
       status: status || "Pending",
       audience: audience,
-      batches: batches || [],
-      courses: courses || [],
-      interns: interns || [],
-      individualInterns: individualInterns || []
+      branch: branchArray,
+      batches: cleanBatches,
+      interns: cleanInterns,
+      individualInterns: cleanIndividualInterns
     });
 
     res.status(201).json({
@@ -216,9 +237,13 @@ const getTasks = async (req, res) => {
     const taskType = req.query.taskType || '';
     const status = req.query.status || '';
     const audience = req.query.audience || '';
+    const branch = req.query.branch || '';
 
-    // Build query object
-    let query = { isActive: true };
+    // Build query object: only list the task if exist branches in the branch section
+    let query = { 
+      isActive: true,
+      branch: { $exists: true, $not: { $size: 0 } }
+    };
 
     // Add search functionality
     if (search) {
@@ -241,6 +266,21 @@ const getTasks = async (req, res) => {
       query.audience = audience;
     }
 
+    // Role-based branch restriction: only super admin sees all
+    if (req.userId) {
+      const { Staff } = require("../../models/administration/staffModel");
+      const loggedInStaff = await Staff.findById(req.userId).populate('role');
+      if (loggedInStaff && loggedInStaff.role && loggedInStaff.role.role.toLowerCase() !== 'super admin') {
+        if (loggedInStaff.branch) {
+          query.branch = { $in: [loggedInStaff.branch] };
+        }
+      } else if (branch && mongoose.Types.ObjectId.isValid(branch)) {
+        query.branch = { $in: [new mongoose.Types.ObjectId(branch)] };
+      }
+    } else if (branch && mongoose.Types.ObjectId.isValid(branch)) {
+      query.branch = { $in: [new mongoose.Types.ObjectId(branch)] };
+    }
+
     // Get total count for pagination
     const totalCount = await Task.countDocuments(query);
     const totalPages = Math.ceil(totalCount / limit);
@@ -248,10 +288,18 @@ const getTasks = async (req, res) => {
     // Get paginated results
     const tasks = await Task.find(query)
       .populate('assignedMentor', 'fullName email')
-      .populate('batches', 'batchName description')
-      .populate('courses', 'courseName description')
-      .populate('interns', 'fullName email')
-      .populate('individualInterns', 'fullName email')
+      .populate('branch', 'branchName location')
+      .populate('batches', 'batchName description branch')
+      .populate({
+        path: 'interns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
+      .populate({
+        path: 'individualInterns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -280,10 +328,18 @@ const getTaskById = async (req, res) => {
   try {
     const task = await Task.findById(req.params.id)
       .populate('assignedMentor', 'fullName email')
-      .populate('batches', 'batchName description')
-      .populate('courses', 'courseName description')
-      .populate('interns', 'fullName email')
-      .populate('individualInterns', 'fullName email');
+      .populate('branch', 'branchName location')
+      .populate('batches', 'batchName description branch')
+      .populate({
+        path: 'interns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
+      .populate({
+        path: 'individualInterns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      });
 
     if (!task) {
       return res.status(404).json({ message: "Task not found" });
@@ -302,6 +358,13 @@ const getTaskById = async (req, res) => {
 // Update task
 const updateTask = async (req, res) => {
   try {
+    // Get current task to check existing audience and preserve/delete attachment
+    const currentTask = await Task.findById(req.params.id);
+    if (!currentTask) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(404).json({ message: "Task not found" });
+    }
+
     const {
       title,
       taskType,
@@ -315,8 +378,8 @@ const updateTask = async (req, res) => {
       achievedMarks,
       status,
       audience,
+      branch,
       batches,
-      courses,
       interns,
       individualInterns
     } = req.body;
@@ -330,29 +393,37 @@ const updateTask = async (req, res) => {
     }
 
     // Validate audience enum if provided
-    if (audience && !["All interns", "By batches", "By courses", "Individual interns"].includes(audience)) {
+    if (audience && !["All interns", "By batches", "Individual interns"].includes(audience)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'All interns', 'By batches', 'By courses', 'Individual interns'"
+        message: "Audience must be one of: 'All interns', 'By batches', 'Individual interns'"
       });
     }
 
-    // Validate audience-specific fields if audience is being updated
-    if (audience === "By batches" && (!batches || batches.length === 0)) {
+    const activeAudience = audience || currentTask.audience;
+    const isAudienceChanged = audience && audience !== currentTask.audience;
+
+    // Clean audience-specific fields: if audience changes or is reset, clean other fields.
+    // If not changed, fallback to existing or provided values.
+    let cleanBatches = [];
+    let cleanInterns = [];
+    let cleanIndividualInterns = [];
+
+    if (activeAudience === "By batches") {
+      cleanBatches = batches !== undefined ? batches : (isAudienceChanged ? [] : currentTask.batches);
+    } else if (activeAudience === "Individual interns") {
+      cleanIndividualInterns = individualInterns !== undefined ? individualInterns : (isAudienceChanged ? [] : currentTask.individualInterns);
+    }
+
+    // Validate audience-specific fields
+    if (activeAudience === "By batches" && cleanBatches.length === 0) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Batches are required when audience is 'By batches'"
       });
     }
 
-    if (audience === "By courses" && (!courses || courses.length === 0)) {
-      if (req.file) await deleteFromCloudinary(req.file.path);
-      return res.status(400).json({
-        message: "Courses are required when audience is 'By courses'"
-      });
-    }
-
-    if (audience === "Individual interns" && (!individualInterns || individualInterns.length === 0)) {
+    if (activeAudience === "Individual interns" && cleanIndividualInterns.length === 0) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Individual interns are required when audience is 'Individual interns'"
@@ -360,11 +431,28 @@ const updateTask = async (req, res) => {
     }
 
     // Validate that only one audience field can have data at a time
-    const audienceValidation = validateSingleAudienceField(batches, courses, interns, individualInterns);
+    const audienceValidation = validateSingleAudienceField(cleanBatches, cleanInterns, cleanIndividualInterns);
     if (!audienceValidation.isValid) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: audienceValidation.message
+      });
+    }
+
+    // Parse branch safely (supports raw arrays and JSON strings)
+    let branchArray = undefined;
+    if (branch !== undefined) {
+      try {
+        branchArray = Array.isArray(branch) ? branch : JSON.parse(branch);
+      } catch (e) {
+        branchArray = [branch];
+      }
+    }
+
+    if (branchArray !== undefined && branchArray.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "At least one branch must be selected"
       });
     }
 
@@ -388,13 +476,6 @@ const updateTask = async (req, res) => {
           message: "Due date must be after start date"
         });
       }
-    }
-
-    // Get current task to preserve existing attachment if no new file is uploaded
-    const currentTask = await Task.findById(req.params.id);
-    if (!currentTask) {
-      if (req.file) await deleteFromCloudinary(req.file.path);
-      return res.status(404).json({ message: "Task not found" });
     }
 
     const updateData = {};
@@ -432,10 +513,12 @@ const updateTask = async (req, res) => {
     if (achievedMarks !== undefined) updateData.achievedMarks = Number(achievedMarks);
     if (status) updateData.status = status;
     if (audience) updateData.audience = audience;
-    if (batches !== undefined) updateData.batches = batches;
-    if (courses !== undefined) updateData.courses = courses;
-    if (interns !== undefined) updateData.interns = interns;
-    if (individualInterns !== undefined) updateData.individualInterns = individualInterns;
+    if (branchArray !== undefined) updateData.branch = branchArray;
+    
+    // Clear out non-active audience fields completely in database
+    updateData.batches = cleanBatches;
+    updateData.interns = cleanInterns;
+    updateData.individualInterns = cleanIndividualInterns;
 
     const updated = await Task.findByIdAndUpdate(
       req.params.id,
@@ -443,10 +526,18 @@ const updateTask = async (req, res) => {
       { new: true, runValidators: true }
     )
     .populate('assignedMentor', 'fullName email')
-    .populate('batches', 'batchName description')
-    .populate('courses', 'courseName description')
-    .populate('interns', 'fullName email')
-    .populate('individualInterns', 'fullName email');
+    .populate('branch', 'branchName location')
+    .populate('batches', 'batchName description branch')
+    .populate({
+      path: 'interns',
+      select: 'fullName email branch courseStatus',
+      match: { courseStatus: 'Ongoing' }
+    })
+    .populate({
+      path: 'individualInterns',
+      select: 'fullName email branch courseStatus',
+      match: { courseStatus: 'Ongoing' }
+    });
 
     if (!updated) {
       return res.status(404).json({ message: "Task not found" });
@@ -617,15 +708,9 @@ const updateTaskMarks = async (req, res) => {
 // Get tasks by course
 const getTasksByCourse = async (req, res) => {
   try {
-    const { courseId } = req.params;
-    const tasks = await Task.find({ 
-      courses: courseId, 
-      isActive: true 
-    }).sort({ createdAt: -1 });
-
     res.status(200).json({
-      message: "Tasks retrieved successfully",
-      data: tasks
+      message: "Courses audience is deprecated and courses are no longer supported.",
+      data: []
     });
   } catch (error) {
     console.error('Error fetching tasks by course:', error);

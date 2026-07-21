@@ -53,21 +53,21 @@ const taskSchema = new mongoose.Schema({
     default: "All interns"  ,
     required: true
   },
-  // branch: [{
-  //   type: mongoose.Schema.Types.ObjectId,
-  //   ref: "Branch",
-  //   required: true
-  // }],
+  branch: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Branch",
+    required: true
+  }],
   batches: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: "Batch",
     default: []
   },
-  courses: {
-    type: [mongoose.Schema.Types.ObjectId],
-    ref: "Course",
-    default: []
-  },
+  // courses: {
+  //   type: [mongoose.Schema.Types.ObjectId],
+  //   ref: "Course",
+  //   default: []
+  // },
   interns: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: "Intern",
@@ -91,7 +91,16 @@ const taskSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
-  }
+  },
+    isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null,
+  }       
 }, { timestamps: true });
 
 module.exports = mongoose.model("Task", taskSchema);

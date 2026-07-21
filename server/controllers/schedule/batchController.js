@@ -79,15 +79,26 @@ const getBatches = async (req, res) => {
     // Get paginated results
     const batches = await Batch.find(query)
       .populate("branch", "branchName")
-      .populate("interns", "fullName email course")
+      .populate({
+        path: "interns",
+        select: "fullName email course courseStatus admissionNumber",
+        match: { courseStatus: "Ongoing" }
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
     
+    // Filter totalInterns to count only ongoing ones
+    const batchesWithCount = batches.map(batch => {
+      const batchObj = batch.toObject();
+      batchObj.totalInterns = batchObj.interns.length;
+      return batchObj;
+    });
+
     console.log('Found batches:', batches.length);
     res.status(200).json({ 
       message: "Batches retrieved successfully", 
-      data: batches,
+      data: batchesWithCount,
       pagination: {
         currentPage: page,
         totalPages,
@@ -123,14 +134,24 @@ const getAllBatches = async (req, res) => {
     // Get all batches without any filtering or pagination (except role-based branch filter)
     const batches = await Batch.find(query)
       .populate("branch", "branchName")
-      .populate("interns", "fullName email course")
+      .populate({
+        path: "interns",
+        select: "fullName email course courseStatus admissionNumber",
+        match: { courseStatus: "Ongoing" }
+      })
       .sort({ createdAt: -1 });
+
+    const batchesWithCount = batches.map(batch => {
+      const batchObj = batch.toObject();
+      batchObj.totalInterns = batchObj.interns.length;
+      return batchObj;
+    });
 
     console.log('Found all batches:', batches.length);
     res.status(200).json({ 
       message: "All batches retrieved successfully", 
-      data: batches,
-      totalCount: batches.length
+      data: batchesWithCount,
+      totalCount: batchesWithCount.length
     });
   } catch (error) {
     console.error('Error fetching all batches:', error);
@@ -143,7 +164,11 @@ const getBatchById = async (req, res) => {
   try {
     const batch = await Batch.findById(req.params.id)
       .populate("branch", "branchName")
-      .populate("interns", "fullName email course");
+      .populate({
+        path: "interns",
+        select: "fullName email course courseStatus admissionNumber",
+        match: { courseStatus: "Ongoing" }
+      });
       
     if (!batch) return res.status(404).json({ message: "Batch not found" });
 
@@ -164,7 +189,10 @@ const getBatchById = async (req, res) => {
       }
     }
 
-    res.status(200).json({ message: "Batch retrieved successfully", data: batch });
+    const batchObj = batch.toObject();
+    batchObj.totalInterns = batchObj.interns.length;
+
+    res.status(200).json({ message: "Batch retrieved successfully", data: batchObj });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -191,10 +219,16 @@ const updateBatch = async (req, res) => {
       runValidators: true,
     })
     .populate("branch", "branchName")
-    .populate("interns", "fullName email course");
+    .populate({
+      path: "interns",
+      select: "fullName email course courseStatus admissionNumber",
+      match: { courseStatus: "Ongoing" }
+    });
 
     if (!updated) return res.status(404).json({ message: "Batch not found" });
-    res.status(200).json({ message: "Batch updated successfully", data: updated });
+    const updatedObj = updated.toObject();
+    updatedObj.totalInterns = updatedObj.interns.length;
+    res.status(200).json({ message: "Batch updated successfully", data: updatedObj });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -235,9 +269,16 @@ const addIntern = async (req, res) => {
     // Populate the batch with intern details for response
     const populatedBatch = await Batch.findById(id)
       .populate("branch", "branchName")
-      .populate("interns", "fullName email course");
+      .populate({
+        path: "interns",
+        select: "fullName email course courseStatus admissionNumber",
+        match: { courseStatus: "Ongoing" }
+      });
 
-    res.status(201).json({ message: "Intern added successfully", data: populatedBatch });
+    const populatedBatchObj = populatedBatch.toObject();
+    populatedBatchObj.totalInterns = populatedBatchObj.interns.length;
+
+    res.status(201).json({ message: "Intern added successfully", data: populatedBatchObj });
   } catch (error) {
     console.error("Error adding intern:", error);
     res.status(500).json({ message: error.message });

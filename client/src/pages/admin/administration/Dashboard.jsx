@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  BookOpen, 
-  GraduationCap, 
-  Clock, 
-  Award, 
-  TrendingUp, 
-  Play, 
+import {
+  BookOpen,
+  GraduationCap,
+  Clock,
+  Award,
+  TrendingUp,
+  Play,
   ChevronRight,
   Bell,
   Search,
@@ -69,7 +69,7 @@ export default function Dashboard() {
     };
   }, []);
 
-  const filteredPages = PAGES_LIST.filter(page => 
+  const filteredPages = PAGES_LIST.filter(page =>
     page.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     page.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -88,29 +88,29 @@ export default function Dashboard() {
     const fetchData = async () => {
       try {
         const [coursesRes, batchesRes, internsRes, staffRes] = await Promise.all([
-           getCoursesData(),
-           getBatchesData(),
-           getInternsData(),
-           getStaffData()
+          getCoursesData(),
+          getBatchesData(),
+          getInternsData(),
+          getStaffData()
         ]);
-        
+
         const courses = coursesRes?.data || [];
         const batches = batchesRes?.data || [];
         const interns = internsRes?.data || [];
         const staff = staffRes?.data || [];
-        
+
         const coursesCount = coursesRes?.pagination?.totalCount || courses.length || 0;
         const batchesCount = batchesRes?.pagination?.totalCount || batches.length || 0;
         const internsCount = internsRes?.pagination?.totalCount || interns.length || 0;
         const staffCount = staffRes?.pagination?.totalCount || staff.length || 0;
-        
+
         setStatsData({
           courses: coursesCount,
           batches: batchesCount,
           interns: internsCount,
           staff: staffCount
         });
-        
+
         setRecentCourses(courses.slice(0, 4));
       } catch (err) {
         console.error("Failed to load dashboard data", err);
@@ -130,12 +130,12 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen bg-slate-50/50 text-slate-900 font-sans">
-      
+
 
 
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
-        
+
         {/* 2. TOP BAR / HEADER */}
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
@@ -144,20 +144,20 @@ export default function Dashboard() {
             </h1>
             {/* <p className="text-sm text-slate-500 mt-1">Here is a glance at your learning progress today.</p> */}
           </div>
-          
+
           <div className="flex items-center gap-4">
             {/* Elegant Search Bar */}
             <div className="relative w-full sm:w-80" ref={searchRef}>
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input 
-                type="text" 
-                placeholder="Search pages..." 
+              <input
+                type="text"
+                placeholder="Search pages..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
                 className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               />
-              
+
               {isSearchFocused && (
                 <div className="absolute right-0 top-full mt-2 w-full bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pb-2 pt-1 border-b border-slate-100 flex items-center justify-between">
@@ -193,7 +193,7 @@ export default function Dashboard() {
               )}
             </div>
             {/* Notification Badge */}
-            <button 
+            <button
               onClick={() => navigate('/notification')}
               className="relative p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all"
             >
@@ -223,7 +223,7 @@ export default function Dashboard() {
 
         {/* 4. MAIN DASHBOARD CONTENT */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
+
           {/* Left/Middle Column: Courses & Progress */}
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between">
@@ -268,7 +268,7 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    <button 
+                    <button
                       onClick={() => handleViewDetails(course)}
                       className="w-full py-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2">
                       <ChevronRight size={14} className="group-hover:text-white" />
@@ -283,7 +283,7 @@ export default function Dashboard() {
           {/* Right Column: Mini Analytics / Study Goals */}
           <div className="space-y-6">
             <h2 className="text-lg font-bold text-slate-900">Weekly Activity</h2>
-            
+
             <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -305,8 +305,8 @@ export default function Dashboard() {
                   <div key={idx} className="flex items-center gap-4 text-xs font-medium">
                     <span className="w-8 text-slate-400">{item.day}</span>
                     <div className="flex-1 bg-slate-50 h-3 rounded-full overflow-hidden">
-                      <div 
-                        className="bg-gradient-to-r from-indigo-500 to-violet-500 h-full rounded-full" 
+                      <div
+                        className="bg-gradient-to-r from-indigo-500 to-violet-500 h-full rounded-full"
                         style={{ width: `${item.percentage}%` }}
                       ></div>
                     </div>
@@ -343,7 +343,7 @@ export default function Dashboard() {
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transform scale-100 transition-transform duration-300">
             {/* Modal Header */}
             <div className="relative h-32 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-6 flex items-end">
-              <button 
+              <button
                 onClick={closeModal}
                 className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full backdrop-blur-md transition-all"
               >
@@ -383,7 +383,7 @@ export default function Dashboard() {
               {/* Modules List */}
               <div>
                 <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
-                  <BookMarked size={18} className="text-indigo-500"/>
+                  <BookMarked size={18} className="text-indigo-500" />
                   Course Curriculum
                 </h3>
                 {selectedCourse.modules && selectedCourse.modules.length > 0 ? (
@@ -409,10 +409,10 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-            
+
             {/* Modal Footer */}
             <div className="border-t border-slate-100 p-4 bg-slate-50 flex justify-end">
-              <button 
+              <button
                 onClick={closeModal}
                 className="px-5 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-semibold rounded-xl hover:bg-slate-100 transition-colors shadow-sm"
               >

@@ -18,7 +18,8 @@ export const Branch = () => {
     const [success, setSuccess] = useState('');
     const [formData, setFormData] = useState({
         branchName: '',
-        location: ''
+        location: '',
+        isActive: true
     });
     
     // View modal state
@@ -29,7 +30,7 @@ export const Branch = () => {
     const [isEditMode, setIsEditMode] = useState(false);
     const [editingBranch, setEditingBranch] = useState(null);
     
-    const { getBranchesData, postBranchesData, putBranchesData } = AdminService();
+    const { getBranchesData, postBranchesData, putBranchesData, toggleBranchStatus } = AdminService();
     const headData = "Branch Management"
 
     const tabOptions = [
@@ -77,7 +78,7 @@ export const Branch = () => {
                 await postBranchesData(formData);
                 setSuccess('Branch created successfully!');
             }
-            setFormData({ branchName: '', location: '' });
+            setFormData({ branchName: '', location: '', isActive: true });
             setIsEditMode(false);
             setEditingBranch(null);
             await fetchBranches(); // Refresh the list
@@ -100,12 +101,28 @@ export const Branch = () => {
 
     // Handle cancel button
     const handleCancel = () => {
-        setFormData({ branchName: '', location: '' });
+        setFormData({ branchName: '', location: '', isActive: true });
         setError('');
         setSuccess('');
         setIsEditMode(false);
         setEditingBranch(null);
         setActiveTab('branches');
+    };
+
+    // Handle toggle status directly
+    const handleToggleStatus = async (branch) => {
+        try {
+            setLoading(true);
+            setError('');
+            setSuccess('');
+            await toggleBranchStatus(branch._id);
+            setSuccess(`Branch '${branch.branchName}' status updated successfully!`);
+            await fetchBranches(); // Refresh the list
+        } catch (err) {
+            setError(err?.response?.data?.message || 'Failed to toggle branch status');
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Handle edit branch
@@ -114,7 +131,8 @@ export const Branch = () => {
         setIsEditMode(true);
         setFormData({
             branchName: branch.branchName || '',
-            location: branch.location || ''
+            location: branch.location || '',
+            isActive: branch.isActive !== undefined ? branch.isActive : true
         });
         setError('');
         setSuccess('');
@@ -169,12 +187,12 @@ export const Branch = () => {
         )}
 
         {/* Export Button */}
-        <div className="flex justify-end mb-3 sm:mb-4">
+        {/* <div className="flex justify-end mb-3 sm:mb-4">
           <button className="flex items-center space-x-2 py-2 px-3 sm:px-4 rounded-lg bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium hover:bg-gray-50">
             <Icon path="M4 16v1a3 3 000 6h16a3 3 000-6v-1m-4-4l-4 4m0 0l-4-4m4 4V4" className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Export</span>
           </button>
-        </div>
+        </div> */}
 
         {/* Branches Table */}
         {loading ? (
@@ -197,10 +215,10 @@ export const Branch = () => {
                   <tr className="bg-gray-100 text-left text-gray-600 font-semibold uppercase text-xs sm:text-sm">
                     <th className="py-3 px-3 lg:px-4 rounded-tl-lg">#</th>
                     <th className="py-3 px-3 lg:px-4">Branch Name</th>
-                    <th className="py-3 px-3 lg:px-4">Location</th>
-                    <th className="py-3 px-3 lg:px-4">Status</th>
-                    <th className="py-3 px-3 lg:px-4">Created</th>
-                    <th className="py-3 px-3 lg:px-4 rounded-tr-lg">Actions</th>
+                    <th className="py-3 px-3 lg:px-4 text-center">Location</th>
+                    <th className="py-3 px-3 lg:px-4 text-center">Status</th>
+                    <th className="py-3 px-3 lg:px-4 text-center">Created</th>
+                    <th className="py-3 px-3 lg:px-4 rounded-tr-lg text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -208,21 +226,26 @@ export const Branch = () => {
                     <tr key={branch._id} className="border-b last:border-b-0 border-gray-200 hover:bg-gray-50 transition-colors">
                       <td className="py-3 px-3 lg:px-4 text-xs sm:text-sm">{index + 1}</td>
                       <td className="py-3 px-3 lg:px-4 font-medium text-xs sm:text-sm">{branch.branchName}</td>
-                      <td className="py-3 px-3 lg:px-4 text-xs sm:text-sm">{branch.location}</td>
-                      <td className="py-3 px-3 lg:px-4">
-                        <span className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium ${
-                          branch.isActive 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
+                      <td className="py-3 px-3 lg:px-4 text-xs sm:text-sm text-center">{branch.location}</td>
+                      <td className="py-3 px-3 lg:px-4 text-center">
+                        <button 
+                          onClick={() => handleToggleStatus(branch)}
+                          disabled={loading}
+                          className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                            branch.isActive 
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                              : 'bg-red-100 text-red-800 hover:bg-red-200'
+                          }`}
+                          title={`Click to ${branch.isActive ? 'deactivate' : 'activate'} this branch`}
+                        >
                           {branch.isActive ? 'Active' : 'Inactive'}
-                        </span>
+                        </button>
                       </td>
-                      <td className="py-3 px-3 lg:px-4 text-xs sm:text-sm text-gray-600">
+                      <td className="py-3 px-3 lg:px-4 text-xs sm:text-sm text-gray-600 text-center">
                         {new Date(branch.createdAt).toLocaleDateString()}
                       </td>
                       <td className="py-3 px-3 lg:px-4">
-                        <div className="flex flex-wrap gap-1 sm:gap-2">
+                        <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
                           <button 
                             onClick={() => handleViewBranch(branch)}
                             className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium hover:underline px-1"
@@ -260,13 +283,18 @@ export const Branch = () => {
                       </div>
                       <p className="text-xs sm:text-sm text-gray-600 mb-2">{branch.location}</p>
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium ${
-                          branch.isActive 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
+                        <button 
+                          onClick={() => handleToggleStatus(branch)}
+                          disabled={loading}
+                          className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold transition-all duration-200 hover:scale-105 cursor-pointer disabled:opacity-50 ${
+                            branch.isActive 
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                              : 'bg-red-100 text-red-800 hover:bg-red-200'
+                          }`}
+                          title={`Click to ${branch.isActive ? 'deactivate' : 'activate'} this branch`}
+                        >
                           {branch.isActive ? 'Active' : 'Inactive'}
-                        </span>
+                        </button>
                         <span className="text-xs text-gray-500">
                           {new Date(branch.createdAt).toLocaleDateString()}
                         </span>
@@ -319,7 +347,7 @@ export const Branch = () => {
         </div>
 
         <form onSubmit={handleSubmitBranch}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Branch Name</label>
               <input 
@@ -343,6 +371,24 @@ export const Branch = () => {
                 className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 sm:p-3 text-xs sm:text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500" 
                 required
               />
+            </div>
+            <div>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Active Status</label>
+              <div className="flex items-center justify-between p-2 sm:p-[10px] border border-gray-300 rounded-lg bg-gray-50 mt-1">
+                <div>
+                  <span className="block text-xs font-semibold text-gray-700">Active</span>
+                  <span className="block text-[10px] text-gray-400">Determine status</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, isActive: !prev.isActive }))}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formData.isActive ? 'bg-orange-500' : 'bg-gray-200'}`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${formData.isActive ? 'translate-x-5' : 'translate-x-0'}`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
