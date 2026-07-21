@@ -1,4 +1,7 @@
 const LeaveRequest = require("../../models/attendance/leaveRequestModal");
+const { Staff } = require("../../models/administration/staffModel");
+const Intern = require("../../models/administration/internModel");
+const { User } = require("../../models/administration/userModel");
 const mongoose = require("mongoose");
 
 // @desc    Create a new leave request
@@ -6,11 +9,33 @@ const mongoose = require("mongoose");
 // @access  Private
 const createLeaveRequest = async (req, res) => {
   try {
-    const { leaveType, startDate, endDate, reason, attachments } = req.body;
+    const { leaveType, startDate, endDate, reason, attachments, branch } = req.body;
     const userId = req.userId; // From checkAuth middleware
 
     if (!leaveType || !startDate || !endDate || !reason) {
       return res.status(400).json({ message: "Please provide all required fields" });
+    }
+
+    // Resolve branch and user model type dynamically
+    let userBranch = branch;
+    let userModel = "User";
+
+    // 1. Check if logged-in user is an Intern
+    const intern = await Intern.findById(userId);
+    if (intern) {
+      userModel = "Intern";
+      if (!userBranch) userBranch = intern.branch;
+    } else {
+      // 2. Check if logged-in user is a Staff
+      const staff = await Staff.findById(userId);
+      if (staff) {
+        userModel = "Staff";
+        if (!userBranch) userBranch = staff.branch;
+      }
+    }
+
+    if (!userBranch) {
+      return res.status(400).json({ message: "Branch is required to submit a leave request" });
     }
 
     // Calculate total days
@@ -21,6 +46,8 @@ const createLeaveRequest = async (req, res) => {
 
     const leaveRequest = await LeaveRequest.create({
       user: userId,
+      userModel,
+      branch: userBranch,
       leaveType,
       startDate,
       endDate,
@@ -97,6 +124,17 @@ const updateLeaveRequestStatus = async (req, res) => {
 
     leaveRequest.status = status;
     leaveRequest.reviewedBy = reviewerId;
+
+    // Resolve reviewedByModel dynamically
+    let reviewedByModel = "Staff";
+    const isStaff = await Staff.exists({ _id: reviewerId });
+    if (!isStaff) {
+      const isUser = await User.exists({ _id: reviewerId });
+      if (isUser) {
+        reviewedByModel = "User";
+      }
+    }
+    leaveRequest.reviewedByModel = reviewedByModel;
     leaveRequest.reviewedAt = Date.now();
     
     if (status === "REJECTED" && rejectionReason) {

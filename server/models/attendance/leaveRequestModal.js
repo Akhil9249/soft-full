@@ -4,10 +4,16 @@ const leaveRequestSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // or "Intern" / "Employee"
+      refPath: "userModel",
       required: true,
     },
-    
+    userModel: {
+      type: String,
+      required: true,
+      enum: ["User", "Intern", "Staff"],
+      default: "User",
+    },
+
     branch: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Branch",
@@ -22,7 +28,7 @@ const leaveRequestSchema = new mongoose.Schema(
 
     leaveType: {
       type: String,
-      enum: ["SICK","PERSONAL","MEDICAL","FAMILY","EXAM","EVENT","OTHER"],
+      enum: ["SICK", "PERSONAL", "MEDICAL", "FAMILY", "EXAM", "EVENT", "OTHER"],
       required: true,
     },
 
@@ -60,7 +66,12 @@ const leaveRequestSchema = new mongoose.Schema(
 
     reviewedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Staff", // Manager/Admin
+      refPath: "reviewedByModel",
+    },
+    reviewedByModel: {
+      type: String,
+      enum: ["User", "Staff"],
+      default: "Staff",
     },
 
     reviewedAt: {
@@ -78,15 +89,15 @@ const leaveRequestSchema = new mongoose.Schema(
         fileName: String,
       },
     ],
-        isDeleted: {
-    type: Boolean,
-    default: false,
-  },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
 
-  deletedAt: {
-    type: Date,
-    default: null,
-  }
+    deletedAt: {
+      type: Date,
+      default: null,
+    }
   },
   { timestamps: true }
 );
