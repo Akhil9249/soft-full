@@ -1,6 +1,6 @@
-const { User } = require("../models/userModel.js");
-const { Product } = require("../models/productModel.js");
-const Role = require("../models/administration/roleModel.js");
+const { User } = require("../../models/userModel.js");
+const { Product } = require("../../models/productModel.js");
+const Role = require("../../models/administration/roleModel.js");
 const mongoose = require("mongoose");
 
 // Helper function to get user role name
