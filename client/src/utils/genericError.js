@@ -1,4 +1,8 @@
 export const genericError = (error) => {
+    if (!error || !error.response) {
+        console.error("Network, CORS, or unknown error:", error);
+        return;
+    }
     
     if (error.response.status === 401) {
 
