@@ -937,83 +937,6 @@ const LeaveRequest = () => {
     );
   };
 
-  const ActionModal = () => {
-    if (!showActionModal || !actionTarget) return null;
-
-    const isApprove = actionType === 'APPROVE';
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4 animate-fadeIn">
-        <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden border border-gray-100">
-          {/* Header */}
-          <div className={`px-6 py-4 border-b border-gray-100 flex items-center gap-3 ${isApprove ? 'bg-green-50' : 'bg-red-50'}`}>
-            {isApprove ? (
-              <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0">
-                <Check className="w-5 h-5" />
-              </div>
-            ) : (
-              <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 flex-shrink-0">
-                <X className="w-5 h-5" />
-              </div>
-            )}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                {isApprove ? 'Approve Leave Request' : 'Reject Leave Request'}
-              </h3>
-            </div>
-          </div>
-
-          {/* Body */}
-          <div className="px-6 py-4 space-y-4">
-            <p className="text-sm text-gray-600">
-              {isApprove ? (
-                <>Are you sure you want to approve the leave request for <strong className="text-gray-900">{actionTarget.user?.fullName || actionTarget.user?.name || 'N/A'}</strong>?</>
-              ) : (
-                <>Please enter the reason for rejecting the leave request for <strong className="text-gray-900">{actionTarget.user?.fullName || actionTarget.user?.name || 'N/A'}</strong>:</>
-              )}
-            </p>
-
-            {!isApprove && (
-              <div>
-                <textarea
-                  value={rejectionReasonInput}
-                  onChange={(e) => setRejectionReasonInput(e.target.value)}
-                  placeholder="Enter rejection reason..."
-                  rows="3"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm resize-none"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-            <button
-              onClick={() => {
-                setShowActionModal(false);
-                setActionTarget(null);
-                setActionType(null);
-                setRejectionReasonInput('');
-              }}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirmAction}
-              disabled={loading}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                isApprove ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
-              }`}
-            >
-              {loading ? 'Processing...' : isApprove ? 'Approve' : 'Reject'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <>
       <Navbar headData={headData} activeTab={activeTab} />
@@ -1029,7 +952,76 @@ const LeaveRequest = () => {
       <NotificationModal />
 
       {/* Action Modal (Confirm Approve / Input Rejection Reason) */}
-      {showActionModal && <ActionModal />}
+      {showActionModal && actionTarget && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4 animate-fadeIn">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden border border-gray-100">
+            {/* Header */}
+            <div className={`px-6 py-4 border-b border-gray-100 flex items-center gap-3 ${actionType === 'APPROVE' ? 'bg-green-50' : 'bg-red-50'}`}>
+              {actionType === 'APPROVE' ? (
+                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0">
+                  <Check className="w-5 h-5" />
+                </div>
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 flex-shrink-0">
+                  <X className="w-5 h-5" />
+                </div>
+              )}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {actionType === 'APPROVE' ? 'Approve Leave Request' : 'Reject Leave Request'}
+                </h3>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4 space-y-4">
+              <p className="text-sm text-gray-600">
+                {actionType === 'APPROVE' ? (
+                  <>Are you sure you want to approve the leave request for <strong className="text-gray-900">{actionTarget.user?.fullName || actionTarget.user?.name || 'N/A'}</strong>?</>
+                ) : (
+                  <>Please enter the reason for rejecting the leave request for <strong className="text-gray-900">{actionTarget.user?.fullName || actionTarget.user?.name || 'N/A'}</strong>:</>
+                )}
+              </p>
+
+              {actionType !== 'APPROVE' && (
+                <div>
+                  <textarea
+                    value={rejectionReasonInput}
+                    onChange={(e) => setRejectionReasonInput(e.target.value)}
+                    placeholder="Enter rejection reason..."
+                    rows="3"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm resize-none"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowActionModal(false);
+                  setActionTarget(null);
+                  setActionType(null);
+                  setRejectionReasonInput('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmAction}
+                disabled={loading}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  actionType === 'APPROVE' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {loading ? 'Processing...' : actionType === 'APPROVE' ? 'Approve' : 'Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Detailed Leave View Modal */}
       {showViewModal && viewingLeave && (
