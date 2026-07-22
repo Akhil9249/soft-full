@@ -72,6 +72,26 @@ const LeaveRequest = () => {
     setViewingLeave(null);
   };
 
+  // Custom action modal state
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [actionType, setActionType] = useState(null); // 'APPROVE' or 'REJECT'
+  const [actionTarget, setActionTarget] = useState(null);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+
+  const triggerApprove = (request) => {
+    setActionType('APPROVE');
+    setActionTarget(request);
+    setRejectionReasonInput('');
+    setShowActionModal(true);
+  };
+
+  const triggerReject = (request) => {
+    setActionType('REJECT');
+    setActionTarget(request);
+    setRejectionReasonInput('');
+    setShowActionModal(true);
+  };
+
   // Form state
   const [formData, setFormData] = useState({
     leaveType: '',
@@ -209,22 +229,26 @@ const LeaveRequest = () => {
     }
   }, [selectedBranch, branches, allDaysCombinations, allTimings]);
 
-  // Handler for approving or rejecting leave requests
-  const handleStatusChange = async (id, newStatus) => {
-    try {
-      let rejectionReason = '';
-      if (newStatus === 'REJECTED') {
-        rejectionReason = prompt('Please enter the reason for rejection:') || '';
-        if (rejectionReason.trim() === '') {
-          showNotification('error', 'Validation Error', 'Rejection reason is required.');
-          return;
-        }
-      }
+  const handleConfirmAction = async () => {
+    if (!actionTarget) return;
 
+    if (actionType === 'REJECT' && !rejectionReasonInput.trim()) {
+      showNotification('error', 'Validation Error', 'Please enter a rejection reason.');
+      return;
+    }
+
+    try {
       setLoading(true);
-      const res = await updateLeaveRequestStatus(id, { status: newStatus, rejectionReason });
+      setShowActionModal(false);
+      
+      const payload = {
+        status: actionType === 'APPROVE' ? 'APPROVED' : 'REJECTED',
+        rejectionReason: actionType === 'REJECT' ? rejectionReasonInput : undefined
+      };
+
+      const res = await updateLeaveRequestStatus(actionTarget._id, payload);
       if (res?.success) {
-        showNotification('success', 'Success', `Leave request ${newStatus.toLowerCase()} successfully.`);
+        showNotification('success', 'Success', `Leave request ${payload.status.toLowerCase()} successfully.`);
         fetchLeaveRequests();
       }
     } catch (err) {
@@ -232,6 +256,9 @@ const LeaveRequest = () => {
       showNotification('error', 'Error', err.response?.data?.message || 'Failed to update leave request status.');
     } finally {
       setLoading(false);
+      setActionTarget(null);
+      setActionType(null);
+      setRejectionReasonInput('');
     }
   };
 
@@ -615,14 +642,14 @@ const LeaveRequest = () => {
                           {request.status === 'PENDING' && (
                             <>
                               <button 
-                                onClick={() => handleStatusChange(request._id, 'APPROVED')}
+                                onClick={() => triggerApprove(request)}
                                 className="text-green-600 hover:text-green-900 flex items-center"
                                 title="Approve"
                               >
                                 <Check className="w-4 h-4 mr-1" /> Approve
                               </button>
                               <button 
-                                onClick={() => handleStatusChange(request._id, 'REJECTED')}
+                                onClick={() => triggerReject(request)}
                                 className="text-red-600 hover:text-red-900 flex items-center"
                                 title="Reject"
                               >
@@ -677,13 +704,13 @@ const LeaveRequest = () => {
                     {request.status === 'PENDING' && (
                       <>
                         <button 
-                          onClick={() => handleStatusChange(request._id, 'APPROVED')}
+                          onClick={() => triggerApprove(request)}
                           className="flex-1 py-1.5 text-xs font-medium text-green-600 bg-green-50 rounded-md hover:bg-green-100 transition-colors flex items-center justify-center"
                         >
                           <Check className="w-3.5 h-3.5 mr-1" /> Approve
                         </button>
                         <button 
-                          onClick={() => handleStatusChange(request._id, 'REJECTED')}
+                          onClick={() => triggerReject(request)}
                           className="flex-1 py-1.5 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors flex items-center justify-center"
                         >
                           <X className="w-3.5 h-3.5 mr-1" /> Reject
@@ -910,6 +937,83 @@ const LeaveRequest = () => {
     );
   };
 
+  const ActionModal = () => {
+    if (!showActionModal || !actionTarget) return null;
+
+    const isApprove = actionType === 'APPROVE';
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4 animate-fadeIn">
+        <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden border border-gray-100">
+          {/* Header */}
+          <div className={`px-6 py-4 border-b border-gray-100 flex items-center gap-3 ${isApprove ? 'bg-green-50' : 'bg-red-50'}`}>
+            {isApprove ? (
+              <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 flex-shrink-0">
+                <Check className="w-5 h-5" />
+              </div>
+            ) : (
+              <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 flex-shrink-0">
+                <X className="w-5 h-5" />
+              </div>
+            )}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {isApprove ? 'Approve Leave Request' : 'Reject Leave Request'}
+              </h3>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="px-6 py-4 space-y-4">
+            <p className="text-sm text-gray-600">
+              {isApprove ? (
+                <>Are you sure you want to approve the leave request for <strong className="text-gray-900">{actionTarget.user?.fullName || actionTarget.user?.name || 'N/A'}</strong>?</>
+              ) : (
+                <>Please enter the reason for rejecting the leave request for <strong className="text-gray-900">{actionTarget.user?.fullName || actionTarget.user?.name || 'N/A'}</strong>:</>
+              )}
+            </p>
+
+            {!isApprove && (
+              <div>
+                <textarea
+                  value={rejectionReasonInput}
+                  onChange={(e) => setRejectionReasonInput(e.target.value)}
+                  placeholder="Enter rejection reason..."
+                  rows="3"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm resize-none"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+            <button
+              onClick={() => {
+                setShowActionModal(false);
+                setActionTarget(null);
+                setActionType(null);
+                setRejectionReasonInput('');
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmAction}
+              disabled={loading}
+              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                isApprove ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+              }`}
+            >
+              {loading ? 'Processing...' : isApprove ? 'Approve' : 'Reject'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <Navbar headData={headData} activeTab={activeTab} />
@@ -923,6 +1027,9 @@ const LeaveRequest = () => {
 
       {/* Notification Modal */}
       <NotificationModal />
+
+      {/* Action Modal (Confirm Approve / Input Rejection Reason) */}
+      {showActionModal && <ActionModal />}
 
       {/* Detailed Leave View Modal */}
       {showViewModal && viewingLeave && (
@@ -1034,7 +1141,7 @@ const LeaveRequest = () => {
                     <button
                       onClick={() => {
                         closeViewModal();
-                        handleStatusChange(viewingLeave._id, 'APPROVED');
+                        triggerApprove(viewingLeave);
                       }}
                       className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
                     >
@@ -1043,7 +1150,7 @@ const LeaveRequest = () => {
                     <button
                       onClick={() => {
                         closeViewModal();
-                        handleStatusChange(viewingLeave._id, 'REJECTED');
+                        triggerReject(viewingLeave);
                       }}
                       className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
                     >
