@@ -98,7 +98,6 @@ const LeaveRequest = () => {
     startDate: '',
     endDate: '',
     reason: '',
-    branch: '',
   });
 
   const handleInputChange = (e) => {
@@ -264,7 +263,7 @@ const LeaveRequest = () => {
 
   const handleApplyLeave = async (e) => {
     e.preventDefault();
-    if (!formData.leaveType || !formData.startDate || !formData.endDate || !formData.reason || !formData.branch) {
+    if (!formData.leaveType || !formData.startDate || !formData.endDate || !formData.reason) {
       showNotification('error', 'Validation Error', 'Please fill in all required fields');
       return;
     }
@@ -276,7 +275,6 @@ const LeaveRequest = () => {
         startDate: formData.startDate,
         endDate: formData.endDate,
         reason: formData.reason,
-        branch: formData.branch,
         attachments: []
       });
 
@@ -284,7 +282,7 @@ const LeaveRequest = () => {
         showNotification('success', 'Success', 'Leave request submitted successfully.');
         fetchLeaveRequests();
         setActiveTab('leaveList');
-        setFormData({ leaveType: '', startDate: '', endDate: '', reason: '', branch: '' });
+        setFormData({ leaveType: '', startDate: '', endDate: '', reason: '' });
       }
     } catch (err) {
       console.error('Failed to submit leave request:', err);
@@ -774,24 +772,6 @@ const LeaveRequest = () => {
       
       <form onSubmit={handleApplyLeave} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Branch Dropdown */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Branch <span className="text-red-500">*</span></label>
-            <select 
-              name="branch" 
-              value={formData.branch} 
-              onChange={handleInputChange} 
-              className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            >
-              <option value="">Choose Branch</option>
-              {branches.map((branch) => (
-                <option key={branch._id} value={branch._id}>
-                  {branch.branchName}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* Leave Type Dropdown */}
           <div>
             <label className="block text-gray-700 font-medium mb-2">Leave Type <span className="text-red-500">*</span></label>
@@ -855,7 +835,7 @@ const LeaveRequest = () => {
             type="button"
             onClick={() => {
               setActiveTab('leaveList');
-              setFormData({ leaveType: '', startDate: '', endDate: '', reason: '', branch: '' });
+              setFormData({ leaveType: '', startDate: '', endDate: '', reason: '' });
             }}
             className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
           >

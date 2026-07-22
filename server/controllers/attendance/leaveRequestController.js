@@ -9,7 +9,7 @@ const mongoose = require("mongoose");
 // @access  Private
 const createLeaveRequest = async (req, res) => {
   try {
-    const { leaveType, startDate, endDate, reason, attachments, branch } = req.body;
+    const { leaveType, startDate, endDate, reason, attachments } = req.body;
     const userId = req.userId; // From checkAuth middleware
 
     if (!leaveType || !startDate || !endDate || !reason) {
@@ -17,25 +17,32 @@ const createLeaveRequest = async (req, res) => {
     }
 
     // Resolve branch and user model type dynamically
-    let userBranch = branch;
+    let userBranch = null;
     let userModel = "User";
 
     // 1. Check if logged-in user is an Intern
     const intern = await Intern.findById(userId);
     if (intern) {
       userModel = "Intern";
-      if (!userBranch) userBranch = intern.branch;
+      userBranch = intern.branch;
     } else {
       // 2. Check if logged-in user is a Staff
       const staff = await Staff.findById(userId);
       if (staff) {
         userModel = "Staff";
-        if (!userBranch) userBranch = staff.branch;
+        userBranch = staff.branch;
+      } else {
+        // 3. Fallback check for User/Admin
+        const user = await User.findById(userId);
+        if (user) {
+          userModel = "User";
+          userBranch = user.branch;
+        }
       }
     }
 
     if (!userBranch) {
-      return res.status(400).json({ message: "Branch is required to submit a leave request" });
+      return res.status(400).json({ message: "No branch associated with your user account. Please contact administrator." });
     }
 
     // Calculate total days
