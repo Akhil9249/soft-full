@@ -107,10 +107,9 @@ export const StaticPages = () => {
   const renderContent = () => {
     return (
       <>
-       <Navbar headData={headData} activeTab={activeTab} />
-       <div className="mb-6">
-              <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
-            </div>
+        <Navbar headData={headData} activeTab={activeTab}>
+          <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+        </Navbar>
 
         <div className=" bg-gray-100 min-h-screen font-sans flex-1">
 

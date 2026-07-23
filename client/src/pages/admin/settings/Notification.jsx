@@ -1199,12 +1199,12 @@ export const Notification = () => {
             <div className="bg-white rounded-lg shadow-lg p-3 sm:p-4 lg:p-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                     <div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Notifications</h2>
+                        {/* <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Notifications</h2>
                         {paginationInfo && (
                             <p className="text-xs sm:text-sm text-gray-500 mt-1">
                                 {paginationInfo.displayInfo?.showing} of {paginationInfo.displayInfo?.total} notifications
                             </p>
-                        )}
+                        )} */}
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                         <button
@@ -1599,43 +1599,51 @@ export const Notification = () => {
 
                 {/* Pagination Controls */}
                 {paginationInfo && paginationInfo.totalPages > 1 && (
-                    <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
-                            {paginationInfo.displayInfo.pageInfo}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 px-4 py-3 bg-white border-t border-gray-200">
+                        <div className="flex items-center text-xs sm:text-sm text-gray-700 text-center sm:text-left">
+                            <span>
+                                Showing {paginationInfo.displayInfo?.showing} of {paginationInfo.displayInfo?.total} results
+                            </span>
                         </div>
-
-                        <div className="flex items-center gap-2">
+                        
+                        <div className="flex items-center space-x-2">
+                            {/* Previous Button */}
                             <button
                                 onClick={handlePrevPage}
-                                disabled={!paginationInfo.hasPrevPage}
-                                className="px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                disabled={!paginationInfo.hasPrevPage || notificationsLoading}
+                                className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${
+                                    paginationInfo.hasPrevPage && !notificationsLoading
+                                        ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                                        : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                                }`}
                             >
-                                Previous
+                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                </svg>
+                                {notificationsLoading ? 'Loading...' : 'Previous'}
                             </button>
-                            
-                            {/* Page Numbers - Use backend calculated pageNumbers */}
-                            <div className="flex items-center gap-1">
-                                {paginationInfo.pageNumbers.map((pageNum) => (
-                                    <button
-                                        key={pageNum}
-                                        onClick={() => handlePageChange(pageNum)}
-                                        className={`px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors ${
-                                            paginationInfo.currentPage === pageNum
-                                                ? 'bg-[#F9A825] text-white'
-                                                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                                        }`}
-                                    >
-                                        {pageNum}
-                                    </button>
-                                ))}
+
+                            {/* Current Page Info */}
+                            <div className="flex items-center space-x-2">
+                                <span className="text-sm text-gray-600">
+                                    Page {paginationInfo.currentPage} of {paginationInfo.totalPages}
+                                </span>
                             </div>
-                            
+
+                            {/* Next Button */}
                             <button
                                 onClick={handleNextPage}
-                                disabled={!paginationInfo.hasNextPage}
-                                className="px-2 sm:px-3 py-2 text-xs sm:text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                disabled={!paginationInfo.hasNextPage || notificationsLoading}
+                                className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${
+                                    paginationInfo.hasNextPage && !notificationsLoading
+                                        ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                                        : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                                }`}
                             >
-                                Next
+                                {notificationsLoading ? 'Loading...' : 'Next'}
+                                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                </svg>
                             </button>
                         </div>
                     </div>
@@ -1732,10 +1740,9 @@ export const Notification = () => {
 
     return (
         <>
-        <Navbar headData={headData} activeTab={activeTab} />
-        <div className="mb-6">
-        <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
-        </div>
+        <Navbar headData={headData} activeTab={activeTab}>
+          <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+        </Navbar>
         <div className="flex-1">
             {activeTab === 'notifications' && <NotificationsView />}
             {activeTab === 'new-notification' && (

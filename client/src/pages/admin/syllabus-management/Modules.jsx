@@ -598,23 +598,23 @@ export const Modules = () => {
 
   return (
     <>
-      <Navbar headData={headData} activeTab={activeTab} />
+      <Navbar headData={headData} activeTab={activeTab}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="w-full sm:w-auto">
+            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+          </div>
+
+          <div className="flex justify-end w-full sm:w-auto">
+            <button onClick={handleExport} disabled={loading} className="flex items-center px-4 py-2 bg-white text-gray-600 rounded-md font-medium border border-gray-300 hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base">
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+              {loading ? 'Exporting...' : 'Export'}
+            </button>
+          </div>
+        </div>
+      </Navbar>
       
       {/* Notification Modal */}
       <NotificationModal />
-
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        <div className="w-full sm:w-auto">
-          <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
-        </div>
-
-        <div className="flex justify-end w-full sm:w-auto">
-          <button onClick={handleExport} disabled={loading} className="flex items-center px-4 py-2 bg-white text-gray-600 rounded-md font-medium border border-gray-300 hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base">
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-            {loading ? 'Exporting...' : 'Export'}
-          </button>
-        </div>
-      </div>
       <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
 
         {/* Tab content */}

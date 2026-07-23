@@ -1814,12 +1814,10 @@ export const StudentManagement = () => {
     if (activeSubModule === 'studentManagement') {
       return (
         <>
-          <Navbar headData={headData} activeTab={activeTab} />
+          <Navbar headData={headData} activeTab={activeTab}>
+            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+          </Navbar>
           <div className="flex-1 ">
-            <div className="mb-6" >
-              <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
-            </div>
-
             {activeTab === 'studentsList' ? renderStudentsList() : renderNewStudentForm()}
           </div>
 

@@ -385,10 +385,9 @@ export const Timings = () => {
 
   return (
     <>
-    <Navbar headData={headData} activeTab={activeTab} />
-      <div className="mb-4 sm:mb-6">
-        <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
-      </div>
+    <Navbar headData={headData} activeTab={activeTab}>
+      <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+    </Navbar>
       <div className="flex-1">
               {activeTab === 'timings' && <TimingsView />}
               {activeTab === 'new-timing' && <NewTimingForm />}

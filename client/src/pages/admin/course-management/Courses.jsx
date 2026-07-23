@@ -1598,12 +1598,9 @@ export const Courses = () => {
       return (
         <div className="flex-1 ">
 
-          <Navbar headData={headData} activeTab={activeTab} />
-
-
-          <div className="mb-6">
+          <Navbar headData={headData} activeTab={activeTab}>
             <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
-          </div>
+          </Navbar>
 
           {activeTab === 'courses' ? renderCoursesList() : renderNewCourseForm()}
         </div>

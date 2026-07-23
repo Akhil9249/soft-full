@@ -1229,58 +1229,12 @@ export const RoleManagement = () => {
   return (
     <>
     {/* Content Tabs & Actions */}
-    <Navbar headData={headData} activeTab={activeTab} />
+    <Navbar headData={headData} activeTab={activeTab}>
+      <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+    </Navbar>
 
-    <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-6">
-    {/* <div className="flex space-x-2">
-      <button
-        onClick={() => setActiveTab('roles')}
-        className={`px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-          activeTab === 'roles'
-            ? 'bg-orange-500 text-white shadow-md hover:bg-orange-600'
-            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-        }`}
-      >
-        Roles
-      </button>
-      <button
-        onClick={() => setActiveTab('newRole')}
-        className={`px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
-          activeTab === 'newRole'
-            ? 'bg-orange-500 text-white shadow-md hover:bg-orange-600'
-            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-        }`}
-      >
-        New Role
-      </button>
-    </div> */}
-
-    <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
-
-    {activeTab === 'roles' && (
-      <div className="flex space-x-2">
-        {/* <button 
-          onClick={() => {
-            setEditingRole(null);
-            setFormData({
-              role: '',
-              description: '',
-              permissions: initializePermissions()
-            });
-            setActiveTab('newRole');
-          }}
-          className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-md font-medium shadow-md hover:bg-orange-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-        >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-          New Role
-        </button> */}
-      </div>
-    )}
-    
-  </div>
-
-  {/* Conditional Rendering */}
-  {activeTab === 'roles' ? renderRolesTable() : renderNewRoleForm()}
+    {/* Conditional Rendering */}
+    {activeTab === 'roles' ? renderRolesTable() : renderNewRoleForm()}
 
   {/* Notification Modal */}
   <NotificationModal />

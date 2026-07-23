@@ -140,8 +140,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               to="/dashboard"
               onClick={() => handleNavItemClick('/dashboard')}
               className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/dashboard'
-                  ? 'bg-orange-100 text-orange-500'
-                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+                ? 'bg-orange-100 text-orange-500'
+                : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
                 }`}
             >
               <LayoutDashboard className="w-5 h-5 mr-3" />
@@ -166,8 +166,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                         to="/"
                         onClick={() => handleNavItemClick('/')}
                         className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/'
-                            ? 'bg-orange-100 text-orange-600 font-semibold'
-                            : ' font-semibold hover:bg-orange-50 hover:text-orange-600'
+                          ? 'bg-orange-100 text-orange-600 font-semibold'
+                          : ' font-semibold hover:bg-orange-50 hover:text-orange-600'
                           }`}
                       >
                         Role Management
@@ -182,8 +182,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                         to="/staff-management"
                         onClick={() => handleNavItemClick('/staff-management')}
                         className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/staff-management'
-                            ? 'bg-orange-100 text-orange-600 font-semibold'
-                            : 'hover:text-orange-500 hover:bg-orange-50'
+                          ? 'bg-orange-100 text-orange-600 font-semibold'
+                          : 'hover:text-orange-500 hover:bg-orange-50'
                           }`}
                       >
                         Staff Management
@@ -197,8 +197,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/student-management"
                       onClick={() => handleNavItemClick('/student-management')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/student-management'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Intern Management
@@ -224,8 +224,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/category"
                       onClick={() => handleNavItemClick('/category')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/category'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Categories
@@ -236,8 +236,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/courses"
                       onClick={() => handleNavItemClick('/courses')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/courses'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Courses
@@ -264,8 +264,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/modules"
                       onClick={() => handleNavItemClick('/modules')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/modules'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Modules
@@ -276,8 +276,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/topics"
                       onClick={() => handleNavItemClick('/topics')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/topics'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Topics
@@ -302,8 +302,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/task-management"
                       onClick={() => handleNavItemClick('/task-management')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/task-management'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Task
@@ -314,8 +314,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/material"
                       onClick={() => handleNavItemClick('/material')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/material'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Material
@@ -342,8 +342,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/batches"
                       onClick={() => handleNavItemClick('/batches')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/batches'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Batches
@@ -354,8 +354,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/timings"
                       onClick={() => handleNavItemClick('/timings')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/timings'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Timings
@@ -366,8 +366,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/weekly-schedule"
                       onClick={() => handleNavItemClick('/weekly-schedule')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/weekly-schedule'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Weekly Schedule
@@ -378,8 +378,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/mentor-batches"
                       onClick={() => handleNavItemClick('/mentor-batches')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/mentor-batches'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Mentor Batches
@@ -404,8 +404,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/student-attendance"
                       onClick={() => handleNavItemClick('/student-attendance')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/student-attendance'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Student Attendance
@@ -416,8 +416,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/leave-request"
                       onClick={() => handleNavItemClick('/leave-request')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/leave-request'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Leave Request
@@ -444,8 +444,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/static-pages"
                       onClick={() => handleNavItemClick('/static-pages')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/static-pages'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Static Page
@@ -456,8 +456,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/notification"
                       onClick={() => handleNavItemClick('/notification')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/notification'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Notification
@@ -468,8 +468,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       to="/branch"
                       onClick={() => handleNavItemClick('/branch')}
                       className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/branch'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
                         }`}
                     >
                       Branch
@@ -507,7 +507,7 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
 
 export default Sidebar;
 
-const Navbar = ({ headData, activeTab }) => {
+const Navbar = ({ headData, activeTab, children }) => {
   const navigate = useNavigate();
   const { setAuth } = useAuth();
   const dispatch = useAppDispatch();
@@ -546,32 +546,34 @@ const Navbar = ({ headData, activeTab }) => {
   };
 
   return (
-    <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-      <div className="flex flex-col">
-        <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">{headData}</h1>
-        <p className="text-xs sm:text-sm text-gray-500">{headData} &gt; {activeTab}</p>
-      </div>
-      <div className="flex items-center space-x-4 border border-gray-600 rounded-md p-2 w-full sm:w-auto">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
-            {userImage ? (
-              <img
-                src={userImage}
-                alt="Profile"
-                className="w-10 h-10 rounded-full object-cover"
-              />
-            ) : (
-              <RxPerson />
-            )}
-          </div>
-          <div className="flex flex-col">
-            <span className="font-semibold text-gray-800">{userName}</span>
-            <span className="text-sm text-gray-500">{userRole}</span>
+    <div className="sticky top-0 -mt-3 pt-3 pb-3 z-30 bg-gray-100 -mx-3 px-3 mb-6 border-b border-gray-200">
+      <header className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${children ? 'mb-4' : ''}`}>
+        <div className="flex flex-col">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">{headData}</h1>
+          <p className="text-xs sm:text-sm text-gray-500">{headData} &gt; {activeTab}</p>
+        </div>
+        <div className="flex items-center space-x-4 border border-gray-600 rounded-md p-2 w-full sm:w-auto">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+              {userImage ? (
+                <img
+                  src={userImage}
+                  alt="Profile"
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <RxPerson />
+              )}
+            </div>
+            <div className="flex flex-col">
+              <span className="font-semibold text-gray-800">{userName}</span>
+              <span className="text-sm text-gray-500">{userRole}</span>
+            </div>
           </div>
         </div>
-
-      </div>
-    </header>
+      </header>
+      {children}
+    </div>
   );
 };
 

@@ -12,8 +12,20 @@ const createLeaveRequest = async (req, res) => {
     const { leaveType, startDate, endDate, reason, attachments } = req.body;
     const userId = req.userId; // From checkAuth middleware
 
-    if (!leaveType || !startDate || !endDate || !reason) {
-      return res.status(400).json({ message: "Please provide all required fields" });
+    // if (!leaveType || !startDate || !endDate || !reason) {
+    //   return res.status(400).json({ message: "Please provide all required fields" });
+    // }
+    if (!leaveType) {
+      return res.status(400).json({ message: "Please provide leave type" });
+    }
+    if (!startDate) {
+      return res.status(400).json({ message: "Please provide start date" });
+    }
+    if (!endDate) {
+      return res.status(400).json({ message: "Please provide end date" });
+    }
+    if (!reason) {
+      return res.status(400).json({ message: "Please provide reason" });
     }
 
     // Resolve branch and user model type dynamically

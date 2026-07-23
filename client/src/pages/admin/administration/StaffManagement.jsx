@@ -1449,12 +1449,9 @@ export const StaffManagement = () => {
 
     return (
         <div>
-
-            <Navbar headData={headData} activeTab={activeTab} />
-
-            <div className="mb-6">
+            <Navbar headData={headData} activeTab={activeTab}>
                 <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
-            </div>
+            </Navbar>
 
             {/* Conditional Rendering */}
             {activeTab === 'staffList' ? renderStaffList() : renderNewStaffForm()}

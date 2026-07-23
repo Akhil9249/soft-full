@@ -165,11 +165,9 @@ export const Branch = () => {
           
   return (
     <>
-       <Navbar headData={headData} activeTab={activeTab} />
-
-       <div className="mb-6">
-            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
-            </div>
+        <Navbar headData={headData} activeTab={activeTab}>
+          <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+        </Navbar>
 
     <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg sm:rounded-xl shadow-lg">
     {activeTab === 'branches' ? (
@@ -209,29 +207,29 @@ export const Branch = () => {
         ) : (
           <>
             {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto rounded-lg">
-              <table className="min-w-full bg-white rounded-lg shadow-md">
-                <thead>
-                  <tr className="bg-gray-100 text-left text-gray-600 font-semibold uppercase text-xs sm:text-sm">
-                    <th className="py-3 px-3 lg:px-4 rounded-tl-lg">#</th>
-                    <th className="py-3 px-3 lg:px-4">Branch Name</th>
-                    <th className="py-3 px-3 lg:px-4 text-center">Location</th>
-                    <th className="py-3 px-3 lg:px-4 text-center">Status</th>
-                    <th className="py-3 px-3 lg:px-4 text-center">Created</th>
-                    <th className="py-3 px-3 lg:px-4 rounded-tr-lg text-center">Actions</th>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch Name</th>
+                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                    <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
+                    <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="bg-white divide-y divide-gray-200">
                   {Array.isArray(branches) && branches.map((branch, index) => (
-                    <tr key={branch._id} className="border-b last:border-b-0 border-gray-200 hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-3 lg:px-4 text-xs sm:text-sm">{index + 1}</td>
-                      <td className="py-3 px-3 lg:px-4 font-medium text-xs sm:text-sm">{branch.branchName}</td>
-                      <td className="py-3 px-3 lg:px-4 text-xs sm:text-sm text-center">{branch.location}</td>
-                      <td className="py-3 px-3 lg:px-4 text-center">
+                    <tr key={branch._id} className="hover:bg-gray-50">
+                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{index + 1}</td>
+                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{branch.branchName}</td>
+                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{branch.location}</td>
+                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-center">
                         <button 
                           onClick={() => handleToggleStatus(branch)}
                           disabled={loading}
-                          className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-semibold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                          className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                             branch.isActive 
                               ? 'bg-green-100 text-green-800 hover:bg-green-200' 
                               : 'bg-red-100 text-red-800 hover:bg-red-200'
@@ -241,26 +239,26 @@ export const Branch = () => {
                           {branch.isActive ? 'Active' : 'Inactive'}
                         </button>
                       </td>
-                      <td className="py-3 px-3 lg:px-4 text-xs sm:text-sm text-gray-600 text-center">
+                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                         {new Date(branch.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="py-3 px-3 lg:px-4">
-                        <div className="flex flex-wrap gap-1 sm:gap-2 justify-center">
+                      <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
+                        <div className="flex justify-center space-x-2">
                           <button 
                             onClick={() => handleViewBranch(branch)}
-                            className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium hover:underline px-1"
+                            className="text-blue-600 hover:text-blue-900 font-medium px-1"
                             title="View branch details"
                           >
                             View
                           </button>
                           <button 
                             onClick={() => handleEditBranch(branch)}
-                            className="text-orange-600 hover:text-orange-800 text-xs sm:text-sm font-medium hover:underline px-1"
+                            className="text-orange-600 hover:text-orange-900 font-medium px-1"
                             title="Edit branch"
                           >
                             Edit
                           </button>
-                          <button className="text-red-600 hover:text-red-800 text-xs sm:text-sm font-medium hover:underline px-1">
+                          <button className="text-red-600 hover:text-red-900 font-medium px-1">
                             Delete
                           </button>
                         </div>

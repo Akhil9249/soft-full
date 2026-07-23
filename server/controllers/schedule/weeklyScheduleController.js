@@ -1,5 +1,6 @@
 // controllers/schedule/weeklyScheduleController.js
 const WeeklySchedule = require("../../models/schedule/weeklyScheduleModel");
+const Batch = require("../../models/schedule/batchModel");
 
 const createWeeklySchedule = async (req, res) => {
   try {
@@ -646,6 +647,58 @@ const getAllMentorsWithBatches = async (req, res) => {
   }
 };
 
+// Get Weekly Schedules for a specific Intern (by userId)
+const getWeeklyScheduleByInternId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log('Fetching weekly schedules for intern:', userId);
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    // 1. Find all active/non-deleted batches where this intern is a member
+    const batches = await Batch.find({ interns: userId, isDeleted: false });
+    
+    if (!batches || batches.length === 0) {
+      return res.status(200).json({ message: "No batches found for this intern", data: [] });
+    }
+
+    const batchIds = batches.map(b => b._id);
+
+    // 2. Find all weekly schedules that reference any of these batch IDs
+    const weeklySchedules = await WeeklySchedule.find({
+      'schedule.sub_details.batch': { $in: batchIds }
+    })
+      .populate({
+        path: 'mentor',
+        select: 'fullName email'
+      })
+      .populate({
+        path: 'schedule.time',
+      })
+      .populate({
+        path: 'schedule.sub_details.day',
+      })
+      .populate({
+        path: 'schedule.sub_details.branch',
+      })
+      .populate({
+        path: 'schedule.sub_details.subject',
+      })
+      .populate({
+        path: 'schedule.sub_details.batch',
+        select: 'batchName branchName'
+      });
+
+    console.log(`Found ${weeklySchedules.length} weekly schedules for intern ${userId}`);
+    res.status(200).json({ message: "Intern weekly schedules retrieved successfully", data: weeklySchedules });
+  } catch (error) {
+    console.error('Error fetching weekly schedules for intern:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createWeeklySchedule,
   getWeeklySchedules,
@@ -657,4 +710,5 @@ module.exports = {
   updateSubjectInSubDetails,
   updateNoteInSubDetails,
   getAllMentorsWithBatches,
+  getWeeklyScheduleByInternId,
 };

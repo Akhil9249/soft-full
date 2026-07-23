@@ -27,7 +27,7 @@ const AdminLayout = ({ children }) => {
           <div className="w-10"></div> {/* Spacer for centering */}
         </div>
         
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto px-3">
           {children}
         </div>
       </main>
