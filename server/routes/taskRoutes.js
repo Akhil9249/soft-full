@@ -6,6 +6,9 @@ const { upload } = require("../uploads/multer");
 const { checkAuth } = require("../middlewares/checkAuth");
 const { checkPermission } = require("../middlewares/checkPermission");
 
+// Additional task operations
+router.get("/my-tasks", checkAuth, taskController.getMyTasks);
+
 // Basic CRUD operations
 router.get("/",checkAuth, checkPermission('taskManagement', 'viewTask'), taskController.getTasks);
 router.post("/",checkAuth, checkPermission('taskManagement', 'addTask'), upload.single('attachments'), taskController.createTask);
@@ -13,8 +16,6 @@ router.get("/:id",checkAuth, checkPermission('taskManagement', 'viewTask'), task
 router.get("/:id/download",checkAuth, checkPermission('taskManagement', 'downloadTask'), taskController.downloadTaskAttachment);
 router.put("/:id",checkAuth, checkPermission('taskManagement', 'editTask'), upload.single('attachments'), taskController.updateTask);
 router.delete("/:id",checkAuth, checkPermission('taskManagement', 'deleteTask'), taskController.deleteTask);
-
-// Additional task operations
 router.get("/batch/:batchName",checkAuth, checkPermission('taskManagement', 'viewTask'), taskController.getTasksByBatch);
 router.get("/mentor/:mentorName",checkAuth, checkPermission('taskManagement', 'viewTask'), taskController.getTasksByMentor);
 router.get("/status/:status",checkAuth, checkPermission('taskManagement', 'viewTask'), taskController.getTasksByStatus);

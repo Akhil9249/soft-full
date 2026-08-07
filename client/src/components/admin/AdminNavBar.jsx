@@ -321,6 +321,18 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       Material
                     </Link>
                   </li>
+                  <li>
+                    <Link
+                      to="/task-evaluation"
+                      onClick={() => handleNavItemClick('/task-evaluation')}
+                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/task-evaluation'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
+                        }`}
+                    >
+                      Task Evaluation
+                    </Link>
+                  </li>
                 </ul>
               )}
             </div>

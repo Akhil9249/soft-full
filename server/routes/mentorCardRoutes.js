@@ -11,6 +11,9 @@ const { checkPermission } = require('../middlewares/checkPermission');
 // Create a new Mentor Card entry
 router.post('/create', checkAuth, checkPermission('mentorCard', 'addMentorCard'), createMentorCard);
 
+// Get all Mentor Card entries for logged-in intern
+router.get('/my-cards', checkAuth, getMentorCardsByIntern);
+
 // Get all Mentor Card entries for a specific intern
 router.get('/intern/:internId', checkAuth, checkPermission('mentorCard', 'viewMentorCard'), getMentorCardsByIntern);
 

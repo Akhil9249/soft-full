@@ -23,11 +23,12 @@ router.get("/", checkAuth, checkRoles(["super admin", "admin", "mentor"]), async
 router.post("/", checkAuth, checkRoles(["super admin", "admin"]), upload.single('attachments'), asyncHandler(materialController.createMaterial));
  
 // Additional material operations (must be before /:id routes)
+router.get("/my-materials", checkAuth, checkRoles(["intern"]), asyncHandler(materialController.getMyMaterials));
 router.get("/mentor/:mentorId", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(materialController.getMaterialsByMentor));
 router.get("/batch/:batchId", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(materialController.getMaterialsByBatch));
 router.get("/course/:courseId", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(materialController.getMaterialsByCourse));
 router.get("/audience/:audience", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(materialController.getMaterialsByAudience));
-router.get("/:id/download", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(materialController.downloadAttachment));
+router.get("/:id/download", checkAuth, checkRoles(["super admin", "admin", "mentor", "intern"]), asyncHandler(materialController.downloadAttachment));
 
 // ID-based routes (must be last)
 router.get("/:id", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(materialController.getMaterialById));

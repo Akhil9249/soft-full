@@ -2,37 +2,76 @@ import React from "react";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 
 const UserService = () => {
+    const axiosPrivate = useAxiosPrivate();
 
-    const axiosPrivate = useAxiosPrivate()
 
-    // ======================================== branch management ========================================
 
-    const getBranchesData = async () => {
-        const response = await axiosPrivate.get("/api/branches");
+    // ======================================== interns attendance management ========================================
+    const getMyAttendanceData = async (params = {}) => {
+        const response = await axiosPrivate.get("/api/interns-attendance/my-attendance", { params });
+        return response;
+    };
+
+    // ======================================== task submission management ========================================
+    const postTaskSubmissionData = async (data) => {
+        const response = await axiosPrivate.post("/api/task-submissions", data);
+        return response;
+    };
+
+    const getMySubmissionsData = async (queryParams = '') => {
+        const url = queryParams ? `/api/task-submissions/my-submissions?${queryParams}` : "/api/task-submissions/my-submissions";
+        const response = await axiosPrivate.get(url);
         return response.data;
     };
 
-    const postBranchesData = async (data) => {
-        const response = await axiosPrivate.post("/api/branches", data);
+    const downloadSubmissionAttachment = async (submissionId, index = 0) => {
+        const response = await axiosPrivate.get(`/api/task-submissions/${submissionId}/download?index=${index}`, {
+            responseType: 'blob'
+        });
+        return response;
+    };
+
+    const getMyTasksData = async (queryParams = '') => {
+        const url = queryParams ? `/api/tasks/my-tasks?${queryParams}` : "/api/tasks/my-tasks";
+        const response = await axiosPrivate.get(url);
         return response.data;
     };
 
-    const putBranchesData = async (branchId, data) => {
-        const response = await axiosPrivate.put(`/api/branches/${branchId}`, data);
+    // ======================================== material management ========================================
+    const getMyMaterialsData = async (paramsString = '') => {
+        const response = await axiosPrivate.get(`/api/materials/my-materials?${paramsString}`);
         return response.data;
     };
 
-    const deleteBranchesData = async (branchId) => {
-        const response = await axiosPrivate.delete(`/api/branches/${branchId}`);
+    const downloadMaterialAttachment = async (materialId) => {
+        const response = await axiosPrivate.get(`/api/materials/${materialId}/download`, {
+            responseType: 'blob'
+        });
+        return response;
+    };
+
+    // ======================================== leave request management ========================================
+    const getMyLeaveRequests = async (queryParams = '') => {
+        const url = queryParams ? `/api/leave-requests/my?${queryParams}` : "/api/leave-requests/my";
+        const response = await axiosPrivate.get(url);
         return response.data;
     };
 
+    const postLeaveRequest = async (data) => {
+        const response = await axiosPrivate.post("/api/leave-requests", data);
+        return response.data;
+    };
 
     return { 
-
-        getBranchesData,
-        postBranchesData
-       
+        getMyAttendanceData,
+        postTaskSubmissionData,
+        getMySubmissionsData,
+        downloadSubmissionAttachment,
+        getMyTasksData,
+        getMyMaterialsData,
+        downloadMaterialAttachment,
+        getMyLeaveRequests,
+        postLeaveRequest
     };
 };
 

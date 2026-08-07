@@ -8,10 +8,10 @@ const deleteFromCloudinary = async (url) => {
   try {
     const parts = url.split('/upload/');
     if (parts.length < 2) return;
-    
+
     let pathPart = parts[1].replace(/^v\d+\//, ''); // Remove version
     const isRaw = url.includes('/raw/upload/');
-    
+
     let publicId = pathPart;
     if (!isRaw) {
       // Remove extension for images
@@ -20,7 +20,7 @@ const deleteFromCloudinary = async (url) => {
         publicId = pathPart.substring(0, lastDotIndex);
       }
     }
-    
+
     await cloudinary.uploader.destroy(publicId, { resource_type: isRaw ? 'raw' : 'image' });
     console.log(`Deleted from cloudinary: ${publicId}`);
   } catch (err) {
@@ -29,22 +29,23 @@ const deleteFromCloudinary = async (url) => {
 };
 
 // Helper function to validate that only one audience field has data
-const validateSingleAudienceField = (batches, interns, individualInterns) => {
+const validateSingleAudienceField = (batches, categories, interns, individualInterns) => {
   const audienceFields = [
     { field: 'batches', data: batches },
+    { field: 'categories', data: categories },
     { field: 'interns', data: interns },
     { field: 'individualInterns', data: individualInterns }
   ];
-  
+
   const fieldsWithData = audienceFields.filter(field => field.data && field.data.length > 0);
-  
+
   if (fieldsWithData.length > 1) {
     return {
       isValid: false,
       message: `Only one audience type can be specified at a time. Found data in: ${fieldsWithData.map(f => f.field).join(', ')}`
     };
   }
-  
+
   return { isValid: true };
 };
 
@@ -61,11 +62,11 @@ const createTask = async (req, res) => {
       description,
       attachments,
       totalMarks,
-      achievedMarks,
       status,
       audience,
       branch,
       batches,
+      categories,
       interns,
       individualInterns
     } = req.body;
@@ -80,11 +81,11 @@ const createTask = async (req, res) => {
       description,
       attachments,
       totalMarks,
-      achievedMarks,
       status,
       audience,
       branch,
       batches,
+      categories,
       interns,
       individualInterns
     });
@@ -115,28 +116,31 @@ const createTask = async (req, res) => {
     }
 
     // Validate taskType enum
-    if (!["Weekly Task", "Daily Task"].includes(taskType)) {
+    if (!["Weekly Task", "Daily Task", "Monthly Task", "Other"].includes(taskType)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Task type must be either 'Weekly Task' or 'Daily Task'"
+        message: "Task type must be one of: 'Weekly Task', 'Daily Task', 'Monthly Task', or 'Other'"
       });
     }
 
     // Validate audience enum
-    if (!["All interns", "By batches", "Individual interns"].includes(audience)) {
+    if (!["By batches", "By category", "Individual interns"].includes(audience)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'All interns', 'By batches', 'Individual interns'"
+        message: "Audience must be one of: 'By batches', 'By category', 'Individual interns'"
       });
     }
 
     // Clean audience-specific fields based on selected audience
     let cleanBatches = [];
+    let cleanCategories = [];
     let cleanInterns = [];
     let cleanIndividualInterns = [];
 
     if (audience === "By batches") {
       cleanBatches = batches || [];
+    } else if (audience === "By category") {
+      cleanCategories = categories || [];
     } else if (audience === "Individual interns") {
       cleanIndividualInterns = individualInterns || [];
     }
@@ -149,6 +153,13 @@ const createTask = async (req, res) => {
       });
     }
 
+    if (audience === "By category" && cleanCategories.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "Categories are required when audience is 'By category'"
+      });
+    }
+
     if (audience === "Individual interns" && cleanIndividualInterns.length === 0) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
@@ -157,7 +168,7 @@ const createTask = async (req, res) => {
     }
 
     // Validate that only one audience field can have data at a time (using cleaned data)
-    const audienceValidation = validateSingleAudienceField(cleanBatches, cleanInterns, cleanIndividualInterns);
+    const audienceValidation = validateSingleAudienceField(cleanBatches, cleanCategories, cleanInterns, cleanIndividualInterns);
     if (!audienceValidation.isValid) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
@@ -168,7 +179,7 @@ const createTask = async (req, res) => {
     // Validate dates
     const start = new Date(startDate);
     const due = new Date(dueDate);
-    
+
     // Check if dates are valid
     if (isNaN(start.getTime()) || isNaN(due.getTime())) {
       if (req.file) await deleteFromCloudinary(req.file.path);
@@ -176,7 +187,7 @@ const createTask = async (req, res) => {
         message: "Invalid date format"
       });
     }
-    
+
     // Compare dates (due date should be after start date)
     if (start >= due) {
       if (req.file) await deleteFromCloudinary(req.file.path);
@@ -204,11 +215,11 @@ const createTask = async (req, res) => {
       description: description.trim(),
       attachments: attachmentsValue,
       totalMarks: totalMarks ? Number(totalMarks) : 0,
-      achievedMarks: achievedMarks ? Number(achievedMarks) : 0,
       status: status || "Pending",
       audience: audience,
       branch: branchArray,
       batches: cleanBatches,
+      categories: cleanCategories,
       interns: cleanInterns,
       individualInterns: cleanIndividualInterns
     });
@@ -240,7 +251,7 @@ const getTasks = async (req, res) => {
     const branch = req.query.branch || '';
 
     // Build query object: only list the task if exist branches in the branch section
-    let query = { 
+    let query = {
       isActive: true,
       branch: { $exists: true, $not: { $size: 0 } }
     };
@@ -290,6 +301,7 @@ const getTasks = async (req, res) => {
       .populate('assignedMentor', 'fullName email')
       .populate('branch', 'branchName location')
       .populate('batches', 'batchName description branch')
+      .populate('categories', 'categoryName')
       .populate({
         path: 'interns',
         select: 'fullName email branch courseStatus',
@@ -303,7 +315,7 @@ const getTasks = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
-    
+
     console.log('Found tasks:', tasks.length);
     res.status(200).json({
       message: "Tasks retrieved successfully",
@@ -330,6 +342,7 @@ const getTaskById = async (req, res) => {
       .populate('assignedMentor', 'fullName email')
       .populate('branch', 'branchName location')
       .populate('batches', 'batchName description branch')
+      .populate('categories', 'categoryName')
       .populate({
         path: 'interns',
         select: 'fullName email branch courseStatus',
@@ -375,28 +388,28 @@ const updateTask = async (req, res) => {
       description,
       attachments,
       totalMarks,
-      achievedMarks,
       status,
       audience,
       branch,
       batches,
+      categories,
       interns,
       individualInterns
     } = req.body;
 
     // Validate taskType enum if provided
-    if (taskType && !["Weekly Task", "Daily Task"].includes(taskType)) {
+    if (taskType && !["Weekly Task", "Daily Task", "Monthly Task", "Other"].includes(taskType)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Task type must be either 'Weekly Task' or 'Daily Task'"
+        message: "Task type must be one of: 'Weekly Task', 'Daily Task', 'Monthly Task', or 'Other'"
       });
     }
 
     // Validate audience enum if provided
-    if (audience && !["All interns", "By batches", "Individual interns"].includes(audience)) {
+    if (audience && !["By batches", "By category", "Individual interns"].includes(audience)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'All interns', 'By batches', 'Individual interns'"
+        message: "Audience must be one of: 'By batches', 'By category', 'Individual interns'"
       });
     }
 
@@ -406,11 +419,14 @@ const updateTask = async (req, res) => {
     // Clean audience-specific fields: if audience changes or is reset, clean other fields.
     // If not changed, fallback to existing or provided values.
     let cleanBatches = [];
+    let cleanCategories = [];
     let cleanInterns = [];
     let cleanIndividualInterns = [];
 
     if (activeAudience === "By batches") {
       cleanBatches = batches !== undefined ? batches : (isAudienceChanged ? [] : currentTask.batches);
+    } else if (activeAudience === "By category") {
+      cleanCategories = categories !== undefined ? categories : (isAudienceChanged ? [] : currentTask.categories);
     } else if (activeAudience === "Individual interns") {
       cleanIndividualInterns = individualInterns !== undefined ? individualInterns : (isAudienceChanged ? [] : currentTask.individualInterns);
     }
@@ -423,6 +439,13 @@ const updateTask = async (req, res) => {
       });
     }
 
+    if (activeAudience === "By category" && cleanCategories.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "Categories are required when audience is 'By category'"
+      });
+    }
+
     if (activeAudience === "Individual interns" && cleanIndividualInterns.length === 0) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
@@ -431,7 +454,7 @@ const updateTask = async (req, res) => {
     }
 
     // Validate that only one audience field can have data at a time
-    const audienceValidation = validateSingleAudienceField(cleanBatches, cleanInterns, cleanIndividualInterns);
+    const audienceValidation = validateSingleAudienceField(cleanBatches, cleanCategories, cleanInterns, cleanIndividualInterns);
     if (!audienceValidation.isValid) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
@@ -460,7 +483,7 @@ const updateTask = async (req, res) => {
     if (startDate && dueDate) {
       const start = new Date(startDate);
       const due = new Date(dueDate);
-      
+
       // Check if dates are valid
       if (isNaN(start.getTime()) || isNaN(due.getTime())) {
         if (req.file) await deleteFromCloudinary(req.file.path);
@@ -468,7 +491,7 @@ const updateTask = async (req, res) => {
           message: "Invalid date format"
         });
       }
-      
+
       // Compare dates (due date should be after start date)
       if (start >= due) {
         if (req.file) await deleteFromCloudinary(req.file.path);
@@ -486,10 +509,10 @@ const updateTask = async (req, res) => {
     if (startDate) updateData.startDate = new Date(startDate);
     if (dueDate) updateData.dueDate = new Date(dueDate);
     if (description) updateData.description = description.trim();
-    
+
     // Handle uploaded file - remove attachments from updateData first to handle it separately
     delete updateData.attachments;
-    
+
     let attachmentsValue = currentTask.attachments || undefined;
     if (req.file) {
       // New file uploaded
@@ -510,13 +533,13 @@ const updateTask = async (req, res) => {
     // If neither req.file nor attachments string is provided, attachmentsValue stays as existing value
     // and we don't add it to updateData, so the existing value is preserved
     if (totalMarks !== undefined) updateData.totalMarks = Number(totalMarks);
-    if (achievedMarks !== undefined) updateData.achievedMarks = Number(achievedMarks);
     if (status) updateData.status = status;
     if (audience) updateData.audience = audience;
     if (branchArray !== undefined) updateData.branch = branchArray;
-    
+
     // Clear out non-active audience fields completely in database
     updateData.batches = cleanBatches;
+    updateData.categories = cleanCategories;
     updateData.interns = cleanInterns;
     updateData.individualInterns = cleanIndividualInterns;
 
@@ -525,19 +548,20 @@ const updateTask = async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     )
-    .populate('assignedMentor', 'fullName email')
-    .populate('branch', 'branchName location')
-    .populate('batches', 'batchName description branch')
-    .populate({
-      path: 'interns',
-      select: 'fullName email branch courseStatus',
-      match: { courseStatus: 'Ongoing' }
-    })
-    .populate({
-      path: 'individualInterns',
-      select: 'fullName email branch courseStatus',
-      match: { courseStatus: 'Ongoing' }
-    });
+      .populate('assignedMentor', 'fullName email')
+      .populate('branch', 'branchName location')
+      .populate('batches', 'batchName description branch')
+      .populate('categories', 'categoryName')
+      .populate({
+        path: 'interns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
+      .populate({
+        path: 'individualInterns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      });
 
     if (!updated) {
       return res.status(404).json({ message: "Task not found" });
@@ -581,9 +605,9 @@ const deleteTask = async (req, res) => {
 const getTasksByBatch = async (req, res) => {
   try {
     const { batchId } = req.params;
-    const tasks = await Task.find({ 
-      batches: batchId, 
-      isActive: true 
+    const tasks = await Task.find({
+      batches: batchId,
+      isActive: true
     }).sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -600,9 +624,9 @@ const getTasksByBatch = async (req, res) => {
 const getTasksByMentor = async (req, res) => {
   try {
     const { mentorId } = req.params;
-    const tasks = await Task.find({ 
-      assignedMentor: mentorId, 
-      isActive: true 
+    const tasks = await Task.find({
+      assignedMentor: mentorId,
+      isActive: true
     }).sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -619,9 +643,9 @@ const getTasksByMentor = async (req, res) => {
 const getTasksByStatus = async (req, res) => {
   try {
     const { status } = req.params;
-    const tasks = await Task.find({ 
-      status: status, 
-      isActive: true 
+    const tasks = await Task.find({
+      status: status,
+      isActive: true
     }).sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -705,15 +729,21 @@ const updateTaskMarks = async (req, res) => {
   }
 };
 
-// Get tasks by course
-const getTasksByCourse = async (req, res) => {
+// Get tasks by category
+const getTasksByCategory = async (req, res) => {
   try {
+    const { categoryId } = req.params;
+    const tasks = await Task.find({
+      categories: categoryId,
+      isActive: true
+    }).sort({ createdAt: -1 });
+
     res.status(200).json({
-      message: "Courses audience is deprecated and courses are no longer supported.",
-      data: []
+      message: "Tasks retrieved successfully",
+      data: tasks
     });
   } catch (error) {
-    console.error('Error fetching tasks by course:', error);
+    console.error('Error fetching tasks by category:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -722,12 +752,12 @@ const getTasksByCourse = async (req, res) => {
 const getTasksByIntern = async (req, res) => {
   try {
     const { internId } = req.params;
-    const tasks = await Task.find({ 
+    const tasks = await Task.find({
       $or: [
         { interns: internId },
         { individualInterns: internId }
       ],
-      isActive: true 
+      isActive: true
     }).sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -744,9 +774,9 @@ const getTasksByIntern = async (req, res) => {
 const getTasksByAudience = async (req, res) => {
   try {
     const { audienceType } = req.params;
-    const tasks = await Task.find({ 
-      audience: audienceType, 
-      isActive: true 
+    const tasks = await Task.find({
+      audience: audienceType,
+      isActive: true
     }).sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -763,9 +793,9 @@ const getTasksByAudience = async (req, res) => {
 const getTasksByType = async (req, res) => {
   try {
     const { taskType } = req.params;
-    const tasks = await Task.find({ 
-      taskType: taskType, 
-      isActive: true 
+    const tasks = await Task.find({
+      taskType: taskType,
+      isActive: true
     }).sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -774,6 +804,115 @@ const getTasksByType = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching tasks by type:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get tasks assigned to the logged-in intern
+const getMyTasks = async (req, res) => {
+  try {
+    const internId = req.userId;
+    const Intern = require("../../models/administration/internModel");
+    const Batch = require("../../models/schedule/batchModel");
+
+    const intern = await Intern.findById(internId);
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found" });
+    }
+
+    const internBranchId = intern.branch;
+
+    const mongoose = require("mongoose");
+    let queryInternId = internId;
+    try {
+      if (typeof internId === 'string' && mongoose.Types.ObjectId.isValid(internId)) {
+        queryInternId = new mongoose.Types.ObjectId(internId);
+      }
+    } catch (e) {
+      console.error("Failed to cast internId to ObjectId:", e);
+    }
+
+    // Find all batches containing this intern
+    const batches = await Batch.find({ interns: queryInternId, isDeleted: { $ne: true } });
+    const batchIds = batches.map(b => b._id);
+
+    // Resolve intern's course category for By category task matching
+    let internCategoryId = null;
+    if (intern.course) {
+      const Course = require("../../models/course-management/courseModel");
+      const courseObj = await Course.findById(intern.course);
+      if (courseObj && courseObj.category) {
+        internCategoryId = courseObj.category;
+      }
+    }
+
+    // Find tasks assigned to this intern based on audience rules
+    const orConditions = [
+      { audience: "By batches", batches: { $in: batchIds } },
+      { audience: "Individual interns", individualInterns: queryInternId },
+      { audience: "Individual interns", interns: queryInternId }
+    ];
+
+    if (internCategoryId) {
+      orConditions.push({ audience: "By category", categories: internCategoryId });
+    }
+
+    console.log("Fetching tasks for intern:", internId, {
+      batchIds,
+      internCategoryId,
+      orConditions
+    });
+
+    // Fetch already submitted tasks to exclude them
+    const TaskSubmission = require("../../models/task-management/taskSubmissionModel");
+    const submissions = await TaskSubmission.find({ intern: queryInternId });
+    const submittedTaskIds = submissions.map(s => s.task);
+
+    const page = req.query.page ? parseInt(req.query.page) : null;
+    const limit = req.query.limit ? parseInt(req.query.limit) : null;
+
+    const queryObj = {
+      isActive: { $ne: false },
+      isDeleted: { $ne: true },
+      $or: orConditions,
+      _id: { $nin: submittedTaskIds }
+    };
+
+    if (page && limit) {
+      const skip = (page - 1) * limit;
+      const totalCount = await Task.countDocuments(queryObj);
+      const totalPages = Math.ceil(totalCount / limit);
+
+      const tasks = await Task.find(queryObj)
+        .populate("assignedMentor", "fullName")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
+      return res.status(200).json({
+        message: "Tasks retrieved successfully",
+        data: tasks,
+        pagination: {
+          currentPage: page,
+          totalPages,
+          totalCount,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+          limit
+        }
+      });
+    } else {
+      const tasks = await Task.find(queryObj)
+        .populate("assignedMentor", "fullName")
+        .sort({ createdAt: -1 });
+
+      return res.status(200).json({
+        message: "Tasks retrieved successfully",
+        data: tasks
+      });
+    }
+  } catch (error) {
+    console.error("Error in getMyTasks:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -878,9 +1017,10 @@ module.exports = {
   getTasksByStatus,
   updateTaskStatus,
   updateTaskMarks,
-  getTasksByCourse,
+  getTasksByCategory,
   getTasksByIntern,
   getTasksByAudience,
   getTasksByType,
+  getMyTasks,
   downloadTaskAttachment
 };

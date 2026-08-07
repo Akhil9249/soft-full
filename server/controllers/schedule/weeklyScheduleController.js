@@ -647,55 +647,65 @@ const getAllMentorsWithBatches = async (req, res) => {
   }
 };
 
-// Get Weekly Schedules for a specific Intern (by userId)
+// Get Weekly Schedules for a specific Intern (by userId or req.userId)
 const getWeeklyScheduleByInternId = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.params.userId || req.userId;
     console.log('Fetching weekly schedules for intern:', userId);
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
 
+    // Fetch Intern details
+    const Intern = require("../../models/administration/internModel");
+    const intern = await Intern.findById(userId)
+      .populate('course', 'courseName')
+      .populate('branch', 'branchName');
+
     // 1. Find all active/non-deleted batches where this intern is a member
-    const batches = await Batch.find({ interns: userId, isDeleted: false });
+    const batches = await Batch.find({ interns: userId, isDeleted: { $ne: true } });
     
-    if (!batches || batches.length === 0) {
-      return res.status(200).json({ message: "No batches found for this intern", data: [] });
+    let weeklySchedules = [];
+    if (batches && batches.length > 0) {
+      const batchIds = batches.map(b => b._id);
+      // 2. Find all weekly schedules that reference any of these batch IDs
+      weeklySchedules = await WeeklySchedule.find({
+        'schedule.sub_details.batch': { $in: batchIds }
+      })
+        .populate({
+          path: 'mentor',
+          select: 'fullName email'
+        })
+        .populate({
+          path: 'schedule.time',
+        })
+        .populate({
+          path: 'schedule.sub_details.day',
+        })
+        .populate({
+          path: 'schedule.sub_details.branch',
+        })
+        .populate({
+          path: 'schedule.sub_details.subject',
+        })
+        .populate({
+          path: 'schedule.sub_details.batch',
+          select: 'batchName branchName'
+        });
     }
 
-    const batchIds = batches.map(b => b._id);
-
-    // 2. Find all weekly schedules that reference any of these batch IDs
-    const weeklySchedules = await WeeklySchedule.find({
-      'schedule.sub_details.batch': { $in: batchIds }
-    })
-      .populate({
-        path: 'mentor',
-        select: 'fullName email'
-      })
-      .populate({
-        path: 'schedule.time',
-      })
-      .populate({
-        path: 'schedule.sub_details.day',
-      })
-      .populate({
-        path: 'schedule.sub_details.branch',
-      })
-      .populate({
-        path: 'schedule.sub_details.subject',
-      })
-      .populate({
-        path: 'schedule.sub_details.batch',
-        select: 'batchName branchName'
-      });
-
     console.log(`Found ${weeklySchedules.length} weekly schedules for intern ${userId}`);
-    res.status(200).json({ message: "Intern weekly schedules retrieved successfully", data: weeklySchedules });
+    res.status(200).json({
+      message: "Intern weekly schedules retrieved successfully",
+      data: {
+        schedules: weeklySchedules,
+        intern: intern
+      }
+    });
   } catch (error) {
     console.error('Error fetching weekly schedules for intern:', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 

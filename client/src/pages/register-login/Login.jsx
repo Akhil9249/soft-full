@@ -108,8 +108,10 @@ const Login = () => {
           const userRole = role?.toLowerCase() || '';
           if (userRole === 'super admin' || userRole === 'admin') {
             navigate("/dashboard");
+          } else if (userRole === 'intern') {
+            navigate("/student/attendance-dashboard");
           } else {
-            navigate("/"); // Mentors and any other roles go to root
+            navigate("/"); // Mentors and other roles go to root
           }
         }, 2000);
       } else {

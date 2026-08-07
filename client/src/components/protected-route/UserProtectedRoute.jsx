@@ -7,6 +7,7 @@ const UserProtectedRoute = () => {
 
 
     const token = localStorage.getItem("accessToken");
+    const role = localStorage.getItem("role");
 
      useEffect(() => {
         console.log("Current path:", location.pathname);
@@ -14,7 +15,7 @@ const UserProtectedRoute = () => {
         console.log("State:", window.history.state);
     }, [location]); // 🔹 Ensure location is tracked properly
 
-    if (!token && location.pathname !== "/") {
+    if (!token || role?.toLowerCase() !== "intern") {
         return <Navigate to="/login" replace />;
     }
 

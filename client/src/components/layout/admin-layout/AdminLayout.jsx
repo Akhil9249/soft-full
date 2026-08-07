@@ -1,6 +1,5 @@
 import { useState } from "react";
 import Sidebar, { Navbar } from "../../admin/AdminNavBar"
-import AdminNavBar from "../../admin/AdminNavBar"
 import { Menu } from "lucide-react";
 
 

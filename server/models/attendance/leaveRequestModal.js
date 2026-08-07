@@ -20,20 +20,29 @@ const leaveRequestSchema = new mongoose.Schema(
       required: true,
     },
 
+    leaveDurationType: {
+      type: String,
+      enum: ["SINGLE", "MULTIPLE"],
+      required: true,
+      default: "SINGLE",
+    },
+
     leaveType: {
       type: String,
       enum: ["SICK", "PERSONAL", "MEDICAL", "FAMILY", "EXAM", "EVENT", "OTHER"],
       required: true,
     },
 
+    date: {
+      type: Date,
+    },
+
     startDate: {
       type: Date,
-      required: true,
     },
 
     endDate: {
       type: Date,
-      required: true,
     },
 
     totalDays: {

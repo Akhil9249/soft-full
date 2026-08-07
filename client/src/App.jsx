@@ -17,6 +17,8 @@ import { Category } from "./pages/admin/course-management/Category";
 import { Modules } from "./pages/admin/syllabus-management/Modules";
 import { Topics } from "./pages/admin/syllabus-management/Topics";
 import { TaskManagement } from "./pages/admin/task-management/TaskManagement";
+import { TaskEvaluation } from "./pages/admin/task-management/TaskEvaluation";
+import { TaskSubmission } from "./pages/user/task-management/TaskSubmission";
 import { Batches } from "./pages/admin/schedule/Batches";
 import { WeeklySchedule } from "./pages/admin/schedule/WeeklySchedule";
 import { MentorBatches } from "./pages/admin/schedule/MentorBatches";
@@ -27,10 +29,16 @@ import { Branch } from "./pages/admin/settings/Branch";
 import { StudentAttendance } from "./pages/admin/attendance/studentAttendance";
 import SuperAdminProtectedRoute from "./components/protected-route/SuperAdminProtectedRoute";
 import Material from "./pages/admin/task-management/Material";
+import UserMaterial from "./pages/user/task-management/Material";
 import LeaveRequest from "./pages/admin/attendance/LeaveRequest";
 import AppTemp from "./pages/admin/attendance/Report";
 import MenorCard from "./pages/admin/administration/MenorCard";
 import Dashboard from "./pages/admin/administration/Dashboard";
+import UserProtectedRoute from "./components/protected-route/UserProtectedRoute";
+import AttendanceDashboard from "./pages/user/attendance/AttendanceDashboard";
+import StudentLeaveRequest from "./pages/user/attendance/LeaveRequest";
+import InternsMenorCard from "./pages/user/task-management/InternsMenorCard";
+import UserWeeklySchedule from "./pages/user/attendance/WeeklySchedule";
 
 
 
@@ -46,13 +54,13 @@ function App() {
       </Route>
 
       <Route element={<AdminProtectedRoute />}>
-      
+
         <Route element={<SuperAdminProtectedRoute />} >
           <Route path="/" element={<RoleManagement />} />
           <Route path="/staff-management" element={<StaffManagement />} />
         </Route>
 
-        <Route path="/dashboard" element={<Dashboard />} /> 
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/menor-card" element={<MenorCard />} />
         <Route path="/student-management" element={<StudentManagement />} />
         <Route path="/courses" element={<Courses />} />
@@ -60,6 +68,7 @@ function App() {
         <Route path="/modules" element={<Modules />} />
         <Route path="/topics" element={<Topics />} />
         <Route path="/task-management" element={<TaskManagement />} />
+        <Route path="/task-evaluation" element={<TaskEvaluation />} />
         <Route path="/material" element={<Material />} />
         <Route path="/student-attendance" element={<StudentAttendance />} />
         <Route path="/temp" element={<AppTemp />} />
@@ -71,6 +80,15 @@ function App() {
         <Route path="/timings" element={<Timings />} />
         <Route path="/notification" element={<Notification />} />
         <Route path="/branch" element={<Branch />} />
+      </Route>
+
+      <Route element={<UserProtectedRoute />}>
+        <Route path="/student/task-submission" element={<TaskSubmission />} />
+        <Route path="/student/material" element={<UserMaterial />} />
+        <Route path="/student/attendance-dashboard" element={<AttendanceDashboard />} />
+        <Route path="/student/leave-request" element={<StudentLeaveRequest />} />
+        <Route path="/student/weekly-schedule" element={<UserWeeklySchedule />} />
+        <Route path="/student/menor-card" element={<InternsMenorCard />} />
       </Route>
     </Routes>
 

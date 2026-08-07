@@ -50,7 +50,7 @@ const Material = () => {
   });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingMaterial, setDeletingMaterial] = useState(null);
-  
+
   // View modal state
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingMaterial, setViewingMaterial] = useState(null);
@@ -71,7 +71,7 @@ const Material = () => {
     branch: ''
   });
 
-  const audiences = ['All interns', 'By batches', 'Individual interns'];
+  const audiences = ['All interns', 'By batches', 'By Branches', 'Individual interns'];
   const tabOptions = [
     { value: "materialList", label: "Material List" },
     { value: "new-material", label: "New Material" }
@@ -378,7 +378,7 @@ const Material = () => {
   const filteredInterns = interns.filter(intern => {
     const matchesSearch = intern.fullName?.toLowerCase().includes(internSearchTerm.toLowerCase()) ||
       intern.email?.toLowerCase().includes(internSearchTerm.toLowerCase());
-    
+
     const matchesBranch = selectedBranches.length > 0 && selectedBranches.some(b => {
       const branchId = intern.branch?._id || intern.branch;
       return b._id === branchId;
@@ -488,7 +488,7 @@ const Material = () => {
           setSelectedBatches(selectedBatchObjects);
         }
       }
-      
+
       if (editingMaterial.audience === "Individual interns" && (editingMaterial.individualInterns || editingMaterial.interns) && interns.length > 0) {
         const sourceInterns = editingMaterial.individualInterns || editingMaterial.interns || [];
         const selectedInternObjects = sourceInterns.map(intern => {
@@ -725,14 +725,14 @@ const Material = () => {
     if (!showViewModal || !viewingMaterial) return null;
 
     const material = viewingMaterial;
-    
+
     // Check attachment type (image or pdf)
     const isImage = material.attachments && (
-      material.attachments.match(/\.(jpeg|jpg|gif|png|webp)/i) || 
+      material.attachments.match(/\.(jpeg|jpg|gif|png|webp)/i) ||
       material.attachments.includes('image/upload')
     );
     const isPdf = material.attachments && (
-      material.attachments.match(/\.pdf/i) || 
+      material.attachments.match(/\.pdf/i) ||
       material.attachments.includes('raw/upload')
     );
 
@@ -796,6 +796,7 @@ const Material = () => {
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
                   material.audience === 'All interns' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
                   material.audience === 'By batches' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                  material.audience === 'By Branches' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
                   'bg-green-100 text-green-800 border border-green-200'
                 }`}>
                   {material.audience}
@@ -989,7 +990,7 @@ const Material = () => {
         {activeTab === 'materialList' && (
           <div className="space-y-4 sm:space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <h3 className="text-lg sm:text-xl font-bold text-gray-800">Materials List</h3>
+              {/* <h3 className="text-lg sm:text-xl font-bold text-gray-800">Materials List</h3>
               <button
                 onClick={() => {
                   resetForm();
@@ -998,7 +999,7 @@ const Material = () => {
                 className="w-full sm:w-auto px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm sm:text-base"
               >
                 Add New Material
-              </button>
+              </button> */}
             </div>
 
             {/* Search and Filter Controls */}
@@ -1028,6 +1029,7 @@ const Material = () => {
                   <option value="">All Audience</option>
                   <option value="All interns">All interns</option>
                   <option value="By batches">By batches</option>
+                  <option value="By Branches">By Branches</option>
                   <option value="Individual interns">Individual interns</option>
                 </select>
                 <select
@@ -1042,7 +1044,7 @@ const Material = () => {
                     </option>
                   ))}
                 </select>
-                <select 
+                <select
                   value={filters.branch}
                   onChange={(e) => handleFilterChange('branch', e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
@@ -1153,7 +1155,7 @@ const Material = () => {
                               </span>
 
                               {/* Audience-specific details */}
-                              {material.audience === 'By batches' && material.batches?.length > 0 && (
+                              {/* {material.audience === 'By batches' && material.batches?.length > 0 && (
                                 <div className="flex flex-wrap justify-center gap-1">
                                   {material.batches.slice(0, 2).map((batch, index) => (
                                     <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
@@ -1181,7 +1183,7 @@ const Material = () => {
                                     </span>
                                   )}
                                 </div>
-                              )}
+                              )} */}
                             </div>
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
@@ -1397,8 +1399,8 @@ const Material = () => {
                     onClick={() => handlePageChange(pagination.currentPage - 1)}
                     disabled={!pagination.hasPrevPage || loading}
                     className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasPrevPage && !loading
-                        ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                        : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                      ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                      : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
                       }`}
                   >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1419,8 +1421,8 @@ const Material = () => {
                     onClick={() => handlePageChange(pagination.currentPage + 1)}
                     disabled={!pagination.hasNextPage || loading}
                     className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasNextPage && !loading
-                        ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                        : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                      ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                      : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
                       }`}
                   >
                     {loading ? 'Loading...' : 'Next'}
@@ -1455,7 +1457,7 @@ const Material = () => {
                     placeholder="Enter Material Title"
                     value={formData.title}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 transition-colors text-sm h-[38px]"
                     required
                   />
                 </div>
@@ -1467,7 +1469,7 @@ const Material = () => {
                     name="mentor"
                     value={formData.mentor}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white text-sm h-[38px]"
                     required
                   >
                     <option value="">Choose Mentor</option>
@@ -1482,8 +1484,8 @@ const Material = () => {
                 {/* Attachments Upload */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Attachments <span className="text-gray-400">(Optional - JPG/PNG/PDF only)</span></label>
-                  <div className="relative flex items-center w-full px-4 py-2 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-transparent bg-white mt-1">
-                    <span className="text-gray-500 flex-1 truncate pr-2">
+                  <div className="relative flex items-center w-full px-3 py-1.5 border border-gray-300 rounded-md focus-within:ring-1 focus-within:ring-orange-500 bg-white mt-1 h-[38px]">
+                    <span className="text-gray-500 flex-1 truncate pr-2 text-sm">
                       {formData?.attachments instanceof File
                         ? formData.attachments.name
                         : formData?.attachments && typeof formData.attachments === 'string'
@@ -1500,7 +1502,7 @@ const Material = () => {
                       name="attachments"
                     />
                     <div className="pointer-events-none flex-shrink-0">
-                      <svg className="w-6 h-6 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm3-4a1 1 0 011-1h6a1 1 0 011 1v2a1 1 0 01-1 1H7a1 1 0 01-1-1v-2z" clipRule="evenodd"></path>
                       </svg>
                     </div>
@@ -1521,7 +1523,7 @@ const Material = () => {
                     name="audience"
                     value={formData.audience}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors bg-white"
+                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white text-sm h-[38px]"
                     required
                   >
                     {audiences.map(audience => (
@@ -1536,7 +1538,7 @@ const Material = () => {
                   <button
                     type="button"
                     onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
-                    className="w-full flex justify-between items-center p-3 border border-gray-300 rounded-lg shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left min-h-[48px] mt-1"
+                    className="w-full flex justify-between items-center p-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-orange-500 text-left h-[38px] mt-1"
                   >
                     <span className="text-gray-700 text-sm block truncate">
                       {selectedBranches.length > 0

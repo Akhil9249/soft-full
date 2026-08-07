@@ -9,7 +9,7 @@ const taskSchema = new mongoose.Schema({
   taskType: {
     type: String,
     required: true,
-    enum: ["Weekly Task", "Daily Task"],
+    enum: ["Weekly Task", "Daily Task", "Monthly Task", "Other"],
     trim: true
   },
   assignedMentor: {
@@ -38,10 +38,6 @@ const taskSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  achievedMarks: {
-    type: Number,
-    default: 0
-  },
   status: {
     type: String,
     enum: ["Pending", "In Progress", "Completed", "Cancelled"],
@@ -49,8 +45,8 @@ const taskSchema = new mongoose.Schema({
   },
   audience: {
     type: String,
-    enum: ["All interns", "By batches", "By courses","Individual interns"],
-    default: "All interns"  ,
+    enum: ["By batches", "By category", "Individual interns"],
+    default: "By batches",
     required: true
   },
   branch: [{
@@ -63,11 +59,11 @@ const taskSchema = new mongoose.Schema({
     ref: "Batch",
     default: []
   },
-  // courses: {
-  //   type: [mongoose.Schema.Types.ObjectId],
-  //   ref: "Course",
-  //   default: []
-  // },
+  categories: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Category",
+    default: []
+  },
   interns: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: "Intern",
@@ -92,7 +88,7 @@ const taskSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-    isDeleted: {
+  isDeleted: {
     type: Boolean,
     default: false,
   },
@@ -100,7 +96,7 @@ const taskSchema = new mongoose.Schema({
   deletedAt: {
     type: Date,
     default: null,
-  }       
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Task", taskSchema);

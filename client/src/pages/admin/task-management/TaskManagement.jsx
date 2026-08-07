@@ -14,7 +14,7 @@ export const TaskManagement = () => {
   const [batches, setBatches] = useState([]);
   const [modules, setModules] = useState([]);
   const [mentors, setMentors] = useState([]);
-  const [courses, setCourses] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [branches, setBranches] = useState([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
   const [selectedBranches, setSelectedBranches] = useState([]);
@@ -23,7 +23,7 @@ export const TaskManagement = () => {
   const [batchesLoading, setBatchesLoading] = useState(false);
   const [modulesLoading, setModulesLoading] = useState(false);
   const [mentorsLoading, setMentorsLoading] = useState(false);
-  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,8 +36,8 @@ export const TaskManagement = () => {
   const [selectedInterns, setSelectedInterns] = useState([]);
   const [batchSearchTerm, setBatchSearchTerm] = useState('');
   const [selectedBatches, setSelectedBatches] = useState([]);
-  const [courseSearchTerm, setCourseSearchTerm] = useState('');
-  const [selectedCourses, setSelectedCourses] = useState([]);
+  const [categorySearchTerm, setCategorySearchTerm] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState([]);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [notification, setNotification] = useState({
@@ -46,13 +46,14 @@ export const TaskManagement = () => {
     title: '',
     message: ''
   });
-  
+
   // View modal state
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingTask, setViewingTask] = useState(null);
   const [attachmentPreview, setAttachmentPreview] = useState(null);
-  
- 
+  const [isModuleDropdownOpen, setIsModuleDropdownOpen] = useState(false);
+
+
   // Pagination state
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -146,26 +147,26 @@ export const TaskManagement = () => {
     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0006 0v-1m-4-4l4-4m0 0l4 4m-4-4v12"></path></svg>
   );
 
-  const { getBatchesData, getModulesData, getStaffData, getTasksData, putTasksData, postTasksData, getInternsData, getCoursesData, deleteTasksData, downloadTaskAttachment, getBranchesData } = AdminService();
+  const { getBatchesData, getModulesData, getStaffData, getTasksData, putTasksData, postTasksData, getInternsData, getCategoriesData, deleteTasksData, downloadTaskAttachment, getBranchesData } = AdminService();
 
   // API functions to fetch data
   const fetchTasks = async (page = 1, search = '', taskType = '', status = '', audience = '', branch = '') => {
     try {
       setLoading(true);
       setError('');
-      
+
       // Build query parameters
       const queryParams = new URLSearchParams({
         page: page.toString(),
         limit: pagination.limit.toString()
       });
-      
+
       if (search) queryParams.append('search', search);
       if (taskType) queryParams.append('taskType', taskType);
       if (status) queryParams.append('status', status);
       if (audience) queryParams.append('audience', audience);
       if (branch) queryParams.append('branch', branch);
-      
+
       const res = await getTasksData(queryParams.toString());
       console.log("tasks data==", res.data);
       const tasksData = res?.data || [];
@@ -174,14 +175,14 @@ export const TaskManagement = () => {
         if (tasksData.length > 0) {
           console.log("First task structure:", tasksData[0]);
           console.log("First task batches:", tasksData[0].batches);
-          console.log("First task courses:", tasksData[0].courses);
+          console.log("First task categories:", tasksData[0].categories);
           console.log("First task individualInterns:", tasksData[0].individualInterns);
         }
         setTasks(tasksData);
       } else {
         setTasks([]);
       }
-      
+
       // Update pagination state
       if (res.pagination) {
         setPagination(res.pagination);
@@ -198,7 +199,7 @@ export const TaskManagement = () => {
       setBatchesLoading(true);
       // const res = await axiosPrivate.get('http://localhost:3000/api/batches');
       const res = await getBatchesData('page=1&limit=10000');
-      const batchesData =  res?.data || [];
+      const batchesData = res?.data || [];
       if (Array.isArray(batchesData)) {
         setBatches(batchesData);
       } else {
@@ -220,10 +221,10 @@ export const TaskManagement = () => {
 
       setModulesLoading(true);
       // const res = await axiosPrivate.get('http://localhost:3000/api/module');
-      const res = await getModulesData();
+      const res = await getModulesData('page=1&limit=10000');
       console.log("modules==", res.data);
 
-      const modulesData =  res?.data || [];
+      const modulesData = res?.data || [];
       if (Array.isArray(modulesData)) {
         setModules(modulesData);
       } else {
@@ -284,21 +285,21 @@ export const TaskManagement = () => {
     }
   };
 
-  const fetchCourses = async () => {
+  const fetchCategories = async () => {
     try {
-      setCoursesLoading(true);
-      const res = await getCoursesData('page=1&limit=10000');
-      const coursesData = res?.data || [];
-      if (Array.isArray(coursesData)) {
-        setCourses(coursesData);
+      setCategoriesLoading(true);
+      const res = await getCategoriesData('page=1&limit=10000');
+      const categoriesData = res?.data || [];
+      if (Array.isArray(categoriesData)) {
+        setCategories(categoriesData);
       } else {
-        setCourses([]);
+        setCategories([]);
       }
     } catch (err) {
-      console.error('Failed to load courses:', err);
-      setCourses([]);
+      console.error('Failed to load categories:', err);
+      setCategories([]);
     } finally {
-      setCoursesLoading(false);
+      setCategoriesLoading(false);
     }
   };
 
@@ -453,11 +454,11 @@ export const TaskManagement = () => {
 
   const handleDownloadAttachment = async (task) => {
     if (!task || !task.attachments) return;
-    
+
     try {
       showNotification('info', 'Downloading', 'Starting download of task attachment...');
       const response = await downloadTaskAttachment(task._id);
-      
+
       // Get filename from header or construct a beautiful safe one
       let filename = 'task_attachment';
       const contentDisposition = response.headers['content-disposition'];
@@ -474,7 +475,7 @@ export const TaskManagement = () => {
         const ext = originalFilename.includes('.') ? originalFilename.substring(originalFilename.lastIndexOf('.')) : '';
         filename = `${safeName}_Attachment${ext}`;
       }
-      
+
       // Create blob URL and trigger download
       const blob = new Blob([response.data], { type: response.headers['content-type'] });
       const url = window.URL.createObjectURL(blob);
@@ -483,7 +484,7 @@ export const TaskManagement = () => {
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
-      
+
       // Clean up
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
@@ -512,16 +513,19 @@ export const TaskManagement = () => {
     fetchBranches();
   }, []);
 
-  // Close branch dropdown on click outside
+  // Close branch and module dropdowns on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (isBranchDropdownOpen && !event.target.closest('.branch-dropdown-container')) {
         setIsBranchDropdownOpen(false);
       }
+      if (isModuleDropdownOpen && !event.target.closest('.module-dropdown-container')) {
+        setIsModuleDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isBranchDropdownOpen]);
+  }, [isBranchDropdownOpen, isModuleDropdownOpen]);
 
   // Automatically clear selected audience items (batches, courses, interns) that do not belong to the selected branches
   useEffect(() => {
@@ -538,9 +542,10 @@ export const TaskManagement = () => {
         return selectedBranches.some(b => b._id === branchId);
       }));
 
-      // Clear courses
-      setSelectedCourses(prev => prev.filter(course => {
-        const catBranches = course.category?.branch || [];
+      // Clear categories
+      setSelectedCategories(prev => prev.filter(category => {
+        const catBranches = category.branch || [];
+        if (catBranches.length === 0) return true; // Global category/No branch restriction
         return catBranches.some(cb => {
           const cbId = cb?._id || cb;
           return selectedBranches.some(b => b._id === cbId);
@@ -549,7 +554,7 @@ export const TaskManagement = () => {
     } else {
       // If no branches are selected, clear all audience selections and reset audience form field
       setSelectedBatches([]);
-      setSelectedCourses([]);
+      setSelectedCategories([]);
       setSelectedInterns([]);
       setFormData(prev => ({ ...prev, audience: "" }));
     }
@@ -606,17 +611,17 @@ export const TaskManagement = () => {
           setSelectedBatches(selectedBatchObjects);
         }
       }
-      
-      if (editingTask.audience === "By courses" && editingTask.courses && editingTask.courses.length > 0 && courses.length > 0) {
-        const selectedCourseObjects = editingTask.courses.map(course => {
-          const courseId = typeof course === 'object' ? course._id : course;
-          return courses.find(c => c._id === courseId) || (typeof course === 'object' ? course : null);
+
+      if (editingTask.audience === "By category" && editingTask.categories && editingTask.categories.length > 0 && categories.length > 0) {
+        const selectedCategoryObjects = editingTask.categories.map(category => {
+          const categoryId = typeof category === 'object' ? category._id : category;
+          return categories.find(c => c._id === categoryId) || (typeof category === 'object' ? category : null);
         }).filter(Boolean);
-        if (selectedCourseObjects.length > 0) {
-          setSelectedCourses(selectedCourseObjects);
+        if (selectedCategoryObjects.length > 0) {
+          setSelectedCategories(selectedCategoryObjects);
         }
       }
-      
+
       if (editingTask.audience === "Individual interns" && editingTask.individualInterns && editingTask.individualInterns.length > 0 && interns.length > 0) {
         const selectedInternObjects = editingTask.individualInterns.map(intern => {
           const internId = typeof intern === 'object' ? intern._id : intern;
@@ -637,7 +642,7 @@ export const TaskManagement = () => {
         }
       }
     }
-  }, [isEditMode, editingTask, batches, courses, interns, branches]);
+  }, [isEditMode, editingTask, batches, categories, interns, branches]);
 
   // Clear messages when switching tabs
   useEffect(() => {
@@ -650,12 +655,12 @@ export const TaskManagement = () => {
   const handleEditTask = (task) => {
     setEditingTask(task);
     setIsEditMode(true);
-    
+
     // Find mentor name from mentor ID
-    const mentorName = task.assignedMentor ? 
-      (typeof task.assignedMentor === 'object' ? task.assignedMentor.fullName : 
-       mentors.find(mentor => mentor._id === task.assignedMentor)?.fullName || '') : '';
-    
+    const mentorName = task.assignedMentor ?
+      (typeof task.assignedMentor === 'object' ? task.assignedMentor.fullName :
+        mentors.find(mentor => mentor._id === task.assignedMentor)?.fullName || '') : '';
+
     setFormData({
       title: task.title || "",
       taskType: task.taskType || "",
@@ -666,18 +671,17 @@ export const TaskManagement = () => {
       description: task.description || "",
       attachments: task.attachments || null, // Store as URL string or null
       totalMarks: task.totalMarks || "",
-      achievedMarks: task.achievedMarks || "",
       status: task.status || "",
       audience: task.audience || "",
     });
     setAttachmentPreview(task.attachments || null);
-    
+
     // Clear all selected items first
     setSelectedBatches([]);
-    setSelectedCourses([]);
+    setSelectedCategories([]);
     setSelectedInterns([]);
     setSelectedBranches([]);
-    
+
     // Set selected branches based on task data
     if (task.branch && task.branch.length > 0) {
       console.log('Task branches data:', task.branch);
@@ -688,7 +692,7 @@ export const TaskManagement = () => {
       console.log('Selected branch objects:', selectedBranchObjects);
       setSelectedBranches(selectedBranchObjects);
     }
-    
+
     // Set selected items based on task data and audience type
     if (task.audience === "By batches" && task.batches && task.batches.length > 0) {
       console.log('Task batches data:', task.batches);
@@ -699,17 +703,17 @@ export const TaskManagement = () => {
       console.log('Selected batch objects:', selectedBatchObjects);
       setSelectedBatches(selectedBatchObjects);
     }
-    
-    if (task.audience === "By courses" && task.courses && task.courses.length > 0) {
-      console.log('Task courses data:', task.courses);
-      const selectedCourseObjects = task.courses.map(course => {
-        const courseId = typeof course === 'object' ? course._id : course;
-        return courses.find(c => c._id === courseId) || (typeof course === 'object' ? course : null);
+
+    if (task.audience === "By category" && task.categories && task.categories.length > 0) {
+      console.log('Task categories data:', task.categories);
+      const selectedCategoryObjects = task.categories.map(category => {
+        const categoryId = typeof category === 'object' ? category._id : category;
+        return categories.find(c => c._id === categoryId) || (typeof category === 'object' ? category : null);
       }).filter(Boolean);
-      console.log('Selected course objects:', selectedCourseObjects);
-      setSelectedCourses(selectedCourseObjects);
+      console.log('Selected category objects:', selectedCategoryObjects);
+      setSelectedCategories(selectedCategoryObjects);
     }
-    
+
     if (task.audience === "Individual interns" && task.individualInterns && task.individualInterns.length > 0) {
       console.log('Task individualInterns data:', task.individualInterns);
       const selectedInternObjects = task.individualInterns.map(intern => {
@@ -719,15 +723,15 @@ export const TaskManagement = () => {
       console.log('Selected intern objects:', selectedInternObjects);
       setSelectedInterns(selectedInternObjects);
     }
-    
+
     // Load data if needed based on audience type
     if (task.audience === "Individual interns" && interns.length === 0) {
       fetchInterns();
     }
-    if (task.audience === "By courses" && courses.length === 0) {
-      fetchCourses();
+    if (task.audience === "By category" && categories.length === 0) {
+      fetchCategories();
     }
-    
+
     setActiveTab('new-task');
   };
 
@@ -740,8 +744,8 @@ export const TaskManagement = () => {
     setInternSearchTerm('');
     setSelectedBatches([]);
     setBatchSearchTerm('');
-    setSelectedCourses([]);
-    setCourseSearchTerm('');
+    setSelectedCategories([]);
+    setCategorySearchTerm('');
     setSelectedBranches([]);
     setIsBranchDropdownOpen(false);
     setActiveTab('tasks-list');
@@ -755,14 +759,14 @@ export const TaskManagement = () => {
 
   const handleDeleteConfirm = async () => {
     if (!taskToDelete) return;
-    
+
     try {
       setLoading(true);
       setError('');
-      
+
       const res = await deleteTasksData(taskToDelete._id);
       console.log('Delete response:', res);
-      
+
       if (res.status === 200 || res.status === 201) {
         showNotification('success', 'Success', 'Task deleted successfully!');
         // Refresh the tasks list
@@ -823,16 +827,16 @@ export const TaskManagement = () => {
     }
   };
 
-  const handleCourseSearch = (searchTerm) => {
-    setCourseSearchTerm(searchTerm);
+  const handleCategorySearch = (searchTerm) => {
+    setCategorySearchTerm(searchTerm);
   };
 
-  const handleCourseSelect = (course) => {
-    const isSelected = selectedCourses.find(selected => selected._id === course._id);
+  const handleCategorySelect = (category) => {
+    const isSelected = selectedCategories.find(selected => selected._id === category._id);
     if (isSelected) {
-      setSelectedCourses(selectedCourses.filter(selected => selected._id !== course._id));
+      setSelectedCategories(selectedCategories.filter(selected => selected._id !== category._id));
     } else {
-      setSelectedCourses([...selectedCourses, course]);
+      setSelectedCategories([...selectedCategories, category]);
     }
   };
 
@@ -847,15 +851,15 @@ export const TaskManagement = () => {
     showNotification('info', 'Selection Cleared', 'Cleared all selected batches');
   };
 
-  const handleClearAllCourses = () => {
-    setSelectedCourses([]);
-    showNotification('info', 'Selection Cleared', 'Cleared all selected courses');
+  const handleClearAllCategories = () => {
+    setSelectedCategories([]);
+    showNotification('info', 'Selection Cleared', 'Cleared all selected categories');
   };
 
   const filteredInterns = interns.filter(intern => {
     const matchesSearch = intern.fullName?.toLowerCase().includes(internSearchTerm.toLowerCase()) ||
       intern.email?.toLowerCase().includes(internSearchTerm.toLowerCase());
-    
+
     const matchesBranch = selectedBranches.length > 0 && selectedBranches.some(b => {
       const branchId = intern.branch?._id || intern.branch;
       return b._id === branchId;
@@ -876,17 +880,20 @@ export const TaskManagement = () => {
     return matchesSearch && matchesBranch;
   });
 
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.courseName?.toLowerCase().includes(courseSearchTerm.toLowerCase()) ||
-      course.description?.toLowerCase().includes(courseSearchTerm.toLowerCase());
+  const filteredCategories = categories.filter(category => {
+    const matchesSearch = category.categoryName?.toLowerCase().includes(categorySearchTerm.toLowerCase());
 
-    const matchesBranch = selectedBranches.length > 0 && selectedBranches.some(b => {
-      const catBranches = course.category?.branch || [];
-      return catBranches.some(cb => {
-        const cbId = cb?._id || cb;
-        return b._id === cbId;
-      });
-    });
+    const matchesBranch = selectedBranches.length > 0 && (
+      !category.branch ||
+      category.branch.length === 0 ||
+      selectedBranches.some(b => {
+        const catBranches = category.branch || [];
+        return catBranches.some(cb => {
+          const cbId = cb?._id || cb;
+          return b._id === cbId;
+        });
+      })
+    );
 
     return matchesSearch && matchesBranch;
   });
@@ -896,19 +903,19 @@ export const TaskManagement = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
-    
+
     console.log('Form submission started');
     console.log('Is edit mode:', isEditMode);
     console.log('Editing task:', editingTask);
 
     // Build FormData for file uploads
     const payload = new FormData();
-    
+
     // Add text fields from formData state
     if (formData.title) payload.append('title', formData.title.trim());
     if (formData.taskType) payload.append('taskType', formData.taskType);
     if (formData.module) payload.append('module', formData.module.trim());
-    
+
     // Find the mentor ID from the selected mentor name
     const selectedMentor = mentors.find(mentor => mentor.fullName === formData.assignedMentor);
     const mentorId = selectedMentor ? selectedMentor._id : undefined;
@@ -917,7 +924,7 @@ export const TaskManagement = () => {
     // Ensure dates are properly formatted
     const startDateValue = formData.startDate;
     const dueDateValue = formData.dueDate;
-    
+
     // Convert dates to ISO string format to avoid timezone issues
     const startDate = startDateValue ? new Date(startDateValue + 'T00:00:00.000Z').toISOString() : undefined;
     const dueDate = dueDateValue ? new Date(dueDateValue + 'T23:59:59.999Z').toISOString() : undefined;
@@ -926,7 +933,7 @@ export const TaskManagement = () => {
     if (startDateValue && dueDateValue) {
       const startDateObj = new Date(startDateValue);
       const dueDateObj = new Date(dueDateValue);
-      
+
       if (startDateObj >= dueDateObj) {
         showNotification('error', 'Validation Error', 'Due date must be after start date');
         setLoading(false);
@@ -937,7 +944,7 @@ export const TaskManagement = () => {
     if (startDate) payload.append('startDate', startDate);
     if (dueDate) payload.append('dueDate', dueDate);
     if (formData.description) payload.append('description', formData.description.trim());
-    
+
     // Handle attachments file upload
     if (formData?.attachments instanceof File) {
       // New file selected - append the file
@@ -947,7 +954,7 @@ export const TaskManagement = () => {
       // Existing URL - pass it as a field to preserve it
       payload.append('attachments', formData.attachments);
     }
-    
+
     // Client-side validation for branches
     if (selectedBranches.length === 0) {
       showNotification('error', 'Validation Error', 'At least one branch must be selected');
@@ -960,10 +967,9 @@ export const TaskManagement = () => {
     }
 
     if (formData.totalMarks) payload.append('totalMarks', formData.totalMarks);
-    if (formData.achievedMarks) payload.append('achievedMarks', formData.achievedMarks);
     if (formData.status) payload.append('status', formData.status);
     if (formData.audience) payload.append('audience', formData.audience);
-    
+
     // Add audience-specific arrays
     // Note: When appending multiple values with the same key in FormData,
     // Express parses them as arrays automatically
@@ -976,6 +982,10 @@ export const TaskManagement = () => {
       selectedInterns.forEach(intern => payload.append('individualInterns', intern._id));
     }
 
+    if (selectedCategories.length > 0) {
+      selectedCategories.forEach(category => payload.append('categories', category._id));
+    }
+
     try {
       setLoading(true);
       let res;
@@ -985,7 +995,7 @@ export const TaskManagement = () => {
         // res = await axiosPrivate.put(`http://localhost:3000/api/tasks/${editingTask._id}`, payload);
         const res = await putTasksData(editingTask._id, payload);
         console.log('Update response:', res);
-        
+
         if (res.status === 200 || res.status === 201) {
           showNotification('success', 'Success', 'Task updated successfully!');
         } else {
@@ -997,14 +1007,14 @@ export const TaskManagement = () => {
         // res = await axiosPrivate.post('http://localhost:3000/api/tasks', payload);
         const res = await postTasksData(payload);
         console.log('Create response:', res);
-        
+
         if (res.status === 200 || res.status === 201) {
           showNotification('success', 'Success', 'Task created successfully!');
         } else {
           throw new Error('Create request failed with status: ' + res.status);
         }
       }
-      
+
       await fetchTasks(pagination.currentPage, searchTerm, filters.taskType, filters.status, filters.audience, filters.branch); // Refresh the list
       setActiveTab('tasks-list'); // Switch to tasks list tab
       setEditingTask(null);
@@ -1015,15 +1025,15 @@ export const TaskManagement = () => {
       setInternSearchTerm('');
       setSelectedBatches([]);
       setBatchSearchTerm('');
-      setSelectedCourses([]);
-      setCourseSearchTerm('');
+      setSelectedCategories([]);
+      setCategorySearchTerm('');
       setSelectedBranches([]);
       setIsBranchDropdownOpen(false);
     } catch (err) {
       console.error('Task operation error:', err);
       console.error('Error response:', err.response);
       console.error('Error message:', err.message);
-      
+
       // More specific error handling
       if (err.response?.data?.message) {
         showNotification('error', 'Error', err.response.data.message);
@@ -1091,7 +1101,7 @@ export const TaskManagement = () => {
                 <h3 className="text-lg font-medium text-gray-900">{notification.title}</h3>
               </div>
             </div>
-            
+
             <div className="mb-6">
               <p className="text-sm text-gray-500">{notification.message}</p>
             </div>
@@ -1114,7 +1124,7 @@ export const TaskManagement = () => {
     <>
       {/* Notification Modal */}
       <NotificationModal />
-      
+
       <Navbar headData={headData} activeTab={activeTab}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="w-full sm:w-auto">
@@ -1154,7 +1164,7 @@ export const TaskManagement = () => {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:space-y-0">
-                <select 
+                <select
                   value={filters.taskType}
                   onChange={(e) => handleFilterChange('taskType', e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -1162,8 +1172,10 @@ export const TaskManagement = () => {
                   <option value="">All Types</option>
                   <option value="Weekly Task">Weekly Task</option>
                   <option value="Daily Task">Daily Task</option>
+                  <option value="Monthly Task">Monthly Task</option>
+                  <option value="Other">Other</option>
                 </select>
-                <select 
+                <select
                   value={filters.status}
                   onChange={(e) => handleFilterChange('status', e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -1174,17 +1186,17 @@ export const TaskManagement = () => {
                   <option value="Completed">Completed</option>
                   <option value="Cancelled">Cancelled</option>
                 </select>
-                <select 
+                <select
                   value={filters.audience}
                   onChange={(e) => handleFilterChange('audience', e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 >
                   <option value="">All Audience</option>
-                  <option value="All interns">All interns</option>
                   <option value="By batches">By batches</option>
+                  <option value="By courses">By courses</option>
                   <option value="Individual interns">Individual interns</option>
                 </select>
-                <select 
+                <select
                   value={filters.branch}
                   onChange={(e) => handleFilterChange('branch', e.target.value)}
                   className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
@@ -1261,8 +1273,8 @@ export const TaskManagement = () => {
                             </span>
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                            {typeof task.assignedMentor === 'object' ? task.assignedMentor.fullName : 
-                             mentors.find(mentor => mentor._id === task.assignedMentor)?.fullName || task.assignedMentor || 'N/A'}
+                            {typeof task.assignedMentor === 'object' ? task.assignedMentor.fullName :
+                              mentors.find(mentor => mentor._id === task.assignedMentor)?.fullName || task.assignedMentor || 'N/A'}
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800">
@@ -1270,15 +1282,14 @@ export const TaskManagement = () => {
                             </span>
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              task.status === 'Completed'
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${task.status === 'Completed'
                                 ? 'bg-green-100 text-green-800'
                                 : task.status === 'In Progress'
-                                ? 'bg-blue-100 text-blue-800'
-                                : task.status === 'Cancelled'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}>
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : task.status === 'Cancelled'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                              }`}>
                               {task.status}
                             </span>
                           </td>
@@ -1287,19 +1298,19 @@ export const TaskManagement = () => {
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex justify-center space-x-2">
-                              <button 
+                              <button
                                 onClick={() => handleViewTask(task)}
                                 className="text-blue-600 hover:text-blue-900"
                               >
                                 View
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleEditTask(task)}
                                 className="text-orange-600 hover:text-orange-900"
                               >
                                 Edit
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleDeleteClick(task)}
                                 className="text-red-600 hover:text-red-900"
                                 disabled={loading}
@@ -1353,34 +1364,33 @@ export const TaskManagement = () => {
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium">Status:</span>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            task.status === 'Completed'
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${task.status === 'Completed'
                               ? 'bg-green-100 text-green-800'
                               : task.status === 'In Progress'
-                              ? 'bg-blue-100 text-blue-800'
-                              : task.status === 'Cancelled'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
+                                ? 'bg-blue-100 text-blue-800'
+                                : task.status === 'Cancelled'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
+                            }`}>
                             {task.status}
                           </span>
                         </div>
                         <div><span className="font-medium">Due Date:</span> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</div>
                       </div>
                       <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-200">
-                        <button 
+                        <button
                           onClick={() => handleViewTask(task)}
                           className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
                         >
                           View
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleEditTask(task)}
                           className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 transition-colors"
                         >
                           Edit
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDeleteClick(task)}
                           disabled={loading}
                           className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50"
@@ -1402,17 +1412,16 @@ export const TaskManagement = () => {
                     Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.totalCount)} of {pagination.totalCount} results
                   </span>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   {/* Previous Button */}
                   <button
                     onClick={() => handlePageChange(pagination.currentPage - 1)}
                     disabled={!pagination.hasPrevPage || loading}
-                    className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${
-                      pagination.hasPrevPage && !loading
+                    className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasPrevPage && !loading
                         ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
                         : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
-                    }`}
+                      }`}
                   >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -1431,11 +1440,10 @@ export const TaskManagement = () => {
                   <button
                     onClick={() => handlePageChange(pagination.currentPage + 1)}
                     disabled={!pagination.hasNextPage || loading}
-                    className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${
-                      pagination.hasNextPage && !loading
+                    className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasNextPage && !loading
                         ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
                         : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
-                    }`}
+                      }`}
                   >
                     {loading ? 'Loading...' : 'Next'}
                     <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1461,7 +1469,7 @@ export const TaskManagement = () => {
                     type="text"
                     placeholder="Enter Task Title"
                     value={formData.title || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, title: e.target.value}))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
                     required
                   />
@@ -1471,42 +1479,73 @@ export const TaskManagement = () => {
                   <select
                     name="taskType"
                     value={formData.taskType || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, taskType: e.target.value}))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, taskType: e.target.value }))}
                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
                     required
                   >
                     <option value="">Choose Task Type</option>
                     <option value="Weekly Task">Weekly Task</option>
                     <option value="Daily Task">Daily Task</option>
+                    <option value="Monthly Task">Monthly Task</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
-                <div>
+                <div className="relative module-dropdown-container">
                   <label className="block text-sm font-medium text-gray-700">Module</label>
-                  <select
+                  <button
+                    type="button"
+                    onClick={() => setIsModuleDropdownOpen(prev => !prev)}
+                    className="mt-1 flex justify-between items-center w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm text-left focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
+                    disabled={modulesLoading}
+                  >
+                    <span className={formData.module ? 'text-gray-900' : 'text-gray-500'}>
+                      {formData.module || 'Choose Module'}
+                    </span>
+                    <svg className={`w-4 h-4 text-gray-500 transition-transform ${isModuleDropdownOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </button>
+                  
+                  {isModuleDropdownOpen && (
+                    <div className="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {modulesLoading ? (
+                        <div className="p-2 text-sm text-gray-500">Loading modules...</div>
+                      ) : (modules || []).length === 0 ? (
+                        <div className="p-2 text-sm text-gray-500">No modules available</div>
+                      ) : (
+                        (modules || []).map(module => (
+                          <div
+                            key={module._id}
+                            onClick={() => {
+                              setFormData(prev => ({ ...prev, module: module.moduleName }));
+                              setIsModuleDropdownOpen(false);
+                            }}
+                            className={`p-2 hover:bg-orange-500 hover:text-white cursor-pointer text-sm transition-colors ${
+                              formData.module === module.moduleName ? 'bg-orange-50 text-orange-700 font-semibold' : 'text-gray-700'
+                            }`}
+                          >
+                            {module.moduleName}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                  <input
+                    type="hidden"
                     name="module"
                     value={formData.module || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, module: e.target.value}))}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                    disabled={modulesLoading}
                     required
-                  >
-                    {modulesLoading ? (
-                      <option>Loading modules...</option>
-                    ) : (
-                      (modules || []).map(module => (
-                        <option key={module._id} value={module.moduleName}>
-                          {module.moduleName}
-                        </option>
-                      ))
-                    )}
-                  </select>
+                  />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Assigned Mentor</label>
                   <select
                     name="assignedMentor"
                     value={formData.assignedMentor || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, assignedMentor: e.target.value}))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, assignedMentor: e.target.value }))}
                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
                     disabled={mentorsLoading}
                     required
@@ -1530,7 +1569,7 @@ export const TaskManagement = () => {
                       name="startDate"
                       type="date"
                       value={formData.startDate || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, startDate: e.target.value}))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
                       className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
                       required
                     />
@@ -1546,7 +1585,7 @@ export const TaskManagement = () => {
                       name="dueDate"
                       type="date"
                       value={formData.dueDate || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, dueDate: e.target.value}))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
                       className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
                       required
                     />
@@ -1555,7 +1594,19 @@ export const TaskManagement = () => {
                     </div>
                   </div>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Total Marks</label>
+                  <input
+                    name="totalMarks"
+                    type="number"
+                    placeholder="Enter Total Marks"
+                    value={formData.totalMarks || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, totalMarks: e.target.value }))}
+                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                  />
+                </div>
               </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700">Description</label>
                 <textarea
@@ -1563,35 +1614,36 @@ export const TaskManagement = () => {
                   placeholder="Enter Task Description"
                   rows="3"
                   value={formData.description || ''}
-                  onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
                   required
                 ></textarea>
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Attachments <span className="text-gray-400">(Optional - JPG/PNG/PDF only)</span></label>
                   <div className="relative flex items-center w-full px-4 py-2 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-transparent bg-white mt-1">
                     <span className="text-gray-500 flex-1 truncate pr-2">
-                      {formData?.attachments instanceof File 
-                        ? formData.attachments.name 
-                        : formData?.attachments && typeof formData.attachments === 'string' 
-                            ? 'Existing file (click to change)' 
-                            : 'Upload Attachment'}
+                      {formData?.attachments instanceof File
+                        ? formData.attachments.name
+                        : formData?.attachments && typeof formData.attachments === 'string'
+                          ? 'Existing file (click to change)'
+                          : 'Upload Attachment'}
                     </span>
-                    <input 
+                    <input
                       key={isEditMode && editingTask ? editingTask._id : 'new-task'}
                       onChange={(e) => {
                         try {
                           const file = e.target.files?.[0];
                           if (file) {
                             // Validate file type - check MIME type and file extension
-                            const isValidFile = file.type.match('image/(jpeg|jpg|png)') || 
-                                              file.type === 'application/pdf' ||
-                                              (file.name && (file.name.toLowerCase().endsWith('.jpg') || 
-                                                             file.name.toLowerCase().endsWith('.jpeg') || 
-                                                             file.name.toLowerCase().endsWith('.png') || 
-                                                             file.name.toLowerCase().endsWith('.pdf')));
+                            const isValidFile = file.type.match('image/(jpeg|jpg|png)') ||
+                              file.type === 'application/pdf' ||
+                              (file.name && (file.name.toLowerCase().endsWith('.jpg') ||
+                                file.name.toLowerCase().endsWith('.jpeg') ||
+                                file.name.toLowerCase().endsWith('.png') ||
+                                file.name.toLowerCase().endsWith('.pdf')));
                             if (!isValidFile) {
                               showNotification('error', 'Validation Error', 'Please upload only JPG, PNG, or PDF files');
                               e.target.value = ''; // Reset input to allow retry
@@ -1616,7 +1668,7 @@ export const TaskManagement = () => {
                           }
                         }
                       }}
-                      type="file" 
+                      type="file"
                       accept="image/jpeg,image/jpg,image/png,application/pdf,.pdf"
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                       id="attachments-upload"
@@ -1660,17 +1712,17 @@ export const TaskManagement = () => {
                             )
                           )}
                         </div>
-                        
+
                         {/* File Info */}
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-gray-900 truncate">
-                            {formData.attachments instanceof File 
-                              ? formData.attachments.name 
+                            {formData.attachments instanceof File
+                              ? formData.attachments.name
                               : attachmentPreview.split('/').pop()?.split('?')[0] || 'Attachment'}
                           </p>
                           <p className="text-xs text-gray-500 font-medium">
-                            {formData.attachments instanceof File 
-                              ? formatFileSize(formData.attachments.size) 
+                            {formData.attachments instanceof File
+                              ? formatFileSize(formData.attachments.size)
                               : 'Cloudinary Hosted File'}
                           </p>
                         </div>
@@ -1678,9 +1730,9 @@ export const TaskManagement = () => {
 
                       {/* Action Buttons */}
                       <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:justify-start">
-                        <a 
-                          href={attachmentPreview} 
-                          target="_blank" 
+                        <a
+                          href={attachmentPreview}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="px-3 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-md border border-orange-200 transition-colors flex items-center gap-1"
                         >
@@ -1691,7 +1743,7 @@ export const TaskManagement = () => {
                           Preview
                         </a>
                         {!isEditMode && (
-                          <button 
+                          <button
                             type="button"
                             onClick={() => {
                               setFormData(p => ({ ...p, attachments: null }));
@@ -1709,36 +1761,13 @@ export const TaskManagement = () => {
                     </div>
                   )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Total Marks</label>
-                  <input
-                    name="totalMarks"
-                    type="number"
-                    placeholder="Enter Total Marks"
-                    value={formData.totalMarks || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, totalMarks: e.target.value}))}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Achieved Marks</label>
-                  <input
-                    name="achievedMarks"
-                    type="number"
-                    placeholder="Enter Achieved Marks"
-                    value={formData.achievedMarks || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, achievedMarks: e.target.value}))}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Status</label>
                   <select
                     name="status"
                     value={formData.status || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, status: e.target.value}))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
                     required
                   >
@@ -1749,6 +1778,7 @@ export const TaskManagement = () => {
                     <option value="Cancelled">Cancelled</option>
                   </select>
                 </div>
+
                 <div className="branch-dropdown-container relative">
                   <label className="block text-sm font-medium text-gray-700">Branches</label>
                   <button
@@ -1805,7 +1835,7 @@ export const TaskManagement = () => {
               {/* Task Details Section */}
               <div className="mt-6 sm:mt-8 border-t border-gray-200 pt-4 sm:pt-6">
                 <h4 className="text-base sm:text-lg font-medium text-gray-900 mb-4">Task Details</h4>
-                
+
                 {/* Debug Information - Only show in edit mode */}
                 {/* {isEditMode && editingTask && (
                   <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -1831,23 +1861,19 @@ export const TaskManagement = () => {
                       value={formData.audience || ''}
                       onChange={(e) => {
                         const newAudience = e.target.value;
-                        setFormData(prev => ({...prev, audience: newAudience}));
-                        
+                        setFormData(prev => ({ ...prev, audience: newAudience }));
+
                         // Clear non-applicable selection states on the frontend
-                        if (newAudience === 'All interns') {
-                          setSelectedBatches([]);
-                          setSelectedCourses([]);
+                        if (newAudience === 'By batches') {
+                          setSelectedCategories([]);
                           setSelectedInterns([]);
-                        } else if (newAudience === 'By batches') {
-                          setSelectedCourses([]);
-                          setSelectedInterns([]);
-                        } else if (newAudience === 'By courses') {
+                        } else if (newAudience === 'By category') {
                           setSelectedBatches([]);
                           setSelectedInterns([]);
-                          fetchCourses();
+                          fetchCategories();
                         } else if (newAudience === 'Individual interns') {
                           setSelectedBatches([]);
-                          setSelectedCourses([]);
+                          setSelectedCategories([]);
                           fetchInterns();
                         }
                       }}
@@ -1860,8 +1886,8 @@ export const TaskManagement = () => {
                       ) : (
                         <>
                           <option value="">Choose Audience</option>
-                          <option value="All interns">All interns</option>
                           <option value="By batches">By batches</option>
+                          <option value="By category">By category</option>
                           <option value="Individual interns">Individual interns</option>
                         </>
                       )}
@@ -1890,7 +1916,7 @@ export const TaskManagement = () => {
                             </svg>
                           </div>
                         </div>
-                        
+
                         {/* Search Results */}
                         <div className="mt-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md">
                           {internsLoading ? (
@@ -1910,18 +1936,16 @@ export const TaskManagement = () => {
                                   <div
                                     key={intern._id}
                                     onClick={() => handleInternSelect(intern)}
-                                    className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${
-                                      isSelected ? 'bg-orange-50 border-orange-200' : ''
-                                    }`}
+                                    className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${isSelected ? 'bg-orange-50 border-orange-200' : ''
+                                      }`}
                                   >
                                     <div className="flex items-center justify-between">
                                       <div>
                                         <div className="text-sm font-medium text-gray-900">{intern.fullName}</div>
                                         <div className="text-xs text-gray-500">{intern.email}</div>
                                       </div>
-                                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                                        isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'
-                                      }`}>
+                                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'
+                                        }`}>
                                         {isSelected && (
                                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
@@ -2017,7 +2041,7 @@ export const TaskManagement = () => {
                             </svg>
                           </div>
                         </div>
-                        
+
                         {/* Search Results */}
                         <div className="mt-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md">
                           {batchesLoading ? (
@@ -2037,18 +2061,16 @@ export const TaskManagement = () => {
                                   <div
                                     key={batch._id}
                                     onClick={() => handleBatchSelect(batch)}
-                                    className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${
-                                      isSelected ? 'bg-orange-50 border-orange-200' : ''
-                                    }`}
+                                    className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${isSelected ? 'bg-orange-50 border-orange-200' : ''
+                                      }`}
                                   >
                                     <div className="flex items-center justify-between">
                                       <div>
                                         <div className="text-sm font-medium text-gray-900">{batch.batchName}</div>
                                         <div className="text-xs text-gray-500">{batch.description || 'No description'}</div>
                                       </div>
-                                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                                        isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'
-                                      }`}>
+                                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'
+                                        }`}>
                                         {isSelected && (
                                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
@@ -2123,19 +2145,19 @@ export const TaskManagement = () => {
                   </div>
                 )}
 
-                {/* Course Search Section - Only show when By courses is selected */}
-                {formData.audience === 'By courses' && (
+                {/* Category Search Section - Only show when By category is selected */}
+                {formData.audience === 'By category' && (
                   <div className="mt-4 sm:mt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                       {/* Search Section */}
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Search Courses</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Search Categories</label>
                         <div className="relative">
                           <input
                             type="text"
-                            placeholder="Search by course name or description..."
-                            value={courseSearchTerm}
-                            onChange={(e) => handleCourseSearch(e.target.value)}
+                            placeholder="Search by category name..."
+                            value={categorySearchTerm}
+                            onChange={(e) => handleCategorySearch(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                           />
                           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -2144,38 +2166,35 @@ export const TaskManagement = () => {
                             </svg>
                           </div>
                         </div>
-                        
+
                         {/* Search Results */}
                         <div className="mt-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md">
-                          {coursesLoading ? (
+                          {categoriesLoading ? (
                             <div className="p-4 text-center text-gray-500">
                               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto mb-2"></div>
-                              Loading courses...
+                              Loading categories...
                             </div>
-                          ) : filteredCourses.length === 0 ? (
+                          ) : filteredCategories.length === 0 ? (
                             <div className="p-4 text-center text-gray-500">
-                              {courseSearchTerm ? 'No courses found matching your search.' : 'No courses available.'}
+                              {categorySearchTerm ? 'No categories found matching your search.' : 'No categories available.'}
                             </div>
                           ) : (
                             <div className="space-y-1">
-                              {filteredCourses.map((course) => {
-                                const isSelected = selectedCourses.find(selected => selected._id === course._id);
+                              {filteredCategories.map((category) => {
+                                const isSelected = selectedCategories.find(selected => selected._id === category._id);
                                 return (
                                   <div
-                                    key={course._id}
-                                    onClick={() => handleCourseSelect(course)}
-                                    className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${
-                                      isSelected ? 'bg-orange-50 border-orange-200' : ''
-                                    }`}
+                                    key={category._id}
+                                    onClick={() => handleCategorySelect(category)}
+                                    className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${isSelected ? 'bg-orange-50 border-orange-200' : ''
+                                      }`}
                                   >
                                     <div className="flex items-center justify-between">
                                       <div>
-                                        <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
-                                        <div className="text-xs text-gray-500">{course.description || 'No description'}</div>
+                                        <div className="text-sm font-medium text-gray-900">{category.categoryName}</div>
                                       </div>
-                                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                                        isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'
-                                      }`}>
+                                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'
+                                        }`}>
                                         {isSelected && (
                                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
@@ -2191,16 +2210,16 @@ export const TaskManagement = () => {
                         </div>
                       </div>
 
-                      {/* Selected Courses */}
+                      {/* Selected Categories */}
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <label className="block text-sm font-medium text-gray-700">
-                            Selected Courses ({selectedCourses.length})
+                            Selected Categories ({selectedCategories.length})
                           </label>
-                          {selectedCourses.length > 0 && (
+                          {selectedCategories.length > 0 && (
                             <button
                               type="button"
-                              onClick={handleClearAllCourses}
+                              onClick={handleClearAllCategories}
                               className="text-xs text-red-600 hover:text-red-800 font-medium"
                             >
                               Clear All
@@ -2208,31 +2227,30 @@ export const TaskManagement = () => {
                           )}
                         </div>
                         <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md bg-gray-50 p-3">
-                          {selectedCourses.length === 0 ? (
+                          {selectedCategories.length === 0 ? (
                             <div className="text-center text-gray-500 py-4">
                               <svg className="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.433 9.496 5 8 5c-4 0-8 3-8 8s4 8 8 8c.94 0 1.841-.213 2.684-.606m3.56-5.894C15.687 7.159 15.589 8 15 8s-1.5-.5-1.5-.5V5a2 2 00-2-2h-2c-1.5 0-2 1-2 2v2.5M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.402 2.572-1.065z"></path>
                               </svg>
-                              No courses selected
+                              No categories selected
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              {selectedCourses.map((course) => (
-                                <div key={course._id} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg hover:bg-purple-50 transition-colors">
+                              {selectedCategories.map((category) => (
+                                <div key={category._id} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg hover:bg-purple-50 transition-colors">
                                   <div className="flex items-center">
                                     <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
                                       <span className="text-purple-600 font-medium text-sm">
-                                        {course.courseName?.charAt(0)?.toUpperCase() || 'C'}
+                                        {category.categoryName?.charAt(0)?.toUpperCase() || 'C'}
                                       </span>
                                     </div>
                                     <div>
-                                      <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
-                                      <div className="text-xs text-gray-500">{course.description || 'No description'}</div>
+                                      <div className="text-sm font-medium text-gray-900">{category.categoryName}</div>
                                     </div>
                                   </div>
                                   <button
                                     type="button"
-                                    onClick={() => handleCourseSelect(course)}
+                                    onClick={() => handleCategorySelect(category)}
                                     className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors"
                                     title="Remove from selection"
                                   >
@@ -2250,7 +2268,7 @@ export const TaskManagement = () => {
                   </div>
                 )}
 
-               
+
               </div>
               <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6 sm:mt-8">
                 <button
@@ -2265,8 +2283,8 @@ export const TaskManagement = () => {
                   disabled={loading}
                   className="w-full sm:w-auto py-2 px-4 sm:px-6 rounded-lg bg-orange-500 text-white font-medium hover:bg-orange-600 disabled:bg-orange-300 disabled:cursor-not-allowed"
                 >
-                  {loading 
-                    ? (isEditMode ? 'Updating...' : 'Creating...') 
+                  {loading
+                    ? (isEditMode ? 'Updating...' : 'Creating...')
                     : (isEditMode ? 'Update Task' : 'Create Task')
                   }
                 </button>
@@ -2289,7 +2307,7 @@ export const TaskManagement = () => {
                   </svg>
                 </div>
               </div>
-              
+
               {/* Modal Content */}
               <div className="text-center">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -2298,7 +2316,7 @@ export const TaskManagement = () => {
                 <p className="text-sm text-gray-500 mb-4">
                   Are you sure you want to delete this task? This action cannot be undone.
                 </p>
-                
+
                 {taskToDelete && (
                   <div className="bg-gray-50 rounded-lg p-3 mb-4">
                     <p className="text-sm font-medium text-gray-900">{taskToDelete.title}</p>
@@ -2308,7 +2326,7 @@ export const TaskManagement = () => {
                   </div>
                 )}
               </div>
-              
+
               {/* Modal Actions */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
@@ -2346,7 +2364,7 @@ export const TaskManagement = () => {
             <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
               <div className="flex justify-between items-start gap-4">
                 <h1 className="text-lg sm:text-xl font-semibold text-gray-900 break-words">{viewingTask.title}</h1>
-                <button 
+                <button
                   onClick={closeViewModal}
                   className="flex items-center gap-1 text-sm border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
                 >
@@ -2407,9 +2425,9 @@ export const TaskManagement = () => {
                       <p className="text-xs text-gray-500 mt-0.5 font-medium">Secure Cloudinary Document</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <a 
-                        href={viewingTask.attachments} 
-                        target="_blank" 
+                      <a
+                        href={viewingTask.attachments}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="px-3.5 py-2 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all flex items-center gap-1.5"
                       >
@@ -2419,7 +2437,7 @@ export const TaskManagement = () => {
                         </svg>
                         View Document
                       </a>
-                      <button 
+                      <button
                         onClick={() => handleDownloadAttachment(viewingTask)}
                         className="px-3.5 py-2 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-all flex items-center gap-1.5"
                       >
@@ -2435,8 +2453,8 @@ export const TaskManagement = () => {
 
               {/* Audience details */}
               {(viewingTask.audience === 'By batches' && viewingTask.batches?.length) ||
-               (viewingTask.audience === 'By courses' && viewingTask.courses?.length) ||
-               (viewingTask.audience === 'Individual interns' && viewingTask.individualInterns?.length) ? (
+                (viewingTask.audience === 'By category' && viewingTask.categories?.length) ||
+                (viewingTask.audience === 'Individual interns' && viewingTask.individualInterns?.length) ? (
                 <div className="mt-4 sm:mt-5">
                   <h2 className="text-[#f7931e] font-semibold mb-3 text-sm sm:text-base italic">Target Audience Details</h2>
                   <div className="flex flex-wrap gap-2">
@@ -2445,9 +2463,9 @@ export const TaskManagement = () => {
                         {typeof b === 'object' ? b.batchName : b}
                       </span>
                     ))}
-                    {Array.isArray(viewingTask.courses) && viewingTask.courses.map((c, i) => (
+                    {Array.isArray(viewingTask.categories) && viewingTask.categories.map((c, i) => (
                       <span key={`c-${i}`} className="inline-flex items-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 rounded-full border border-purple-200">
-                        {typeof c === 'object' ? c.courseName : c}
+                        {typeof c === 'object' ? c.categoryName : c}
                       </span>
                     ))}
                     {Array.isArray(viewingTask.individualInterns) && viewingTask.individualInterns.map((s, i) => (
@@ -2463,13 +2481,13 @@ export const TaskManagement = () => {
             {/* Modal Footer */}
             <div className="px-4 sm:px-6 py-4 border-t border-gray-200">
               <div className="flex flex-col sm:flex-row justify-end gap-3">
-                <button 
+                <button
                   onClick={closeViewModal}
                   className="w-full sm:w-auto bg-gray-100 border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Close
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     closeViewModal();
                     handleEditTask(viewingTask);

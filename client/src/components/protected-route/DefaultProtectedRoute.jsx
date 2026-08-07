@@ -8,8 +8,12 @@ const DefaultProtectedRoute = () => {
     const { auth } = useAuth();
 
     const token = localStorage.getItem("accessToken");
+    const role = localStorage.getItem("role")?.toLowerCase();
     if (token) {
-        return <Navigate to="/dashboard" />;
+        if (role === 'intern') {
+            return <Navigate to="/student/attendance-dashboard" replace />;
+        }
+        return <Navigate to="/dashboard" replace />;
     }
 
 

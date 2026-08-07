@@ -384,6 +384,7 @@ const AdminService = () => {
         return response;
     };
 
+
     const postInternsAttendanceData = async (data) => {
         const response = await axiosPrivate.post("/api/interns-attendance", data);
         return response;
@@ -585,6 +586,16 @@ const AdminService = () => {
         return response.data;
     };
 
+    const getWeeklyScheduleByInternId = async (userId) => {
+        const response = await axiosPrivate.get(`/api/weekly-schedules/intern/${userId}`);
+        return response.data;
+    };
+
+    const getMyWeeklyScheduleData = async () => {
+        const response = await axiosPrivate.get("/api/weekly-schedules/my-schedule");
+        return response.data;
+    };
+
     const updateWeeklySchedule = async (scheduleId, data) => {
         const response = await axiosPrivate.put(`/api/weekly-schedules/${scheduleId}`, data);
         return response.data;
@@ -750,6 +761,8 @@ const AdminService = () => {
         getAllMentorsWithBatches,
         createWeeklySchedule,
         getWeeklyScheduleById,
+        getWeeklyScheduleByInternId,
+        getMyWeeklyScheduleData,
         updateWeeklySchedule,
         addTimeToSchedule,
         addSubDetailsToTime,
@@ -775,14 +788,20 @@ const AdminService = () => {
             return response.data;
         },
 
+        getMyMentorCardData: async () => {
+            const response = await axiosPrivate.get("/api/mentor-card/my-cards");
+            return response.data;
+        },
+
         putMentorCardData: async (id, data) => {
             const response = await axiosPrivate.put(`/api/mentor-card/${id}`, data);
             return response.data;
         },
 
         // ======================================== leave request management ========================================
-        getAllLeaveRequests: async () => {
-            const response = await axiosPrivate.get("/api/leave-requests/all");
+        getAllLeaveRequests: async (queryParams = '') => {
+            const url = queryParams ? `/api/leave-requests/all?${queryParams}` : "/api/leave-requests/all";
+            const response = await axiosPrivate.get(url);
             return response.data;
         },
 
@@ -794,7 +813,19 @@ const AdminService = () => {
         postLeaveRequest: async (data) => {
             const response = await axiosPrivate.post("/api/leave-requests", data);
             return response.data;
-        }
+        },
+
+        // ======================================== task submission management ========================================
+        getTaskSubmissionsData: async (taskId) => {
+            const response = await axiosPrivate.get(`/api/task-submissions/task/${taskId}`);
+            return response.data;
+        },
+
+        gradeSubmissionData: async (submissionId, data) => {
+            const response = await axiosPrivate.patch(`/api/task-submissions/${submissionId}/grade`, data);
+            return response.data;
+        },
+
 
     };
 };

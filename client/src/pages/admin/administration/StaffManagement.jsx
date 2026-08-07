@@ -12,7 +12,7 @@ import autoTable from 'jspdf-autotable';
 
 export const StaffManagement = () => {
     const navigate = useNavigate();
-    const { getStaffData,putStaffData,postStaffData,getBranchesData,deleteStaffData,getRolesData,getTimingsData, downloadStaffResume } = AdminService();
+    const { getStaffData, putStaffData, postStaffData, getBranchesData, deleteStaffData, getRolesData, getTimingsData, downloadStaffResume } = AdminService();
 
 
     const [activeTab, setActiveTab] = useState('staffList');
@@ -40,7 +40,7 @@ export const StaffManagement = () => {
         title: '',
         message: ''
     });
-    
+
     // Pagination state
     const [pagination, setPagination] = useState({
         currentPage: 1,
@@ -128,23 +128,23 @@ export const StaffManagement = () => {
         try {
             setLoading(true);
             setError('');
-            
+
             // Build query parameters
             const queryParams = new URLSearchParams({
                 page: page.toString(),
                 limit: pagination.limit.toString()
             });
-            
+
             if (search) queryParams.append('search', search);
             if (department) queryParams.append('department', department);
             if (employmentStatus !== undefined && employmentStatus !== null) queryParams.append('employmentStatus', employmentStatus);
             if (branch) queryParams.append('branch', branch);
-            
+
             const res = await getStaffData(queryParams.toString());
             // Handle different response structures
             const staffData = res.data?.data || res.data || [];
             setStaff(Array.isArray(staffData) ? staffData : []);
-            
+
             // Update pagination state
             if (res.pagination) {
                 setPagination(res.pagination);
@@ -166,7 +166,7 @@ export const StaffManagement = () => {
             // Handle different response structures
             const branchesData = (res.data?.data || res.data || []).filter(b => b.isActive !== false);
             setBranches(Array.isArray(branchesData) ? branchesData : []);
-            
+
             if (branchesData.length > 0) {
                 const calicutBranch = branchesData.find(b => b.branchName.toLowerCase().includes('calicut'));
                 const defaultBranchId = calicutBranch ? calicutBranch._id : branchesData[0]._id;
@@ -192,7 +192,7 @@ export const StaffManagement = () => {
             // Handle different response structures
             const rolesData = res.data?.data || res.data || [];
             setRoles(Array.isArray(rolesData) ? rolesData : []);
-            
+
         } catch (err) {
             console.error('Failed to load roles:', err);
             setRoles([]);
@@ -272,23 +272,23 @@ export const StaffManagement = () => {
             setLoading(true);
             showNotification('info', 'Downloading', 'Downloading resume...');
             const response = await downloadStaffResume(staffMember._id);
-            
+
             // Create blob link to download
             const blob = new Blob([response.data], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            
+
             const safeName = staffMember.fullName ? staffMember.fullName.replace(/[^a-z0-9]/gi, '_') : 'Staff';
             link.setAttribute('download', `${safeName}_Resume.pdf`);
-            
+
             document.body.appendChild(link);
             link.click();
-            
+
             // Cleanup
             link.parentNode.removeChild(link);
             window.URL.revokeObjectURL(url);
-            
+
             showNotification('success', 'Download Successful', 'Resume downloaded successfully.');
         } catch (err) {
             console.error('Failed to download resume:', err);
@@ -327,7 +327,7 @@ export const StaffManagement = () => {
         { value: "newStaff", label: isEditMode ? "Edit Staff" : "New Staff" }
     ];
 
-    const departments = ['Choose Department', 'UI/UX', 'Sales', 'Front office','Mern','Flutter','Python','Accounting','Digital Marketing'];
+    const departments = ['Choose Department', 'UI/UX', 'Sales', 'Front office', 'Mern', 'Flutter', 'Python', 'Accounting', 'Digital Marketing'];
     const employmentStatus = ['Choose Employment Status', 'Active', 'Inactive'];
 
     const handleInputChange = (e) => {
@@ -435,16 +435,16 @@ export const StaffManagement = () => {
         try {
             setLoading(true);
             showNotification('info', 'Exporting', 'Preparing PDF export...');
-            
+
             // Fetch all staff for export (no pagination)
             const queryParams = new URLSearchParams({
                 page: '1',
                 limit: '10000' // High limit to get all staff
             });
-            
+
             const res = await getStaffData(queryParams.toString());
             const allStaff = res.data?.data || res.data || [];
-            
+
             if (allStaff.length === 0) {
                 showNotification('error', 'Export Failed', 'No staff found to export');
                 return;
@@ -452,13 +452,13 @@ export const StaffManagement = () => {
 
             // Create new PDF document
             const doc = new jsPDF('portrait', 'mm', 'a4');
-            
+
             // Add title
             doc.setFontSize(18);
             doc.setFont('helvetica', 'bold');
             doc.setTextColor(247, 147, 30); // Orange color
             doc.text('Staff Management Report', 14, 20);
-            
+
             // Reset text color
             doc.setTextColor(0, 0, 0);
 
@@ -520,7 +520,7 @@ export const StaffManagement = () => {
 
             // Save the PDF
             doc.save(`staff_export_${new Date().toISOString().split('T')[0]}.pdf`);
-            
+
             showNotification('success', 'Export Successful', `Exported ${allStaff.length} staff to PDF successfully`);
         } catch (error) {
             console.error('Export error:', error);
@@ -532,7 +532,7 @@ export const StaffManagement = () => {
 
     const confirmDeleteStaff = async () => {
         if (!deletingStaff) return;
-        
+
         try {
             setLoading(true);
             setError('');
@@ -564,17 +564,17 @@ export const StaffManagement = () => {
         }
 
         // Different validation for create vs edit
-        const requiredFields = isEditMode 
+        const requiredFields = isEditMode
             ? [
                 'fullName', 'dateOfBirth', 'gender', 'email', 'staffPhoneNumber',
                 'department', 'branch', 'dateOfJoining', 'employmentStatus',
                 'officialEmail'
-              ]
+            ]
             : [
                 'fullName', 'dateOfBirth', 'gender', 'email', 'staffPhoneNumber',
                 'department', 'branch', 'dateOfJoining', 'employmentStatus',
                 'officialEmail', 'password'
-              ];
+            ];
 
         const missing = requiredFields.filter((f) => !String(formData[f] || '').trim());
         if (missing.length) {
@@ -584,7 +584,7 @@ export const StaffManagement = () => {
 
         // Build FormData for file uploads
         const payload = new FormData();
-        
+
         // Add text fields
         payload.append('fullName', formData.fullName);
         if (formData.dateOfBirth) payload.append('dateOfBirth', formData.dateOfBirth);
@@ -604,7 +604,7 @@ export const StaffManagement = () => {
         if (formData.resignationDate) payload.append('resignationDate', formData.resignationDate);
         if (formData.remarks) payload.append('remarks', formData.remarks);
         payload.append('officialEmail', formData.officialEmail);
-        
+
         // Add files only if they are File objects (new uploads)
         if (formData.photo instanceof File) {
             payload.append('photo', formData.photo);
@@ -612,19 +612,19 @@ export const StaffManagement = () => {
             // If it's a string (existing URL), pass it as a field
             payload.append('photo', formData.photo);
         }
-        
+
         if (formData.resume instanceof File) {
             payload.append('resume', formData.resume);
         } else if (formData.resume && typeof formData.resume === 'string') {
             // If it's a string (existing URL), pass it as a field
             payload.append('resume', formData.resume);
         }
-        
+
         // Only include password if it's provided (for new staff or password updates)
         if (formData.password && formData.password.trim() !== '') {
             payload.append('password', formData.password);
         }
-        
+
         payload.append('isMentor', formData.isMentor);
         if (formData.time && formData.time.length > 0) {
             payload.append('time', JSON.stringify(formData.time));
@@ -642,7 +642,7 @@ export const StaffManagement = () => {
                 res = await postStaffData(payload);
                 showNotification('success', 'Success', 'Staff created successfully.');
             }
-            
+
             // Refresh staff list
             await fetchStaff(pagination.currentPage, searchTerm, filters.department, filters.employmentStatus, filters.branch);
             // Switch tab and reset form
@@ -709,7 +709,7 @@ export const StaffManagement = () => {
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:space-y-0">
-                    <select 
+                    <select
                         value={filters.department}
                         onChange={(e) => handleFilterChange('department', e.target.value)}
                         className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -720,7 +720,7 @@ export const StaffManagement = () => {
                         ))}
                     </select>
                     {auth?.role?.toLowerCase() === 'super admin' && (
-                        <select 
+                        <select
                             value={filters.branch}
                             onChange={(e) => handleFilterChange('branch', e.target.value)}
                             className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
@@ -730,17 +730,17 @@ export const StaffManagement = () => {
                             ))}
                         </select>
                     )}
-                    <select 
+                    <select
                         value={filters.employmentStatus}
                         onChange={(e) => handleFilterChange('employmentStatus', e.target.value)}
                         className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     >
                         <option value="">All Status</option>
                         <option value="Active">Active</option>
-                        <option value="Pause">Pause</option>    
+                        <option value="Pause">Pause</option>
                         <option value="Inactive">Inactive</option>
                     </select>
-                    <button 
+                    <button
                         onClick={handleExport}
                         disabled={loading}
                         className="flex items-center px-4 py-2 bg-white text-gray-600 rounded-md font-medium border border-gray-300 hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -808,17 +808,16 @@ export const StaffManagement = () => {
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{staffMember.role?.role || 'N/A'}</td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{staffMember.branch?.branchName || 'N/A'}</td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                staffMember.employmentStatus === 'Active' 
-                                                    ? 'bg-green-100 text-green-800' 
+                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${staffMember.employmentStatus === 'Active'
+                                                    ? 'bg-green-100 text-green-800'
                                                     : 'bg-red-100 text-red-800'
-                                            }`}>
+                                                }`}>
                                                 {staffMember.employmentStatus}
                                             </span>
                                         </td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                                             {staffMember.isMentor ? (
-                                                <button 
+                                                <button
                                                     onClick={() => navigate('/mentor-batches', { state: { searchMentor: staffMember.fullName } })}
                                                     className="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-md text-xs font-medium transition-colors"
                                                     title="View Mentor Batches"
@@ -831,21 +830,21 @@ export const StaffManagement = () => {
                                         </td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium flex justify-center">
                                             <div className="flex space-x-2">
-                                                <button 
+                                                <button
                                                     onClick={() => handleViewStaff(staffMember)}
                                                     className="text-blue-600 hover:text-blue-900"
                                                     title="View Details"
                                                 >
                                                     View
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => handleEditStaff(staffMember)}
                                                     className="text-orange-600 hover:text-orange-900"
                                                     title="Edit Staff"
                                                 >
                                                     Edit
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => handleDeleteStaff(staffMember)}
                                                     className="text-red-600 hover:text-red-900"
                                                     title="Delete Staff"
@@ -877,11 +876,10 @@ export const StaffManagement = () => {
                                         <p className="text-sm text-gray-500">{staffMember.staffPhoneNumber}</p>
                                         <p className="text-xs text-gray-500 truncate">{staffMember.email}</p>
                                     </div>
-                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${
-                                        staffMember.employmentStatus === 'Active' 
-                                            ? 'bg-green-100 text-green-800' 
+                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${staffMember.employmentStatus === 'Active'
+                                            ? 'bg-green-100 text-green-800'
                                             : 'bg-red-100 text-red-800'
-                                    }`}>
+                                        }`}>
                                         {staffMember.employmentStatus}
                                     </span>
                                 </div>
@@ -891,26 +889,26 @@ export const StaffManagement = () => {
                                     <div><span className="font-medium">Branch:</span> {staffMember.branch?.branchName || 'N/A'}</div>
                                 </div>
                                 <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-200">
-                                    <button 
+                                    <button
                                         onClick={() => handleViewStaff(staffMember)}
                                         className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
                                     >
                                         View
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => handleEditStaff(staffMember)}
                                         className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 transition-colors"
                                     >
                                         Edit
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => handleDeleteStaff(staffMember)}
                                         className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
                                     >
                                         Delete
                                     </button>
                                     {staffMember.isMentor && (
-                                        <button 
+                                        <button
                                             onClick={() => navigate('/mentor-batches', { state: { searchMentor: staffMember.fullName } })}
                                             className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-[#f7931e] bg-orange-50 rounded-md hover:bg-orange-100 transition-colors"
                                         >
@@ -932,17 +930,16 @@ export const StaffManagement = () => {
                             Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.totalCount)} of {pagination.totalCount} results
                         </span>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                         {/* Previous Button */}
                         <button
                             onClick={() => handlePageChange(pagination.currentPage - 1)}
                             disabled={!pagination.hasPrevPage || loading}
-                            className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${
-                                pagination.hasPrevPage && !loading
+                            className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasPrevPage && !loading
                                     ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
                                     : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
-                            }`}
+                                }`}
                         >
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -961,11 +958,10 @@ export const StaffManagement = () => {
                         <button
                             onClick={() => handlePageChange(pagination.currentPage + 1)}
                             disabled={!pagination.hasNextPage || loading}
-                            className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${
-                                pagination.hasNextPage && !loading
+                            className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasNextPage && !loading
                                     ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
                                     : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
-                            }`}
+                                }`}
                         >
                             {loading ? 'Loading...' : 'Next'}
                             <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1030,13 +1026,13 @@ export const StaffManagement = () => {
                     <label className="block text-gray-700 font-medium mb-2">Photo <span className="text-gray-400">(Photo format: JPG/PNG only)</span></label>
                     <div className="relative flex items-center w-full px-4 py-2 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-transparent bg-white">
                         <span className="text-gray-500 flex-1 truncate pr-2">
-                            {formData.photo instanceof File 
-                                ? formData.photo.name 
-                                : formData.photo && typeof formData.photo === 'string' 
-                                    ? 'Existing photo (click to change)' 
+                            {formData.photo instanceof File
+                                ? formData.photo.name
+                                : formData.photo && typeof formData.photo === 'string'
+                                    ? 'Existing photo (click to change)'
                                     : 'Upload Photo'}
                         </span>
-                        <input 
+                        <input
                             onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
@@ -1050,8 +1046,8 @@ export const StaffManagement = () => {
                                     setPhotoPreview(URL.createObjectURL(file));
                                     setError(''); // Clear any previous errors
                                 }
-                            }} 
-                            type="file" 
+                            }}
+                            type="file"
                             accept="image/jpeg,image/jpg,image/png"
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             id="photo-upload"
@@ -1065,9 +1061,9 @@ export const StaffManagement = () => {
                     </div>
                     {photoPreview && (
                         <div className="mt-3 relative w-32 h-32 group">
-                            <img 
-                                src={photoPreview} 
-                                alt="Profile Preview" 
+                            <img
+                                src={photoPreview}
+                                alt="Profile Preview"
                                 className="w-full h-full object-cover rounded-md border border-gray-200"
                             />
                             <button
@@ -1144,13 +1140,13 @@ export const StaffManagement = () => {
                     <label className="block text-gray-700 font-medium mb-2">Resume <span className="text-gray-400">(Upload PDF only Max 5MB)</span></label>
                     <div className="relative flex items-center w-full px-4 py-2 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-transparent bg-white">
                         <span className="text-gray-500 flex-1 truncate pr-2">
-                            {formData.resume instanceof File 
-                                ? formData.resume.name 
-                                : formData.resume && typeof formData.resume === 'string' 
-                                    ? 'Existing resume (click to change)' 
+                            {formData.resume instanceof File
+                                ? formData.resume.name
+                                : formData.resume && typeof formData.resume === 'string'
+                                    ? 'Existing resume (click to change)'
                                     : 'Upload resume'}
                         </span>
-                        <input 
+                        <input
                             onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
@@ -1173,10 +1169,10 @@ export const StaffManagement = () => {
                                     setResumePreview(URL.createObjectURL(file));
                                     setError(''); // Clear any previous errors
                                 }
-                            }} 
-                            type="file" 
+                            }}
+                            type="file"
                             accept="application/pdf"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             id="resume-upload"
                             name="resume"
                         />
@@ -1205,8 +1201,8 @@ export const StaffManagement = () => {
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        const url = formData.resume instanceof File 
-                                            ? resumePreview 
+                                        const url = formData.resume instanceof File
+                                            ? resumePreview
                                             : formData.resume;
                                         if (url) {
                                             window.open(url, '_blank');
@@ -1232,7 +1228,7 @@ export const StaffManagement = () => {
                     )}
                 </div>
                 <div>
-                {/* <div className="md:col-span-2"> */}
+                    {/* <div className="md:col-span-2"> */}
                     <label className="block text-gray-700 font-medium mb-2">Remarks/Notes <span className="text-gray-400">(Optional)</span></label>
                     <input name="remarks" value={formData.remarks} onChange={handleInputChange} type="text" placeholder="Enter Any Remarks or notes" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
                 </div>
@@ -1241,19 +1237,19 @@ export const StaffManagement = () => {
             {/* Mentor Timings Section */}
             <div className="mb-6 sm:mb-8">
                 <div className="flex items-center mb-4">
-                    <input 
-                        type="checkbox" 
-                        id="isMentor" 
-                        name="isMentor" 
+                    <input
+                        type="checkbox"
+                        id="isMentor"
+                        name="isMentor"
                         checked={formData.isMentor}
                         onChange={(e) => setFormData(prev => ({ ...prev, isMentor: e.target.checked }))}
-                        className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded" 
+                        className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
                     />
                     <label htmlFor="isMentor" className="ml-2 block text-gray-700 font-medium">
                         Enable Mentor Role
                     </label>
                 </div>
-                
+
                 {formData.isMentor && (
                     <div className="p-4 border border-gray-200 rounded-md bg-gray-50">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1283,7 +1279,7 @@ export const StaffManagement = () => {
                                     <p className="text-sm text-gray-500 mt-2">No timings available. Please add timings in the system.</p>
                                 )}
                             </div>
-                            
+
                             {/* Right Side: Selected Timings */}
                             <div>
                                 <label className="block text-gray-700 font-medium mb-2">Selected Timings</label>
@@ -1332,13 +1328,13 @@ export const StaffManagement = () => {
                         {isEditMode ? 'Update Password' : 'Create Password'}
                         {isEditMode && <span className="text-red-400 text-[12px] ml-1">(Leave blank to keep current password)</span>}
                     </label>
-                    <input 
-                        name="password" 
-                        value={formData.password} 
-                        onChange={handleInputChange} 
-                        type="password" 
-                        placeholder={isEditMode ? "Enter new password (optional)" : "Create A Password"} 
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+                    <input
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        type="password"
+                        placeholder={isEditMode ? "Enter new password (optional)" : "Create A Password"}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
                 </div>
                 <div>
@@ -1346,18 +1342,18 @@ export const StaffManagement = () => {
                         {isEditMode ? 'Confirm New Password' : 'Confirm Password'}
                         {isEditMode && <span className="text-red-400 text-[12px] ml-1">(Only if updating password)</span>}
                     </label>
-                    <input 
-                        name="confirmPassword" 
-                        value={formData.confirmPassword} 
-                        onChange={handleInputChange} 
-                        type="password" 
-                        placeholder={isEditMode ? "Re-enter new password (optional)" : "Re-Enter The Password"} 
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+                    <input
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        type="password"
+                        placeholder={isEditMode ? "Re-enter new password (optional)" : "Re-Enter The Password"}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                     />
                 </div>
             </div>
             <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6 sm:mt-8">
-                <button 
+                <button
                     type="button"
                     onClick={handleCancelEdit}
                     className="w-full sm:w-auto px-4 sm:px-6 py-2 border border-gray-300 rounded-md font-medium text-gray-700 hover:bg-gray-100 transition-colors duration-200"
@@ -1365,8 +1361,8 @@ export const StaffManagement = () => {
                     Cancel
                 </button>
                 <button type="submit" disabled={loading} className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-orange-500 text-white rounded-md font-medium shadow-md hover:bg-orange-600 transition-colors duration-200 disabled:opacity-60">
-                    {loading 
-                        ? (isEditMode ? 'Updating...' : 'Creating...') 
+                    {loading
+                        ? (isEditMode ? 'Updating...' : 'Creating...')
                         : (isEditMode ? 'Update Staff' : 'Create Staff')
                     }
                 </button>
@@ -1428,7 +1424,7 @@ export const StaffManagement = () => {
                                 <h3 className="text-lg font-medium text-gray-900">{notification.title}</h3>
                             </div>
                         </div>
-                        
+
                         <div className="mb-6">
                             <p className="text-sm text-gray-500">{notification.message}</p>
                         </div>
@@ -1475,7 +1471,7 @@ export const StaffManagement = () => {
                         </div>
                         <div className="mb-4">
                             <p className="text-sm text-gray-500">
-                                Are you sure you want to delete the staff <strong>"{deletingStaff?.fullName}"</strong>? 
+                                Are you sure you want to delete the staff <strong>"{deletingStaff?.fullName}"</strong>?
                                 This action cannot be undone.
                             </p>
                         </div>
@@ -1535,166 +1531,166 @@ export const StaffManagement = () => {
                     `}</style>
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print:block print:bg-white print:opacity-100 print:p-0">
                         <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto print-modal-content">
-                        {/* Modal Header */}
-                        <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-200 print:px-4 print:py-4 print-full-width">
-                            <div className="flex justify-between items-start gap-4">
-                                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 break-words">{viewingStaff.fullName}</h1>
-                                <button 
-                                    onClick={closeViewModal}
-                                    className="flex items-center text-black gap-1 text-sm border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors print-hide flex-shrink-0"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
-                                    </svg>
-                                    <span className="hidden sm:inline">Back</span>
-                                </button>
+                            {/* Modal Header */}
+                            <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-200 print:px-4 print:py-4 print-full-width">
+                                <div className="flex justify-between items-start gap-4">
+                                    <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 break-words">{viewingStaff.fullName}</h1>
+                                    <button
+                                        onClick={closeViewModal}
+                                        className="flex items-center text-black gap-1 text-sm border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors print-hide flex-shrink-0"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path>
+                                        </svg>
+                                        <span className="hidden sm:inline">Back</span>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Modal Body */}
-                        <div className="px-4 sm:px-8 py-4 sm:py-6 print:px-4 print:py-4 print-full-width">
-                            <div className="flex flex-col md:flex-row gap-6 sm:gap-10 print:flex-col print:gap-4 print-full-width">
-                                {/* Left Column - Details */}
-                                <div className="flex-1 space-y-6 print:flex-none print-full-width">
-                                    {/* Basic Details */}
-                                    <div>
-                                        <h2 className="text-[#f7931e] font-semibold mb-4 text-lg italic">
-                                            Basic Details
-                                        </h2>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 text-xs sm:text-sm print:grid-cols-2 print-full-width">
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">Full Name:</span> <span className="text-gray-600">{viewingStaff.fullName || 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">Date of Birth:</span> <span className="text-gray-600">{viewingStaff.dateOfBirth ? new Date(viewingStaff.dateOfBirth).toLocaleDateString('en-GB').replace(/\//g, ' / ') : 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">Gender:</span> <span className="text-gray-600">{viewingStaff.gender || 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">Email Address:</span> <span className="text-gray-600">{viewingStaff.email || 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">Staff Phone Number:</span> <span className="text-gray-600">{viewingStaff.staffPhoneNumber || 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">Staff WhatsApp Number:</span> <span className="text-gray-600">{viewingStaff.staffWhatsAppNumber || 'N/A'}</span></p>
-                                            <p className="col-span-2 leading-6"><span className="font-semibold text-gray-900">Staff Permanent Address:</span> <span className="text-gray-600">{viewingStaff.staffPermanentAddress || 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">District:</span> <span className="text-gray-600">{viewingStaff.district || 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">State:</span> <span className="text-gray-600">{viewingStaff.state || 'N/A'}</span></p>
-                                        </div>
-                                    </div>
-
-                                    {/* Professional Details */}
-                                    <div>
-                                        <h2 className="text-[#f7931e] font-semibold mb-4 text-lg italic">
-                                            Professional Details
-                                        </h2>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 text-xs sm:text-sm print:grid-cols-2 print-full-width">
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">ID:</span> <span className="text-gray-600">{viewingStaff._id?.slice(-4) || 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">Department:</span> <span className="text-gray-600">{viewingStaff.department || 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">Branch:</span> <span className="text-gray-600">{viewingStaff.branch?.branchName || 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">Role:</span> <span className="text-gray-600">{viewingStaff.role?.role || 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">Years of Experience:</span> <span className="text-gray-600">{viewingStaff.yearsOfExperience || 'N/A'}</span></p>
-                                            <p className="leading-6"><span className="font-semibold text-gray-900">Date of Joining:</span> <span className="text-gray-600">{viewingStaff.dateOfJoining ? new Date(viewingStaff.dateOfJoining).toLocaleDateString('en-GB').replace(/\//g, ' / ') : 'N/A'}</span></p>
-                                            {viewingStaff.resignationDate && (
-                                                <p className="leading-6"><span className="font-semibold text-gray-900">Resignation Date (Only if Inactive):</span> <span className="text-gray-600">{new Date(viewingStaff.resignationDate).toLocaleDateString('en-GB').replace(/\//g, ' / ')}</span></p>
-                                            )}
-                                            <p className="leading-6">
-                                                <span className="font-semibold text-gray-900">Employment Status:</span>{" "}
-                                                <span className="text-blue-600 font-medium">{viewingStaff.employmentStatus || 'N/A'}</span>
-                                            </p>
-                                            {viewingStaff.remarks && (
-                                                <p className="col-span-2 leading-6">
-                                                    <span className="font-semibold text-gray-900">Remarks/Notes (Optional):</span>{" "}
-                                                    <span className="text-gray-600">{viewingStaff.remarks}</span>
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Resume & Documents */}
-                                    {viewingStaff.resume && (
-                                        <div className="print-hide">
+                            {/* Modal Body */}
+                            <div className="px-4 sm:px-8 py-4 sm:py-6 print:px-4 print:py-4 print-full-width">
+                                <div className="flex flex-col md:flex-row gap-6 sm:gap-10 print:flex-col print:gap-4 print-full-width">
+                                    {/* Left Column - Details */}
+                                    <div className="flex-1 space-y-6 print:flex-none print-full-width">
+                                        {/* Basic Details */}
+                                        <div>
                                             <h2 className="text-[#f7931e] font-semibold mb-4 text-lg italic">
-                                                Resume & Documents
+                                                Basic Details
                                             </h2>
-                                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between gap-4 max-w-md">
-                                                <div className="flex items-center min-w-0">
-                                                    <svg className="w-10 h-10 text-red-500 flex-shrink-0 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                                                    </svg>
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-semibold text-gray-800 truncate">
-                                                            {viewingStaff.fullName ? `${viewingStaff.fullName}_Resume.pdf` : 'Staff_Resume.pdf'}
-                                                        </p>
-                                                        <p className="text-xs text-gray-500">PDF Document</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex gap-2 flex-shrink-0">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => window.open(viewingStaff.resume, '_blank')}
-                                                        className="px-3 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors"
-                                                    >
-                                                        View
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleDownloadResume(viewingStaff)}
-                                                        className="px-3 py-1.5 text-xs font-semibold text-white bg-[#f7931e] rounded-lg hover:bg-[#e67c00] transition-colors"
-                                                    >
-                                                        Download
-                                                    </button>
-                                                </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 text-xs sm:text-sm print:grid-cols-2 print-full-width">
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">Full Name:</span> <span className="text-gray-600">{viewingStaff.fullName || 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">Date of Birth:</span> <span className="text-gray-600">{viewingStaff.dateOfBirth ? new Date(viewingStaff.dateOfBirth).toLocaleDateString('en-GB').replace(/\//g, ' / ') : 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">Gender:</span> <span className="text-gray-600">{viewingStaff.gender || 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">Email Address:</span> <span className="text-gray-600">{viewingStaff.email || 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">Staff Phone Number:</span> <span className="text-gray-600">{viewingStaff.staffPhoneNumber || 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">Staff WhatsApp Number:</span> <span className="text-gray-600">{viewingStaff.staffWhatsAppNumber || 'N/A'}</span></p>
+                                                <p className="col-span-2 leading-6"><span className="font-semibold text-gray-900">Staff Permanent Address:</span> <span className="text-gray-600">{viewingStaff.staffPermanentAddress || 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">District:</span> <span className="text-gray-600">{viewingStaff.district || 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">State:</span> <span className="text-gray-600">{viewingStaff.state || 'N/A'}</span></p>
                                             </div>
                                         </div>
-                                    )}
-                                </div>
 
-                                {/* Right Column - Profile Image */}
-                                <div className="flex flex-col items-center print-hide">
-                                    <div className="w-32 h-32 sm:w-48 sm:h-48 rounded-full overflow-hidden mb-4">
-                                        {viewingStaff.photo ? (
-                                            <img
-                                                src={viewingStaff.photo}
-                                                alt={viewingStaff.fullName}
-                                                className="w-full h-full rounded-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
-                                                <span className="text-gray-500 text-3xl sm:text-4xl font-medium">
-                                                    {viewingStaff.fullName?.charAt(0)?.toUpperCase() || 'S'}
-                                                </span>
+                                        {/* Professional Details */}
+                                        <div>
+                                            <h2 className="text-[#f7931e] font-semibold mb-4 text-lg italic">
+                                                Professional Details
+                                            </h2>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 text-xs sm:text-sm print:grid-cols-2 print-full-width">
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">ID:</span> <span className="text-gray-600">{viewingStaff._id?.slice(-4) || 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">Department:</span> <span className="text-gray-600">{viewingStaff.department || 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">Branch:</span> <span className="text-gray-600">{viewingStaff.branch?.branchName || 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">Role:</span> <span className="text-gray-600">{viewingStaff.role?.role || 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">Years of Experience:</span> <span className="text-gray-600">{viewingStaff.yearsOfExperience || 'N/A'}</span></p>
+                                                <p className="leading-6"><span className="font-semibold text-gray-900">Date of Joining:</span> <span className="text-gray-600">{viewingStaff.dateOfJoining ? new Date(viewingStaff.dateOfJoining).toLocaleDateString('en-GB').replace(/\//g, ' / ') : 'N/A'}</span></p>
+                                                {viewingStaff.resignationDate && (
+                                                    <p className="leading-6"><span className="font-semibold text-gray-900">Resignation Date (Only if Inactive):</span> <span className="text-gray-600">{new Date(viewingStaff.resignationDate).toLocaleDateString('en-GB').replace(/\//g, ' / ')}</span></p>
+                                                )}
+                                                <p className="leading-6">
+                                                    <span className="font-semibold text-gray-900">Employment Status:</span>{" "}
+                                                    <span className="text-blue-600 font-medium">{viewingStaff.employmentStatus || 'N/A'}</span>
+                                                </p>
+                                                {viewingStaff.remarks && (
+                                                    <p className="col-span-2 leading-6">
+                                                        <span className="font-semibold text-gray-900">Remarks/Notes (Optional):</span>{" "}
+                                                        <span className="text-gray-600">{viewingStaff.remarks}</span>
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Resume & Documents */}
+                                        {viewingStaff.resume && (
+                                            <div className="print-hide">
+                                                <h2 className="text-[#f7931e] font-semibold mb-4 text-lg italic">
+                                                    Resume & Documents
+                                                </h2>
+                                                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-between gap-4 max-w-md">
+                                                    <div className="flex items-center min-w-0">
+                                                        <svg className="w-10 h-10 text-red-500 flex-shrink-0 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+                                                        </svg>
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-semibold text-gray-800 truncate">
+                                                                {viewingStaff.fullName ? `${viewingStaff.fullName}_Resume.pdf` : 'Staff_Resume.pdf'}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500">PDF Document</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2 flex-shrink-0">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => window.open(viewingStaff.resume, '_blank')}
+                                                            className="px-3 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors"
+                                                        >
+                                                            View
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDownloadResume(viewingStaff)}
+                                                            className="px-3 py-1.5 text-xs font-semibold text-white bg-[#f7931e] rounded-lg hover:bg-[#e67c00] transition-colors"
+                                                        >
+                                                            Download
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Right Column - Profile Image */}
+                                    <div className="flex flex-col items-center print-hide">
+                                        <div className="w-32 h-32 sm:w-48 sm:h-48 rounded-full overflow-hidden mb-4">
+                                            {viewingStaff.photo ? (
+                                                <img
+                                                    src={viewingStaff.photo}
+                                                    alt={viewingStaff.fullName}
+                                                    className="w-full h-full rounded-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
+                                                    <span className="text-gray-500 text-3xl sm:text-4xl font-medium">
+                                                        {viewingStaff.fullName?.charAt(0)?.toUpperCase() || 'S'}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Modal Footer */}
-                        <div className="px-4 sm:px-8 py-4 sm:py-6 border-t border-gray-200 print-hide">
-                            <div className="flex flex-col sm:flex-row justify-end gap-3">
-                                <button 
-                                    onClick={() => {
-                                        closeViewModal();
-                                        handleEditStaff(viewingStaff);
-                                    }}
-                                    className="w-full sm:w-auto bg-gray-100 border border-gray-300 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-200 transition-colors"
-                                >
-                                    Edit
-                                </button>
-                                {viewingStaff.isMentor && (
+                            {/* Modal Footer */}
+                            <div className="px-4 sm:px-8 py-4 sm:py-6 border-t border-gray-200 print-hide">
+                                <div className="flex flex-col sm:flex-row justify-end gap-3">
                                     <button
                                         onClick={() => {
                                             closeViewModal();
-                                            navigate('/mentor-batches', { state: { searchMentor: viewingStaff.fullName } });
+                                            handleEditStaff(viewingStaff);
                                         }}
-                                        className="w-full sm:w-auto bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                                        className="w-full sm:w-auto bg-gray-100 border border-gray-300 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-200 transition-colors"
                                     >
-                                        View Batches
+                                        Edit
                                     </button>
-                                )}
-                                <button
-                                    onClick={() => window.print()}
-                                    className="w-full sm:w-auto bg-[#f7931e] text-white px-5 py-2 rounded-lg hover:bg-[#e67c00] transition-colors"
-                                >
-                                    Print
-                                </button>
+                                    {viewingStaff.isMentor && (
+                                        <button
+                                            onClick={() => {
+                                                closeViewModal();
+                                                navigate('/mentor-batches', { state: { searchMentor: viewingStaff.fullName } });
+                                            }}
+                                            className="w-full sm:w-auto bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                                        >
+                                            View Batches
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => window.print()}
+                                        className="w-full sm:w-auto bg-[#f7931e] text-white px-5 py-2 rounded-lg hover:bg-[#e67c00] transition-colors"
+                                    >
+                                        Print
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
                 </>
             )}
 

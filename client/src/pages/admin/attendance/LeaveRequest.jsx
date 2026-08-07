@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navbar } from '../../../components/admin/AdminNavBar';
 import AdminService from '../../../services/admin-api-service/AdminService';
 import { ChevronDown, Check, X, Eye, FileText, Upload } from 'lucide-react';
@@ -35,8 +35,16 @@ const LeaveRequest = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalCount: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+    limit: 5
+  });
 
   const [notification, setNotification] = useState({
     show: false,
@@ -94,7 +102,9 @@ const LeaveRequest = () => {
 
   // Form state
   const [formData, setFormData] = useState({
+    leaveDurationType: 'SINGLE',
     leaveType: '',
+    date: '',
     startDate: '',
     endDate: '',
     reason: '',
@@ -122,16 +132,7 @@ const LeaveRequest = () => {
   const [selectedBranch, setSelectedBranch] = useState('');
   const [branchesLoading, setBranchesLoading] = useState(false);
 
-  // State for courses
-  const [courses, setCourses] = useState([]);
-  const [selectedCourse, setSelectedCourse] = useState('');
-  const [coursesLoading, setCoursesLoading] = useState(false);
 
-  // State for timings
-  const [allTimings, setAllTimings] = useState([]);
-  const [timings, setTimings] = useState([]);
-  const [selectedTiming, setSelectedTiming] = useState('');
-  const [timingsLoading, setTimingsLoading] = useState(false);
 
   // State for days combinations
   const [allDaysCombinations, setAllDaysCombinations] = useState([]);
@@ -149,26 +150,75 @@ const LeaveRequest = () => {
   // State for month selection
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedDate, setSelectedDate] = useState('');
 
   // Fetch leave requests from backend
-  const fetchLeaveRequests = async () => {
+  const fetchLeaveRequests = async (
+    page = 1,
+    search = '',
+    branch = '',
+    month = '',
+    year = '',
+    date = ''
+  ) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await getAllLeaveRequests();
+
+      // Build query parameters
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: pagination.limit.toString()
+      });
+
+      if (search) queryParams.append('search', search);
+      if (branch) queryParams.append('branch', branch);
+      if (month) queryParams.append('month', month);
+      if (year) queryParams.append('year', year);
+      if (date) queryParams.append('date', date);
+
+      const res = await getAllLeaveRequests(queryParams.toString());
       if (res?.success && res.data) {
         setRequests(res.data);
+        if (res.pagination) {
+          setPagination(res.pagination);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch leave requests:', err);
       setError('Failed to load leave requests from server.');
+      setRequests([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Pagination handlers
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setPagination(prev => ({ ...prev, currentPage: newPage }));
+      fetchLeaveRequests(newPage, searchTerm, selectedBranch, selectedMonth, selectedYear, selectedDate);
+    }
+  };
+
+  const isFirstRender = useRef(true);
+
+  // Handle search and filter changes with debounce
   useEffect(() => {
-    fetchLeaveRequests();
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      fetchLeaveRequests(1, searchTerm, selectedBranch, selectedMonth, selectedYear, selectedDate);
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, selectedBranch, selectedMonth, selectedYear, selectedDate]);
+
+  useEffect(() => {
+    fetchLeaveRequests(1, searchTerm, selectedBranch, selectedMonth, selectedYear, selectedDate);
   }, []);
 
   // Fetch filters from backend
@@ -176,23 +226,14 @@ const LeaveRequest = () => {
     const fetchFilters = async () => {
       try {
         setBranchesLoading(true);
-        setCoursesLoading(true);
-        setTimingsLoading(true);
         setDaysCombLoading(true);
 
-        const [branchRes, courseRes, timeRes, daysRes] = await Promise.all([
+        const [branchRes, daysRes] = await Promise.all([
           getBranchesData().catch(() => null),
-          getCoursesData().catch(() => null),
-          getTimingsData().catch(() => null),
           getDaysCombinationsData().catch(() => null)
         ]);
 
         if (branchRes?.data) setBranches(branchRes.data);
-        if (courseRes?.data) setCourses(courseRes.data);
-        if (timeRes?.data) {
-          setAllTimings(timeRes.data);
-          setTimings(timeRes.data);
-        }
         if (daysRes?.data) {
           setAllDaysCombinations(daysRes.data);
           setDaysCombinations(daysRes.data);
@@ -201,8 +242,6 @@ const LeaveRequest = () => {
         console.error('Failed to load filters:', err);
       } finally {
         setBranchesLoading(false);
-        setCoursesLoading(false);
-        setTimingsLoading(false);
         setDaysCombLoading(false);
       }
     };
@@ -219,14 +258,10 @@ const LeaveRequest = () => {
       }
       const filtered = allDaysCombinations.filter(d => branchDayCombIds.has(d._id.toString()));
       setDaysCombinations(filtered);
-
-      const filteredTimings = allTimings.filter(t => t.branch?._id === selectedBranch || t.branch === selectedBranch);
-      setTimings(filteredTimings);
     } else {
       setDaysCombinations(allDaysCombinations);
-      setTimings(allTimings);
     }
-  }, [selectedBranch, branches, allDaysCombinations, allTimings]);
+  }, [selectedBranch, branches, allDaysCombinations]);
 
   const handleConfirmAction = async () => {
     if (!actionTarget) return;
@@ -248,7 +283,7 @@ const LeaveRequest = () => {
       const res = await updateLeaveRequestStatus(actionTarget._id, payload);
       if (res?.success) {
         showNotification('success', 'Success', `Leave request ${payload.status.toLowerCase()} successfully.`);
-        fetchLeaveRequests();
+        fetchLeaveRequests(pagination.currentPage, searchTerm, selectedBranch, selectedMonth, selectedYear, selectedDate);
       }
     } catch (err) {
       console.error('Failed to update status:', err);
@@ -263,26 +298,35 @@ const LeaveRequest = () => {
 
   const handleApplyLeave = async (e) => {
     e.preventDefault();
-    if (!formData.leaveType || !formData.startDate || !formData.endDate || !formData.reason) {
+    const isSingle = formData.leaveDurationType === 'SINGLE';
+    if (!formData.leaveType || !formData.reason || (isSingle ? !formData.date : (!formData.startDate || !formData.endDate))) {
       showNotification('error', 'Validation Error', 'Please fill in all required fields');
       return;
     }
 
     try {
       setLoading(true);
-      const res = await postLeaveRequest({
+      const payload = {
+        leaveDurationType: formData.leaveDurationType,
         leaveType: formData.leaveType,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
         reason: formData.reason,
         attachments: []
-      });
+      };
+
+      if (isSingle) {
+        payload.date = formData.date;
+      } else {
+        payload.startDate = formData.startDate;
+        payload.endDate = formData.endDate;
+      }
+
+      const res = await postLeaveRequest(payload);
 
       if (res?.success) {
         showNotification('success', 'Success', 'Leave request submitted successfully.');
-        fetchLeaveRequests();
+        fetchLeaveRequests(1, searchTerm, selectedBranch, selectedMonth, selectedYear, selectedDate);
         setActiveTab('leaveList');
-        setFormData({ leaveType: '', startDate: '', endDate: '', reason: '' });
+        setFormData({ leaveDurationType: 'SINGLE', leaveType: '', date: '', startDate: '', endDate: '', reason: '' });
       }
     } catch (err) {
       console.error('Failed to submit leave request:', err);
@@ -304,87 +348,29 @@ const LeaveRequest = () => {
     return date.toLocaleDateString('en-GB'); // DD/MM/YYYY
   };
 
-  // Client-side filtering
-  const filteredRequests = requests.filter((req) => {
-    // 1. Search Term
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      const userName = (req.user?.fullName || req.user?.name || '').toLowerCase();
-      const userEmail = (req.user?.email || '').toLowerCase();
-      const userBatch = (req.user?.batch || '').toLowerCase();
-      if (!userName.includes(search) && !userEmail.includes(search) && !userBatch.includes(search)) {
-        return false;
-      }
-    }
-
-    // 2. Branch Filter
-    if (selectedBranch && req.branch?._id !== selectedBranch && req.branch !== selectedBranch) {
-      return false;
-    }
-
-    // 3. Course Filter
-    if (selectedCourse && req.user?.course !== selectedCourse && req.user?.course?._id !== selectedCourse) {
-      return false;
-    }
-
-    // 4. Timing Filter
-    if (selectedTiming) {
-      const userTime = req.user?.time;
-      if (Array.isArray(userTime)) {
-        if (!userTime.some(t => t === selectedTiming || t?._id === selectedTiming)) {
-          return false;
-        }
-      } else if (userTime !== selectedTiming && userTime?._id !== selectedTiming) {
-        return false;
-      }
-    }
-
-    // 5. Month Filter
-    if (selectedMonth) {
-      const reqDate = req.startDate ? new Date(req.startDate) : null;
-      if (reqDate) {
-        const monthStr = String(reqDate.getMonth() + 1).padStart(2, '0');
-        if (monthStr !== selectedMonth) {
-          return false;
-        }
-      } else {
-        return false;
-      }
-    }
-
-    // 6. Year Filter
-    if (selectedYear) {
-      const reqDate = req.startDate ? new Date(req.startDate) : null;
-      if (reqDate) {
-        const yearStr = reqDate.getFullYear().toString();
-        if (yearStr !== selectedYear) {
-          return false;
-        }
-      } else {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredRequests.slice(indexOfFirstItem, indexOfLastItem);
-
-  const handlePageChange = (newPage) => {
-    const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-    }
-  };
+  const currentItems = requests;
 
   const handleExport = async () => {
     try {
       setLoading(true);
       showNotification('info', 'Exporting', 'Preparing PDF export...');
+
+      // Build query parameters for ALL results (high limit)
+      const queryParams = new URLSearchParams({
+        page: '1',
+        limit: '10000'
+      });
+
+      if (searchTerm) queryParams.append('search', searchTerm);
+      if (selectedBranch) queryParams.append('branch', selectedBranch);
+      if (selectedMonth) queryParams.append('month', selectedMonth);
+      if (selectedYear) queryParams.append('year', selectedYear);
+      if (selectedDate) queryParams.append('date', selectedDate);
+
+      const res = await getAllLeaveRequests(queryParams.toString());
+      const allRequests = res?.data || [];
       
-      if (filteredRequests.length === 0) {
+      if (allRequests.length === 0) {
         showNotification('error', 'Export Failed', 'No leave requests found matching filters.');
         return;
       }
@@ -400,9 +386,9 @@ const LeaveRequest = () => {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(`Exported on: ${new Date().toLocaleDateString('en-GB')}`, 14, 30);
-      doc.text(`Filtered Count: ${filteredRequests.length}`, 14, 35);
+      doc.text(`Filtered Count: ${allRequests.length}`, 14, 35);
 
-      const tableData = filteredRequests.map(req => [
+      const tableData = allRequests.map(req => [
         req.user?.fullName || req.user?.name || 'N/A',
         req.user?.batch || 'N/A',
         req.leaveType || 'N/A',
@@ -442,7 +428,7 @@ const LeaveRequest = () => {
       }
 
       doc.save(`leave_requests_export_${new Date().toISOString().split('T')[0]}.pdf`);
-      showNotification('success', 'Export Successful', `Exported ${filteredRequests.length} requests successfully`);
+      showNotification('success', 'Export Successful', `Exported ${allRequests.length} requests successfully`);
     } catch (error) {
       console.error('Export error:', error);
       showNotification('error', 'Export Failed', 'Failed to export leave requests.');
@@ -494,28 +480,15 @@ const LeaveRequest = () => {
               <option key={branch._id} value={branch._id}>{branch.branchName}</option>
             ))}
           </select>
-          <select 
-            value={selectedCourse}
-            onChange={(e) => setSelectedCourse(e.target.value)}
-            disabled={coursesLoading}
-            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-          >
-            <option value="">All Courses</option>
-            {courses.map(course => (
-              <option key={course._id} value={course._id}>{course.courseName}</option>
-            ))}
-          </select>
-          <select 
-            value={selectedTiming}
-            onChange={(e) => setSelectedTiming(e.target.value)}
-            disabled={timingsLoading}
-            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-          >
-            <option value="">All Timings</option>
-            {timings.map(t => (
-              <option key={t._id} value={t._id}>{t.timeSlot}</option>
-            ))}
-          </select>
+
+          <input 
+            type="date" 
+            value={selectedDate} 
+            onChange={(e) => setSelectedDate(e.target.value)} 
+            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+            title="Filter by Specific Date"
+          />
+
           <select 
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
@@ -563,7 +536,7 @@ const LeaveRequest = () => {
             <p className="text-gray-500">Loading leave requests...</p>
           </div>
         </div>
-      ) : filteredRequests.length === 0 ? (
+      ) : requests.length === 0 ? (
         <div className="flex items-center justify-center p-12">
           <p className="text-gray-500 text-lg">
             No leave requests found matching filters.
@@ -617,13 +590,13 @@ const LeaveRequest = () => {
                         {request.totalDays}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {request.totalDays > 1 ? (
+                        {request.leaveDurationType === 'MULTIPLE' || request.totalDays > 1 ? (
                           <>
                             {formatDate(request.startDate)}
                             <span className="text-gray-400"> || </span>
                             {formatDate(request.endDate)}
                           </>
-                        ) : formatDate(request.startDate)}
+                        ) : formatDate(request.date || request.startDate)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <StatusBadge status={request.status} />
@@ -688,7 +661,7 @@ const LeaveRequest = () => {
                   </div>
                   <div className="space-y-2 text-xs text-gray-600 mb-3 border-t border-b border-gray-100 py-2">
                     <div><span className="font-medium">Batch:</span> {batchStr}</div>
-                    <div><span className="font-medium">Leave Dates:</span> {request.totalDays > 1 ? `${formatDate(request.startDate)} to ${formatDate(request.endDate)}` : formatDate(request.startDate)}</div>
+                    <div><span className="font-medium">Leave Dates:</span> {request.leaveDurationType === 'MULTIPLE' || request.totalDays > 1 ? `${formatDate(request.startDate)} to ${formatDate(request.endDate)}` : formatDate(request.date || request.startDate)}</div>
                     <div><span className="font-medium">Days:</span> <span className="font-semibold text-red-500">{request.totalDays}</span></div>
                     <div><span className="font-medium">Reason:</span> {request.reason}</div>
                   </div>
@@ -722,39 +695,50 @@ const LeaveRequest = () => {
           </div>
 
           {/* Pagination Controls */}
-          {filteredRequests.length > itemsPerPage && (
+          {pagination.totalPages > 1 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 px-4 py-3 bg-white border-t border-gray-200">
-              <div className="flex items-center text-xs sm:text-sm text-gray-700">
+              <div className="flex items-center text-xs sm:text-sm text-gray-700 text-center sm:text-left">
                 <span>
-                  Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredRequests.length)} of {filteredRequests.length} results
+                  Showing {((pagination.currentPage - 1) * pagination.limit) + 1} to {Math.min(pagination.currentPage * pagination.limit, pagination.totalCount)} of {pagination.totalCount} results
                 </span>
               </div>
+
               <div className="flex items-center space-x-2">
+                {/* Previous Button */}
                 <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1 || loading}
-                  className={`px-3 py-1.5 text-xs font-medium rounded border flex items-center ${
-                    currentPage !== 1 && !loading
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={!pagination.hasPrevPage || loading}
+                  className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${
+                    pagination.hasPrevPage && !loading
                       ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
                       : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
                   }`}
                 >
-                  <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                   </svg>
-                  Previous
+                  {loading ? 'Loading...' : 'Previous'}
                 </button>
+
+                {/* Current Page Info */}
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-600">
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </span>
+                </div>
+
+                {/* Next Button */}
                 <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={indexOfLastItem >= filteredRequests.length || loading}
-                  className={`px-3 py-1.5 text-xs font-medium rounded border flex items-center ${
-                    indexOfLastItem < filteredRequests.length && !loading
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={!pagination.hasNextPage || loading}
+                  className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${
+                    pagination.hasNextPage && !loading
                       ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
                       : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
                   }`}
                 >
-                  Next
-                  <svg className="w-3.5 h-3.5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {loading ? 'Loading...' : 'Next'}
+                  <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
@@ -768,12 +752,40 @@ const LeaveRequest = () => {
 
   const renderNewLeaveForm = () => (
     <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex-grow">
-      <h2 className="text-xl font-bold text-gray-900 mb-6">Apply Leave Request</h2>
       
       <form onSubmit={handleApplyLeave} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Duration Type */}
+          <div className="md:col-span-2">
+            <label className="block text-gray-700 font-medium mb-2">Duration Type <span className="text-red-500">*</span></label>
+            <div className="flex gap-6">
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="leaveDurationType"
+                  value="SINGLE"
+                  checked={formData.leaveDurationType === 'SINGLE'}
+                  onChange={handleInputChange}
+                  className="form-radio text-orange-500 focus:ring-orange-500 h-4 w-4"
+                />
+                <span className="ml-2 text-sm text-gray-700">Single Day</span>
+              </label>
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="leaveDurationType"
+                  value="MULTIPLE"
+                  checked={formData.leaveDurationType === 'MULTIPLE'}
+                  onChange={handleInputChange}
+                  className="form-radio text-orange-500 focus:ring-orange-500 h-4 w-4"
+                />
+                <span className="ml-2 text-sm text-gray-700">Multiple Days</span>
+              </label>
+            </div>
+          </div>
+
           {/* Leave Type Dropdown */}
-          <div>
+          <div className="md:col-span-2">
             <label className="block text-gray-700 font-medium mb-2">Leave Type <span className="text-red-500">*</span></label>
             <select 
               name="leaveType" 
@@ -792,29 +804,44 @@ const LeaveRequest = () => {
             </select>
           </div>
 
-          {/* Start Date */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Start Date <span className="text-red-500">*</span></label>
-            <input 
-              name="startDate" 
-              value={formData.startDate} 
-              onChange={handleInputChange} 
-              type="date" 
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-            />
-          </div>
+          {formData.leaveDurationType === 'SINGLE' ? (
+            <div className="md:col-span-2">
+              <label className="block text-gray-700 font-medium mb-2">Date <span className="text-red-500">*</span></label>
+              <input 
+                name="date" 
+                value={formData.date} 
+                onChange={handleInputChange} 
+                type="date" 
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+              />
+            </div>
+          ) : (
+            <>
+              {/* Start Date */}
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">Start Date <span className="text-red-500">*</span></label>
+                <input 
+                  name="startDate" 
+                  value={formData.startDate} 
+                  onChange={handleInputChange} 
+                  type="date" 
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+                />
+              </div>
 
-          {/* End Date */}
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">End Date <span className="text-red-500">*</span></label>
-            <input 
-              name="endDate" 
-              value={formData.endDate} 
-              onChange={handleInputChange} 
-              type="date" 
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-            />
-          </div>
+              {/* End Date */}
+              <div>
+                <label className="block text-gray-700 font-medium mb-2">End Date <span className="text-red-500">*</span></label>
+                <input 
+                  name="endDate" 
+                  value={formData.endDate} 
+                  onChange={handleInputChange} 
+                  type="date" 
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+                />
+              </div>
+            </>
+          )}
 
           {/* Reason */}
           <div className="md:col-span-2">
@@ -835,7 +862,7 @@ const LeaveRequest = () => {
             type="button"
             onClick={() => {
               setActiveTab('leaveList');
-              setFormData({ leaveType: '', startDate: '', endDate: '', reason: '' });
+              setFormData({ leaveDurationType: 'SINGLE', leaveType: '', date: '', startDate: '', endDate: '', reason: '' });
             }}
             className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
           >
@@ -1070,9 +1097,15 @@ const LeaveRequest = () => {
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 text-xs sm:text-sm print:grid-cols-2 print-full-width">
                       <p className="leading-6"><span className="font-semibold text-gray-900">Leave Type:</span> <span className="text-gray-600">{viewingLeave.leaveType}</span></p>
-                      <p className="leading-6"><span className="font-semibold text-gray-900">Duration:</span> <span className="text-gray-600">{viewingLeave.totalDays} Days</span></p>
-                      <p className="leading-6"><span className="font-semibold text-gray-900">Start Date:</span> <span className="text-gray-600">{formatDate(viewingLeave.startDate)}</span></p>
-                      <p className="leading-6"><span className="font-semibold text-gray-900">End Date:</span> <span className="text-gray-600">{formatDate(viewingLeave.endDate)}</span></p>
+                      <p className="leading-6"><span className="font-semibold text-gray-900">Duration:</span> <span className="text-gray-600">{viewingLeave.totalDays} {viewingLeave.totalDays > 1 ? 'Days' : 'Day'}</span></p>
+                      {viewingLeave.leaveDurationType === 'SINGLE' ? (
+                        <p className="col-span-2 leading-6"><span className="font-semibold text-gray-900">Date:</span> <span className="text-gray-600">{formatDate(viewingLeave.date || viewingLeave.startDate)}</span></p>
+                      ) : (
+                        <>
+                          <p className="leading-6"><span className="font-semibold text-gray-900">Start Date:</span> <span className="text-gray-600">{formatDate(viewingLeave.startDate)}</span></p>
+                          <p className="leading-6"><span className="font-semibold text-gray-900">End Date:</span> <span className="text-gray-600">{formatDate(viewingLeave.endDate)}</span></p>
+                        </>
+                      )}
                       <p className="col-span-2 leading-6"><span className="font-semibold text-gray-900">Reason:</span> <span className="text-gray-600 block bg-gray-50 p-3 rounded mt-1 border border-gray-200">{viewingLeave.reason}</span></p>
                     </div>
                   </div>

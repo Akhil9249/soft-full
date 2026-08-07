@@ -6,11 +6,14 @@ import useAuth from "../../hooks/useAuth";
 const SuperAdminProtectedRoute = () => {
     const { auth } = useAuth();
     const token = localStorage.getItem("accessToken");
-    // console.log("auth", auth);
+    const role = localStorage.getItem("role");
   
+    if (!token || role?.toLowerCase() === "intern") {
+        return <Navigate to="/login" replace />;
+    }
 
-    if (token && (auth.role !== "super admin" && auth.role !== "admin")) {
-        return <Navigate to="/student-management" />;
+    if (token && (role?.toLowerCase() !== "super admin" && role?.toLowerCase() !== "admin")) {
+        return <Navigate to="/student-management" replace />;
     }
   
 

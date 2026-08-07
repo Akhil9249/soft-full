@@ -22,6 +22,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 router.get("/mentors-batches",checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(weeklyScheduleController.getAllMentorsWithBatches));
 router.get("/", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(weeklyScheduleController.getWeeklySchedules));
 router.post("/", checkAuth, checkRoles(["super admin", "admin"]), asyncHandler(weeklyScheduleController.createWeeklySchedule));
+router.get("/my-schedule", checkAuth, asyncHandler(weeklyScheduleController.getWeeklyScheduleByInternId));
 router.get("/intern/:userId", checkAuth, checkRoles(["super admin", "admin", "mentor", "intern"]), asyncHandler(weeklyScheduleController.getWeeklyScheduleByInternId));
 router.get("/:id", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(weeklyScheduleController.getWeeklyScheduleById));
 router.put("/:id", checkAuth, checkRoles(["super admin", "admin"]), asyncHandler(weeklyScheduleController.updateWeeklySchedule));

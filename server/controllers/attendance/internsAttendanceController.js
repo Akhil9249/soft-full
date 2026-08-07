@@ -1529,6 +1529,60 @@ const getInternsAttendanceByMonth = async (req, res) => {
   }
 };
 
+const getMyAttendance = async (req, res) => {
+  try {
+    const { mentor, month, year } = req.query;
+    const internId = req.userId;
+
+    const filter = { intern: internId, isActive: true };
+
+    if (mentor) {
+      filter.mentor = mentor;
+    }
+
+    if (year || month) {
+      let datePattern = "";
+      if (year && month) {
+        datePattern = `^${year}-${String(month).padStart(2, '0')}-`;
+      } else if (year) {
+        datePattern = `^${year}-`;
+      } else if (month) {
+        datePattern = `^\\d{4}-${String(month).padStart(2, '0')}-`;
+      }
+      filter.date = { $regex: new RegExp(datePattern) };
+    }
+
+    const attendanceRecords = await InternsAttendance.find(filter)
+      .populate('mentor', 'fullName email')
+      .sort({ date: -1 });
+
+    const totalDays = attendanceRecords.length;
+    const presentDays = attendanceRecords.filter(r => r.status === true).length;
+    const absentDays = totalDays - presentDays;
+    const attendancePercentage = totalDays > 0 ? ((presentDays / totalDays) * 100).toFixed(2) : "0.00";
+
+    const uniqueMentorIds = await InternsAttendance.distinct('mentor', { intern: internId, isActive: true });
+    const mentors = await Staff.find({ _id: { $in: uniqueMentorIds } }, 'fullName email');
+
+    res.status(200).json({
+      message: "My attendance retrieved successfully",
+      data: attendanceRecords,
+      mentors,
+      summary: {
+        totalDays,
+        presentDays,
+        absentDays,
+        attendancePercentage
+      }
+    });
+  } catch (error) {
+    console.error("Error retrieving student attendance:", error);
+    res.status(500).json({
+      message: error.message || "Error retrieving student attendance"
+    });
+  }
+};
+
 module.exports = {
   addInternsAttendance,
   getInternsAttendance,
@@ -1543,5 +1597,6 @@ module.exports = {
   getInternsByAttendanceDate,
   getMentorInterns,
   getMentorBatches,
-  getInternsAttendanceByMonth
+  getInternsAttendanceByMonth,
+  getMyAttendance
 };

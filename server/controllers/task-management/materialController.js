@@ -88,10 +88,10 @@ const createMaterial = async (req, res) => {
     }
 
     // Validate audience enum
-    if (!["All interns", "By batches", "Individual interns"].includes(audience)) {
+    if (!["All interns", "By batches", "By Branches", "Individual interns"].includes(audience)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'All interns', 'By batches', 'Individual interns'"
+        message: "Audience must be one of: 'All interns', 'By batches', 'By Branches', 'Individual interns'"
       });
     }
 
@@ -284,10 +284,10 @@ const updateMaterial = async (req, res) => {
     } = req.body;
 
     // Validate audience if provided
-    if (audience && !["All interns", "By batches", "Individual interns"].includes(audience)) {
+    if (audience && !["All interns", "By batches", "By Branches", "Individual interns"].includes(audience)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'All interns', 'By batches', 'Individual interns'"
+        message: "Audience must be one of: 'All interns', 'By batches', 'By Branches', 'Individual interns'"
       });
     }
 
@@ -621,6 +621,134 @@ const downloadAttachment = async (req, res) => {
   }
 };
 
+const getMyMaterials = async (req, res) => {
+  try {
+    const internId = req.userId;
+    if (!internId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const Intern = require("../../models/administration/internModel");
+    const intern = await Intern.findById(internId);
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found" });
+    }
+
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 5;
+    const skip = (page - 1) * limit;
+
+    // Search parameters
+    const search = req.query.search || '';
+    const mentor = req.query.mentor || '';
+
+    const branchId = intern.branch;
+    const batchName = intern.batch;
+    let batchObjectId = null;
+
+    if (batchName) {
+      const Batch = require("../../models/schedule/batchModel");
+      const foundBatch = await Batch.findOne({ batchName: batchName, isActive: true });
+      if (foundBatch) {
+        batchObjectId = foundBatch._id;
+      }
+    }
+
+    const baseConditions = [];
+
+    // Condition 1: All interns in the branch
+    if (branchId) {
+      baseConditions.push({
+        audience: "All interns",
+        branch: { $in: [branchId] }
+      });
+    }
+
+    // Condition 2: By batches (if intern has a batch)
+    if (batchObjectId) {
+      baseConditions.push({
+        audience: "By batches",
+        batches: { $in: [batchObjectId] }
+      });
+    }
+
+    // Condition 3: Individual interns
+    baseConditions.push({
+      audience: "Individual interns",
+      individualInterns: { $in: [internId] }
+    });
+
+    // Condition 4: By Branches (if intern has a branch)
+    if (branchId) {
+      baseConditions.push({
+        audience: "By Branches",
+        branch: { $in: [branchId] }
+      });
+    }
+
+    let query = {
+      isActive: true,
+      $or: baseConditions
+    };
+
+    // Add search functionality
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      query.title = { $regex: searchRegex };
+    }
+
+    // Add mentor filter
+    if (mentor) {
+      query.mentor = mentor;
+    }
+
+    // Get total count for pagination
+    const totalCount = await Material.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // Get paginated results
+    const materials = await Material.find(query)
+      .populate('mentor', 'fullName email')
+      .populate('branch', 'branchName location')
+      .populate('batches', 'batchName description branch')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Also get distinct mentors for the filter dropdown
+    const allAssignedMaterials = await Material.find({
+      isActive: true,
+      $or: baseConditions
+    }).populate('mentor', 'fullName email');
+    
+    const uniqueMentorsMap = new Map();
+    allAssignedMaterials.forEach(m => {
+      if (m.mentor && m.mentor._id) {
+        uniqueMentorsMap.set(m.mentor._id.toString(), m.mentor);
+      }
+    });
+    const uniqueMentors = Array.from(uniqueMentorsMap.values());
+
+    res.status(200).json({
+      message: "Materials retrieved successfully",
+      data: materials,
+      mentors: uniqueMentors,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+        limit
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching intern materials:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createMaterial,
   getMaterials,
@@ -631,5 +759,6 @@ module.exports = {
   getMaterialsByBatch,
   getMaterialsByCourse,
   getMaterialsByAudience,
-  downloadAttachment
+  downloadAttachment,
+  getMyMaterials
 };

@@ -45,15 +45,32 @@ const createMentorCard = async (req, res) => {
     }
 };
 
-// Get all Mentor Card entries for a specific intern
+// Get all Mentor Card entries for a specific intern (by internId or req.userId)
 const getMentorCardsByIntern = async (req, res) => {
     try {
-        const { internId } = req.params;
+        const internId = req.params.internId || req.userId;
+
+        if (!internId) {
+            return res.status(400).json({ message: "Intern ID is required" });
+        }
+
+        // Fetch Intern details
+        const Intern = require("../../models/administration/internModel");
+        const intern = await Intern.findById(internId)
+            .populate('course', 'courseName')
+            .populate('branch', 'branchName');
+
         const entries = await MentorCard.find({ internId })
             .populate("mentorId", "fullName email") // Optionally populate mentor details
             .sort({ createdAt: -1 });
 
-        res.status(200).json(entries);
+        res.status(200).json({
+            message: "Mentor card entries retrieved successfully",
+            data: {
+                cards: entries,
+                intern: intern
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: "Server error", error: error.message });
     }

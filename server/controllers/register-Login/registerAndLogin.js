@@ -160,42 +160,48 @@ const login = async (req, res, next) => {
     // }
 
 
-    if (role === 'Intern') {
-
-      // user = await internModel.findOne({ email, isActive: true }).populate('role', 'role');
-      user = await internModel.findOne({ email, isActive: true }).populate('role', 'role');
-      userTypeName = 'Intern';
-      if (user) {
-        userData = {
-          fullName: user?.fullName,
-          role: user?.role,
-          email: user?.email,
-          phone: user?.internPhoneNumber,
-          isActive: user?.isActive,
-        };
-      }
-    } else if (role === 'Admin') {
-      user = await User.findOne({ email, isActive: true }).populate('role', 'role');
-      console.log("user====", user);
+    // Auto-detect user type across User, Staff, and Intern collections
+    user = await User.findOne({ email, isActive: true }).populate('role', 'role');
+    if (user) {
       userTypeName = 'Admin';
-      if (user) {
-        userData = {
-          name: user?.name,
-          phone: user?.phone,
-          email: user?.email,
-          role: user?.role?.role,
-        };
-      }
+      userData = {
+        id: user._id,
+        name: user.name,
+        phone: user.phone,
+        email: user.email,
+        role: user.role?.role || 'Admin',
+      };
     } else {
       user = await Staff.findOne({ email, isActive: true }).populate('role', 'role');
-      userTypeName = 'Staff';
       if (user) {
+        userTypeName = 'Staff';
         userData = {
-          name: user?.fullName,
-          role: user?.role?.role,
-          email: user?.officialEmail,
-          phone: user?.staffPhoneNumber,
+          id: user._id,
+          name: user.fullName,
+          role: user.role?.role || 'Staff',
+          email: user.officialEmail,
+          phone: user.staffPhoneNumber,
         };
+      } else {
+        // Query both personal email and officialEmail for interns
+        user = await internModel.findOne({
+          $or: [
+            { email: email.toLowerCase() },
+            { officialEmail: email.toLowerCase() }
+          ],
+          isActive: true
+        });
+        if (user) {
+          userTypeName = 'Intern';
+          userData = {
+            id: user._id,
+            name: user.fullName,
+            role: 'Intern',
+            email: user.email,
+            phone: user.internPhoneNumber,
+            isActive: user.isActive,
+          };
+        }
       }
     }
 
