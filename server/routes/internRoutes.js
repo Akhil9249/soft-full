@@ -12,6 +12,7 @@ router.get("/details", checkAuth, checkPermission('studentManagement', 'viewStud
 router.get("/:id", checkAuth, checkPermission('studentManagement', 'viewStudent'), internController.getInternById);
 router.get("/:id/resume/download", checkAuth, checkPermission('studentManagement', 'viewStudent'), internController.downloadResume);
 router.post("/", checkAuth, checkPermission('studentManagement', 'addStudent'), upload.fields([{ name: 'photo', maxCount: 1 },{ name: 'resume', maxCount: 1 }]), internController.addIntern);
+router.put("/profile/upload-links", checkAuth, upload.fields([{ name: 'resume', maxCount: 1 }]), internController.updateInternProfileLinks);
 router.put("/:id", checkAuth, checkPermission('studentManagement', 'editStudent'), upload.fields([{ name: 'photo', maxCount: 1 },{ name: 'resume', maxCount: 1 }]), internController.updateIntern);
 router.delete("/:id", checkAuth, checkPermission('studentManagement', 'deleteStudent'), internController.deleteIntern);
 

@@ -52,7 +52,16 @@ const taskSubmissionSchema = new mongoose.Schema({
   gradedAt: {
     type: Date,
     default: null
-  }
+  },
+        isDeleted: {
+    type: Boolean,
+    default: false,
+  },
+
+  deletedAt: {
+    type: Date,
+    default: null,
+  } 
 }, { timestamps: true });
 
 module.exports = mongoose.model("TaskSubmission", taskSubmissionSchema);

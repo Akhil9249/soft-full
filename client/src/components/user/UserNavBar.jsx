@@ -44,25 +44,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
 
   // const [isOpen, setIsOpen] = useState(false);
   // const [isCatalogOpen, setIsCatalogOpen] = useState(false);
-  const [openSections, setOpenSections] = useState({
-    administration: true,
-    course: false,
-    syllabus: false,
-    task: false,
-    schedule: false,
-    attendance: false,
-    settings: false,
-  });
-
   // Track active navigation item
   const [activeNavItem, setActiveNavItem] = useState('');
-
-  const toggleSection = (section) => {
-    setOpenSections(prevState => ({
-      ...prevState,
-      [section]: !prevState[section],
-    }));
-  };
 
   // Handle navigation item click
   const handleNavItemClick = (itemPath) => {
@@ -136,127 +119,89 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
             <span className="text-xl font-bold text-gray-800">Softroniics</span>
           </div>
           <nav className="space-y-4">
+            {/* My Attendance */}
+            <Link
+              to="/student/attendance-dashboard"
+              onClick={() => handleNavItemClick('/student/attendance-dashboard')}
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
+                activeNavItem === '/student/attendance-dashboard'
+                  ? 'bg-orange-100 text-orange-600 font-semibold'
+                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+              }`}
+            >
+              <Calendar className="w-5 h-5 mr-3" />
+              My Attendance
+            </Link>
 
-            {/* Attendance Section */}
-            <div className={`font-medium ${openSections.attendance ? 'text-orange-500' : 'text-gray-600'}`}>
-              <div onClick={() => toggleSection('attendance')} className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                <Calendar className="w-5 h-5 mr-3" />
-                Attendance
-                <svg className={`ml-auto w-4 h-4 transform transition-transform duration-200 ${openSections.attendance ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"></path>
-                </svg>
-              </div>
-              {openSections.attendance && (
-                <ul className="pl-8 mt-2 space-y-2 text-sm text-gray-500">
-                  <li>
-                    <Link
-                      to="/student/attendance-dashboard"
-                      onClick={() => handleNavItemClick('/student/attendance-dashboard')}
-                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/student/attendance-dashboard'
-                        ? 'bg-orange-100 text-orange-600 font-semibold'
-                        : 'hover:text-orange-500 hover:bg-orange-50'
-                        }`}
-                    >
-                      My Attendance
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/student/leave-request"
-                      onClick={() => handleNavItemClick('/student/leave-request')}
-                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/student/leave-request'
-                        ? 'bg-orange-100 text-orange-600 font-semibold'
-                        : 'hover:text-orange-500 hover:bg-orange-50'
-                        }`}
-                    >
-                      Leave Request
-                    </Link>
-                  </li>
-                </ul>
-              )}
-            </div>
+            {/* Leave Request */}
+            <Link
+              to="/student/leave-request"
+              onClick={() => handleNavItemClick('/student/leave-request')}
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
+                activeNavItem === '/student/leave-request'
+                  ? 'bg-orange-100 text-orange-600 font-semibold'
+                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+              }`}
+            >
+              <Send className="w-5 h-5 mr-3" />
+              Leave Request
+            </Link>
 
-                        {/* Task Section */}
-            <div className={`font-medium ${openSections.task ? 'text-orange-500' : 'text-gray-600'}`}>
-              <div onClick={() => toggleSection('task')} className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                <SquarePen className="w-5 h-5 mr-3" />
-                Task
-                <svg className={`ml-auto w-4 h-4 transform transition-transform duration-200 ${openSections.task ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"></path>
-                </svg>
-              </div>
-              {openSections.task && (
-                <ul className="pl-8 mt-2 space-y-2 text-sm text-gray-500">
-                  <li>
-                    <Link
-                      to="/student/task-submission"
-                      onClick={() => handleNavItemClick('/student/task-submission')}
-                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/student/task-submission'
-                        ? 'bg-orange-100 text-orange-600 font-semibold'
-                        : 'hover:text-orange-500 hover:bg-orange-50'
-                        }`}
-                    >
-                      Task Submission
-                    </Link>
-                  </li>
-                </ul>
-              )}
-            </div>
+            {/* Task Submission */}
+            <Link
+              to="/student/task-submission"
+              onClick={() => handleNavItemClick('/student/task-submission')}
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
+                activeNavItem === '/student/task-submission'
+                  ? 'bg-orange-100 text-orange-600 font-semibold'
+                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+              }`}
+            >
+              <SquarePen className="w-5 h-5 mr-3" />
+              Task Submission
+            </Link>
 
+            {/* Material List */}
+            <Link
+              to="/student/material"
+              onClick={() => handleNavItemClick('/student/material')}
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
+                activeNavItem === '/student/material'
+                  ? 'bg-orange-100 text-orange-600 font-semibold'
+                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+              }`}
+            >
+              <Book className="w-5 h-5 mr-3" />
+              Material List
+            </Link>
 
-            {/* Materials Section */}
-            <div className={`font-medium ${openSections.syllabus ? 'text-orange-500' : 'text-gray-600'}`}>
-              <div onClick={() => toggleSection('syllabus')} className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                <FileText className="w-5 h-5 mr-3" />
-                Materials
-                <svg className={`ml-auto w-4 h-4 transform transition-transform duration-200 ${openSections.syllabus ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"></path>
-                </svg>
-              </div>
-              {openSections.syllabus && (
-                <ul className="pl-8 mt-2 space-y-2 text-sm text-gray-500">
-                  <li>
-                    <Link
-                      to="/student/material"
-                      onClick={() => handleNavItemClick('/student/material')}
-                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/student/material'
-                        ? 'bg-orange-100 text-orange-600 font-semibold'
-                        : 'hover:text-orange-500 hover:bg-orange-50'
-                        }`}
-                    >
-                      Material List
-                    </Link>
-                  </li>
-                </ul>
-              )}
-            </div>
+            {/* Weekly Schedule */}
+            <Link
+              to="/student/weekly-schedule"
+              onClick={() => handleNavItemClick('/student/weekly-schedule')}
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
+                activeNavItem === '/student/weekly-schedule'
+                  ? 'bg-orange-100 text-orange-600 font-semibold'
+                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+              }`}
+            >
+              <Calendar className="w-5 h-5 mr-3" />
+              Weekly Schedule
+            </Link>
 
-            {/* Schedule Section */}
-            <div className={`font-medium ${openSections.schedule ? 'text-orange-500' : 'text-gray-600'}`}>
-              <div onClick={() => toggleSection('schedule')} className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                <Calendar className="w-5 h-5 mr-3" />
-                Schedule
-                <svg className={`ml-auto w-4 h-4 transform transition-transform duration-200 ${openSections.schedule ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"></path>
-                </svg>
-              </div>
-              {openSections.schedule && (
-                <ul className="pl-8 mt-2 space-y-2 text-sm text-gray-500">
-                  <li>
-                    <Link
-                      to="/student/weekly-schedule"
-                      onClick={() => handleNavItemClick('/student/weekly-schedule')}
-                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/student/weekly-schedule'
-                        ? 'bg-orange-100 text-orange-600 font-semibold'
-                        : 'hover:text-orange-500 hover:bg-orange-50'
-                        }`}
-                    >
-                      Weekly Schedule
-                    </Link>
-                  </li>
-                </ul>
-              )}
-            </div>
+            {/* My Card / Evaluation Card */}
+            <Link
+              to="/student/menor-card"
+              onClick={() => handleNavItemClick('/student/menor-card')}
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
+                activeNavItem === '/student/menor-card'
+                  ? 'bg-orange-100 text-orange-600 font-semibold'
+                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+              }`}
+            >
+              <FileText className="w-5 h-5 mr-3" />
+              My Card
+            </Link>
           </nav>
         </div>
 

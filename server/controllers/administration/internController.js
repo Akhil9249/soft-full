@@ -755,6 +755,52 @@ const downloadResume = async (req, res) => {
   }
 };
 
+// -------------------- UPDATE Intern Profile Links (LinkedIn, Portfolio, Resume) --------------------
+const updateInternProfileLinks = async (req, res) => {
+  try {
+    const { linkedin, portfolio } = req.body;
+    const internId = req.userId; // Logged-in intern's ID from checkAuth
+
+    // First find the intern
+    const intern = await Intern.findById(internId);
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found" });
+    }
+
+    // Prepare update payload
+    const updateData = {};
+    if (linkedin !== undefined) updateData.linkedin = linkedin;
+    if (portfolio !== undefined) updateData.portfolio = portfolio;
+
+    // Handle new resume upload if provided
+    if (req.files && req.files.resume && req.files.resume[0]) {
+      // Delete old resume from Cloudinary if it exists
+      if (intern.resume) {
+        await deleteFromCloudinary(intern.resume);
+      }
+      updateData.resume = req.files.resume[0].path; // Cloudinary URL
+    }
+
+    const updatedIntern = await Intern.findByIdAndUpdate(
+      internId,
+      { $set: updateData },
+      { new: true }
+    )
+    .populate('course', 'courseName')
+    .populate('branch', 'branchName')
+    .populate('careerAdvisor', 'fullName email')
+    .select('-password');
+
+    res.status(200).json({
+      message: "Profile links and resume updated successfully",
+      data: updatedIntern
+    });
+  } catch (error) {
+    console.error("Error updating intern profile links:", error);
+    res.status(500).json({ message: error.message || "Internal Server Error" });
+  }
+};
+
 module.exports = {
   addIntern,
   getInterns,
@@ -767,4 +813,5 @@ module.exports = {
   getInternsByBranch,
   toggleInternStatus,
   downloadResume,
+  updateInternProfileLinks,
 };

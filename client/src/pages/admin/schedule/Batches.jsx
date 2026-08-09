@@ -52,7 +52,7 @@ export const Batches = () => {
     limit: 5
   });
   const [filters, setFilters] = useState({
-    status: '',
+    status: 'Active',
     branch: ''
   });
   
@@ -96,6 +96,15 @@ export const Batches = () => {
         branch => branch.isActive !== false && !branch.isDeleted
       );
       setBranches(activeBranches);
+      
+      if (activeBranches.length > 0) {
+        const calicutBranch = activeBranches.find(b => b.branchName.toLowerCase().includes('calicut'));
+        const defaultBranchId = calicutBranch ? calicutBranch._id : activeBranches[0]._id;
+        setFilters(prev => ({
+          ...prev,
+          branch: defaultBranchId
+        }));
+      }
     } catch (err) {
       console.error('Failed to load branches:', err);
       showNotification('error', 'Error', 'Failed to load branches');

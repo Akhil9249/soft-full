@@ -49,7 +49,7 @@ export const StudentManagement = () => {
     limit: 4
   });
   const [filters, setFilters] = useState({
-    courseStatus: '',
+    courseStatus: 'Ongoing',
     course: '',
     branch: '',
     batch: ''
