@@ -29,28 +29,50 @@ const deleteFromCloudinary = async (url) => {
   }
 };
 
+// Helper to parse course input into an array of ObjectIds
+const parseCourses = (courseInput) => {
+  if (!courseInput) return [];
+  if (Array.isArray(courseInput)) return courseInput.filter(Boolean);
+  if (typeof courseInput === 'string') {
+    const trimmed = courseInput.trim();
+    if (trimmed.startsWith('[')) {
+      try {
+        return JSON.parse(trimmed).filter(Boolean);
+      } catch (e) {
+        // Fall back
+      }
+    }
+    if (trimmed.includes(',')) {
+      return trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [trimmed];
+  }
+  return [courseInput];
+};
+
 // Create new module
 const createModule = async (req, res) => {
   try {
     const { moduleName, course, moduleImage, topics } = req.body;
+    const coursesArray = parseCourses(course);
 
-    if (!moduleName || !course) {
+    if (!moduleName || coursesArray.length === 0) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({ message: "Module name and course are required" });
     }
 
-    // Check if course exists
-    const existingCourse = await Course.findById(course);
-    if (!existingCourse) {
+    // Check if courses exist
+    const existingCourses = await Course.find({ _id: { $in: coursesArray } });
+    if (existingCourses.length !== coursesArray.length) {
       if (req.file) await deleteFromCloudinary(req.file.path);
-      return res.status(404).json({ message: "Course not found" });
+      return res.status(404).json({ message: "One or more courses not found" });
     }
 
-    // Check if module with same name already exists in this course
-    const existingModule = await Module.findOne({ moduleName, course });
+    // Check if module with same name already exists in any of these courses
+    const existingModule = await Module.findOne({ moduleName, course: { $in: coursesArray } });
     if (existingModule) {
       if (req.file) await deleteFromCloudinary(req.file.path);
-      return res.status(400).json({ message: "Module with this name already exists in this course" });
+      return res.status(400).json({ message: "Module with this name already exists in one of the selected courses" });
     }
 
     // Handle uploaded file
@@ -61,16 +83,20 @@ const createModule = async (req, res) => {
 
     const newModule = await Module.create({
       moduleName,
-      course,
+      course: coursesArray,
       moduleImage: moduleImageUrl,
       topics: topics || [],
       totalTopics: topics ? topics.length : 0
     });
 
-    // Add module to course's modules array
-    existingCourse.modules.push(newModule._id);
-    existingCourse.totalModules = existingCourse.modules.length;
-    await existingCourse.save();
+    // Add module to each course's modules array
+    for (const courseDoc of existingCourses) {
+      if (!courseDoc.modules.includes(newModule._id)) {
+        courseDoc.modules.push(newModule._id);
+        courseDoc.totalModules = courseDoc.modules.length;
+        await courseDoc.save();
+      }
+    }
 
     res.status(201).json({ message: "Module created successfully", data: newModule });
   } catch (error) {
@@ -152,7 +178,7 @@ const getModuleById = async (req, res) => {
 // Update module
 const updateModule = async (req, res) => {
   try {
-    const { topics, course: newCourseId, moduleImage } = req.body;
+    const { topics, course: newCourseInput, moduleImage } = req.body;
     
     // Get current module to check if course is changing
     const currentModule = await Module.findById(req.params.id);
@@ -187,21 +213,44 @@ const updateModule = async (req, res) => {
     }
 
     // If course is changing, update course arrays
-    if (newCourseId && newCourseId !== currentModule.course.toString()) {
-      // Remove module from old course
-      const oldCourse = await Course.findById(currentModule.course);
-      if (oldCourse) {
-        oldCourse.modules = oldCourse.modules.filter(moduleId => moduleId.toString() !== currentModule._id.toString());
-        oldCourse.totalModules = oldCourse.modules.length;
-        await oldCourse.save();
+    if (newCourseInput !== undefined) {
+      const newCoursesArray = parseCourses(newCourseInput);
+      updateData.course = newCoursesArray;
+
+      // Validate new courses exist
+      const existingNewCourses = await Course.find({ _id: { $in: newCoursesArray } });
+      if (existingNewCourses.length !== newCoursesArray.length) {
+        if (req.file) await deleteFromCloudinary(req.file.path);
+        return res.status(404).json({ message: "One or more courses not found" });
       }
 
-      // Add module to new course
-      const newCourse = await Course.findById(newCourseId);
-      if (newCourse) {
-        newCourse.modules.push(currentModule._id);
-        newCourse.totalModules = newCourse.modules.length;
-        await newCourse.save();
+      // Convert current courses to string array
+      const oldCoursesArray = (currentModule.course || []).map(c => c.toString());
+      const newCoursesStrArray = newCoursesArray.map(c => c.toString());
+
+      const addedCourses = newCoursesStrArray.filter(c => !oldCoursesArray.includes(c));
+      const removedCourses = oldCoursesArray.filter(c => !newCoursesStrArray.includes(c));
+
+      // Remove module from removed courses
+      if (removedCourses.length > 0) {
+        const oldCourses = await Course.find({ _id: { $in: removedCourses } });
+        for (const oldCourse of oldCourses) {
+          oldCourse.modules = oldCourse.modules.filter(moduleId => moduleId.toString() !== currentModule._id.toString());
+          oldCourse.totalModules = oldCourse.modules.length;
+          await oldCourse.save();
+        }
+      }
+
+      // Add module to added courses
+      if (addedCourses.length > 0) {
+        const addedCoursesDocs = await Course.find({ _id: { $in: addedCourses } });
+        for (const addedCourse of addedCoursesDocs) {
+          if (!addedCourse.modules.includes(currentModule._id)) {
+            addedCourse.modules.push(currentModule._id);
+            addedCourse.totalModules = addedCourse.modules.length;
+            await addedCourse.save();
+          }
+        }
       }
     }
 
@@ -264,12 +313,15 @@ const deleteModule = async (req, res) => {
 
     await Module.findByIdAndDelete(req.params.id);
 
-    // Remove module from course's modules array
-    const course = await Course.findById(module.course);
-    if (course) {
-      course.modules = course.modules.filter(moduleId => moduleId.toString() !== module._id.toString());
-      course.totalModules = course.modules.length;
-      await course.save();
+    // Remove module from all associated courses
+    const associatedCourseIds = (module.course || []).map(c => c.toString());
+    if (associatedCourseIds.length > 0) {
+      const courses = await Course.find({ _id: { $in: associatedCourseIds } });
+      for (const course of courses) {
+        course.modules = course.modules.filter(moduleId => moduleId.toString() !== module._id.toString());
+        course.totalModules = course.modules.length;
+        await course.save();
+      }
     }
 
     res.status(200).json({ message: "Module deleted successfully" });

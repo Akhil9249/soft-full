@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AdminService from "../../services/admin-api-service/AdminService";
 import useAuth from "../../hooks/useAuth";
+import logo from "../../assets/image/soft-log.png";
 
 // Mocking lucide-react icons as per single-file requirement
 const Eye = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>;
@@ -10,20 +11,6 @@ const Zap = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width=
 
 
 
-// Component for the Softronics logo
-const SoftronicsLogo = () => (
-  <div className="flex items-center justify-center mb-10 select-none">
-    <div className="flex items-center space-x-2">
-      {/* Placeholder for the abstract logo icon - using an amber Zap/Lightning icon */}
-      <Zap className="w-8 h-8 text-amber-600 rotate-45" fill="none" strokeWidth="3" />
-      <span className="text-3xl font-extrabold text-gray-800 tracking-tight">
-        Softronics
-      </span>
-      {/* Registered trademark symbol */}
-      <sup className="text-xs text-gray-800 font-semibold">&reg;</sup>
-    </div>
-  </div>
-);
 
 const Login = () => {
 
@@ -144,7 +131,13 @@ const Login = () => {
       `}</style>
 
       {/* Logo Section */}
-      <SoftronicsLogo />
+      <div className="flex items-center justify-center mb-8 select-none">
+        <img
+          src={logo}
+          alt="Softroniics Logo"
+          className="h-16 w-auto object-contain"
+        />
+      </div>
 
       {/* Login Card (Responsive max-width) */}
       <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-xl shadow-2xl">

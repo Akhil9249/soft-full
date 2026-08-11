@@ -229,7 +229,7 @@ export const Modules = () => {
       // Table data
       const tableData = allModules.map(m => [
         m.moduleName || 'N/A',
-        (typeof m.course === 'object' && m.course ? m.course.courseName : m.course) || 'N/A',
+        (Array.isArray(m.course) ? m.course.map(c => typeof c === 'object' && c ? c.courseName : c).join(', ') : (typeof m.course === 'object' && m.course ? m.course.courseName : m.course)) || 'N/A',
         m.totalTopics ?? (Array.isArray(m.topics) ? m.topics.length : 0),
         m.createdAt ? new Date(m.createdAt).toLocaleDateString('en-GB') : 'N/A'
       ]);
@@ -407,7 +407,9 @@ export const Modules = () => {
     setIsEditMode(true);
     setFormData({
       moduleName: module.moduleName || "",
-      course: typeof module.course === 'object' ? module.course._id : module.course || "",
+      course: Array.isArray(module.course)
+        ? module.course.map(c => typeof c === 'object' && c !== null ? c._id : c)
+        : module.course ? [typeof module.course === 'object' ? module.course._id : module.course] : [],
       moduleImage: module.moduleImage || null,
     });
     setModuleImagePreview(module.moduleImage || null);
@@ -482,12 +484,26 @@ export const Modules = () => {
     setError('');
     setSuccess('');
 
+    const hasCourse = Array.isArray(formData.course) ? formData.course.length > 0 : !!formData.course;
+
+    // Validate required fields
+    if (!formData.moduleName || !hasCourse) {
+      showNotification('error', 'Validation Error', 'Module name and course are required');
+      return;
+    }
+
     // Build FormData for file uploads
     const payload = new FormData();
     
     // Add text fields from formData state
     if (formData.moduleName) payload.append('moduleName', formData.moduleName.trim());
-    if (formData.course) payload.append('course', formData.course);
+    if (formData.course) {
+      if (Array.isArray(formData.course)) {
+        payload.append('course', JSON.stringify(formData.course));
+      } else {
+        payload.append('course', formData.course);
+      }
+    }
     payload.append('totalTopics', '0');
     
     // Handle moduleImage file upload
@@ -500,13 +516,6 @@ export const Modules = () => {
     } else if (formData?.moduleImage && typeof formData.moduleImage === 'string' && formData.moduleImage.trim() !== '') {
       // Existing URL - pass it as a field to preserve it (only if no new file was selected)
       payload.append('moduleImage', formData.moduleImage);
-    }
-    // If neither, don't append anything (will preserve existing in backend)
-
-    // Validate required fields
-    if (!formData.moduleName || !formData.course) {
-      showNotification('error', 'Validation Error', 'Module name and course are required');
-      return;
     }
 
     try {
@@ -758,9 +767,19 @@ export const Modules = () => {
                             </div>
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
-                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                              {typeof module.course === 'object' && module.course ? module.course.courseName : module.course}
-                            </span>
+                            {Array.isArray(module.course) ? (
+                              <div className="flex flex-wrap gap-1 justify-center">
+                                {module.course.map((c, idx) => (
+                                  <span key={idx} className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    {typeof c === 'object' && c ? c.courseName : c}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                {typeof module.course === 'object' && module.course ? module.course.courseName : module.course}
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
@@ -844,9 +863,19 @@ export const Modules = () => {
                       <div className="space-y-2 text-sm text-gray-600 mb-3">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium">Course:</span>
-                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                            {typeof module.course === 'object' && module.course ? module.course.courseName : module.course || 'N/A'}
-                          </span>
+                          {Array.isArray(module.course) ? (
+                            <div className="flex flex-wrap gap-1">
+                              {module.course.map((c, idx) => (
+                                <span key={idx} className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                  {typeof c === 'object' && c ? c.courseName : c}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                              {typeof module.course === 'object' && module.course ? module.course.courseName : module.course || 'N/A'}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium">Total Topics:</span>
@@ -990,20 +1019,68 @@ export const Modules = () => {
                     disabled 
                   />
                 </div>
+                {/* Select Courses */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Course</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Courses</label>
                   <select 
-                    name="course" 
-                    value={formData.course || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, course: e.target.value}))}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500" 
-                    required
+                    name="courseSelect" 
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) {
+                        setFormData(prev => {
+                          const currentCourses = Array.isArray(prev.course) ? prev.course : (prev.course ? [prev.course] : []);
+                          if (!currentCourses.includes(val)) {
+                            return { ...prev, course: [...currentCourses, val] };
+                          }
+                          return prev;
+                        });
+                        e.target.value = ""; // Reset dropdown selection
+                      }
+                    }}
+                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 bg-white" 
                   >
-                    <option value="">Choose Course</option>
-                    {courses.map(course => (
+                    <option value="">-- Add a Course --</option>
+                    {courses.filter(c => {
+                      const currentCourses = Array.isArray(formData.course) ? formData.course : (formData.course ? [formData.course] : []);
+                      return !currentCourses.includes(c._id);
+                    }).map(course => (
                       <option key={course._id} value={course._id}>{course.courseName}</option>
                     ))}
                   </select>
+                </div>
+
+                {/* Selected Courses Tags */}
+                <div className="md:col-span-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Selected Courses</label>
+                  <div className="mt-1 flex flex-wrap gap-2 p-2 border border-dashed border-gray-300 rounded-md min-h-[42px] bg-gray-50 items-center">
+                    {(!formData.course || (Array.isArray(formData.course) && formData.course.length === 0)) ? (
+                      <p className="text-sm text-gray-400 italic">No courses selected yet.</p>
+                    ) : (
+                      (Array.isArray(formData.course) ? formData.course : [formData.course]).map(id => {
+                        const courseObj = courses.find(c => c._id === id);
+                        return (
+                          <div key={id} className="flex items-center bg-orange-100 text-orange-800 px-3 py-1.5 rounded-full text-xs font-medium border border-orange-200">
+                            <span>{courseObj ? courseObj.courseName : "Unknown Course"}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => {
+                                  const currentCourses = Array.isArray(prev.course) ? prev.course : (prev.course ? [prev.course] : []);
+                                  return {
+                                    ...prev,
+                                    course: currentCourses.filter(cId => cId !== id)
+                                  };
+                                });
+                              }}
+                              className="ml-1.5 inline-flex items-center justify-center text-orange-600 hover:text-orange-900 font-bold focus:outline-none"
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -1323,7 +1400,7 @@ export const Modules = () => {
             <div className="px-4 sm:px-6 py-4 sm:py-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 text-xs sm:text-sm">
                 <p className="leading-6"><span className="font-semibold text-gray-900">Module Name:</span> <span className="text-gray-600">{viewingModule.moduleName || 'N/A'}</span></p>
-                <p className="leading-6"><span className="font-semibold text-gray-900">Course:</span> <span className="text-gray-600">{typeof viewingModule.course === 'object' && viewingModule.course ? viewingModule.course.courseName : viewingModule.course || 'N/A'}</span></p>
+                <p className="leading-6"><span className="font-semibold text-gray-900">Course(s):</span> <span className="text-gray-600">{Array.isArray(viewingModule.course) ? viewingModule.course.map(c => typeof c === 'object' && c ? c.courseName : c).join(', ') : (typeof viewingModule.course === 'object' && viewingModule.course ? viewingModule.course.courseName : viewingModule.course || 'N/A')}</span></p>
                 <p className="leading-6"><span className="font-semibold text-gray-900">Total Topics:</span> <span className="text-gray-600">{moduleTopics?.length || 0}</span></p>
                 <p className="leading-6"><span className="font-semibold text-gray-900">Created:</span> <span className="text-gray-600">{viewingModule.createdAt ? new Date(viewingModule.createdAt).toLocaleDateString('en-GB') : 'N/A'}</span></p>
                 {viewingModule._id && (

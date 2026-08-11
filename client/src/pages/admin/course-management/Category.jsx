@@ -571,7 +571,7 @@ export const Category = () => {
                               </div>
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">{category.categoryName}</div>
-                                <div className="text-sm text-gray-500">ID: {category._id?.slice(-6) || 'N/A'}</div>
+                                {/* <div className="text-sm text-gray-500">ID: {category._id?.slice(-6) || 'N/A'}</div> */}
                               </div>
                             </div>
                           </td>

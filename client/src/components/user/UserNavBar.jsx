@@ -123,11 +123,10 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
             <Link
               to="/student/attendance-dashboard"
               onClick={() => handleNavItemClick('/student/attendance-dashboard')}
-              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
-                activeNavItem === '/student/attendance-dashboard'
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/attendance-dashboard'
                   ? 'bg-orange-100 text-orange-600 font-semibold'
                   : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <Calendar className="w-5 h-5 mr-3" />
               My Attendance
@@ -137,11 +136,10 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
             <Link
               to="/student/leave-request"
               onClick={() => handleNavItemClick('/student/leave-request')}
-              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
-                activeNavItem === '/student/leave-request'
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/leave-request'
                   ? 'bg-orange-100 text-orange-600 font-semibold'
                   : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <Send className="w-5 h-5 mr-3" />
               Leave Request
@@ -151,11 +149,10 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
             <Link
               to="/student/task-submission"
               onClick={() => handleNavItemClick('/student/task-submission')}
-              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
-                activeNavItem === '/student/task-submission'
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/task-submission'
                   ? 'bg-orange-100 text-orange-600 font-semibold'
                   : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <SquarePen className="w-5 h-5 mr-3" />
               Task Submission
@@ -165,11 +162,10 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
             <Link
               to="/student/material"
               onClick={() => handleNavItemClick('/student/material')}
-              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
-                activeNavItem === '/student/material'
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/material'
                   ? 'bg-orange-100 text-orange-600 font-semibold'
                   : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <Book className="w-5 h-5 mr-3" />
               Material List
@@ -179,11 +175,10 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
             <Link
               to="/student/weekly-schedule"
               onClick={() => handleNavItemClick('/student/weekly-schedule')}
-              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
-                activeNavItem === '/student/weekly-schedule'
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/weekly-schedule'
                   ? 'bg-orange-100 text-orange-600 font-semibold'
                   : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <Calendar className="w-5 h-5 mr-3" />
               Weekly Schedule
@@ -193,11 +188,10 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
             <Link
               to="/student/menor-card"
               onClick={() => handleNavItemClick('/student/menor-card')}
-              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${
-                activeNavItem === '/student/menor-card'
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/menor-card'
                   ? 'bg-orange-100 text-orange-600 font-semibold'
                   : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <FileText className="w-5 h-5 mr-3" />
               My Card
@@ -300,6 +294,6 @@ const Navbar = ({ headData, activeTab, children }) => {
   );
 };
 
-export { Navbar }; 
+export { Navbar };
 
 

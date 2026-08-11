@@ -4,7 +4,7 @@ const mongoose = require("mongoose");
 const moduleSchema = new mongoose.Schema({
   moduleName: { type: String, required: true, trim: true },
   totalTopics: { type: Number, default: 0 }, // can auto-increment later when topics are added
-  course: { type: mongoose.Schema.Types.ObjectId, ref: "Course", required: true },
+  course: [{ type: mongoose.Schema.Types.ObjectId, ref: "Course", required: true }],
   topics: [{ type: mongoose.Schema.Types.ObjectId, ref: "Topic" }],
   isActive: { 
     type: Boolean, 

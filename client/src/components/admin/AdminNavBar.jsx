@@ -4,7 +4,7 @@ import { RxPerson } from "react-icons/rx";
 import useAuth from "../../hooks/useAuth";
 import { useAppDispatch } from "../../redux/hooks";
 import { logoutUser, clearCredentials } from "../../redux/slices/authSlice";
-import logo from "../../assets/image/soft-log.jpeg";
+import logo from "../../assets/image/soft-log.png";
 
 import {
   BellRing,
