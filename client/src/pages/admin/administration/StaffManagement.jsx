@@ -17,7 +17,7 @@ export const StaffManagement = () => {
 
     const [activeTab, setActiveTab] = useState('staffList');
     const { auth } = useAuth();
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [staff, setStaff] = useState([]);

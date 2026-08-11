@@ -21,7 +21,7 @@ export const StudentManagement = () => {
   const [batches, setBatches] = useState([]);
   const [courses, setCourses] = useState([]);
   const [staff, setStaff] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [branchesLoading, setBranchesLoading] = useState(false);
   const [batchesLoading, setBatchesLoading] = useState(false);
   const [coursesLoading, setCoursesLoading] = useState(false);
