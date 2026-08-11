@@ -460,9 +460,12 @@ const AdminService = () => {
         return response;
     };
 
-    const getMentorBatchesData = async (mentorId = '') => {
+    const getMentorBatchesData = async (mentorId = '', date = '') => {
         const cleanMentorId = (mentorId === 'undefined' || mentorId === 'null' || !mentorId) ? '' : mentorId;
-        const url = cleanMentorId ? `/api/interns-attendance/mentor-batches/${cleanMentorId}` : "/api/interns-attendance/mentor-batches";
+        let url = cleanMentorId ? `/api/interns-attendance/mentor-batches/${cleanMentorId}` : "/api/interns-attendance/mentor-batches";
+        if (date) {
+            url += `?date=${date}`;
+        }
         const response = await axiosPrivate.get(url);
         return response.data;
     };
@@ -824,6 +827,11 @@ const AdminService = () => {
         gradeSubmissionData: async (submissionId, data) => {
             const response = await axiosPrivate.patch(`/api/task-submissions/${submissionId}/grade`, data);
             return response.data;
+        },
+
+        getUserProfile: async () => {
+            const response = await axiosPrivate.get("/api/users/profile");
+            return response;
         },
 
 

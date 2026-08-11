@@ -56,6 +56,15 @@ const storage = new CloudinaryStorage({
       resource_type,
       type: "upload",
       public_id: publicId,
+      // Apply compression to optimize Cloudinary storage
+      ...(resource_type === "image" && {
+        quality: "auto",
+        fetch_format: "auto"
+      }),
+      ...(resource_type === "video" && {
+        quality: "auto",
+        fetch_format: "auto"
+      })
     };
   },
 });

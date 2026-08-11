@@ -168,7 +168,11 @@ const ActionBar = ({
     batchesLoading,
     timings = [],
     selectedTiming = '',
-    onTimingChange = () => {}
+    onTimingChange = () => {},
+    dayCombinations = [],
+    selectedDayCombination = '',
+    onDayCombinationChange = () => {},
+    isStaffWithoutBranchControl = false
 }) => {
     return (
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4 sm:mb-6">
@@ -177,50 +181,47 @@ const ActionBar = ({
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 w-full lg:w-auto flex-wrap">
-                {isMentor ? (
-                    <>
-                        {/* Timing Dropdown */}
-                        <select
-                            value={selectedTiming}
-                            onChange={onTimingChange}
-                            disabled={batchesLoading}
-                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
-                        >
-                            <option value="">
-                                {batchesLoading ? 'Loading timings...' : 'All Timings'}
-                            </option>
-                            {timings.map((t) => (
-                                <option key={t._id} value={t._id}>
-                                    {t.timeSlot}
-                                </option>
-                            ))}
-                        </select>
-
-                        {/* Batch Dropdown */}
-                        <select
-                            value={selectedBatch}
-                            onChange={onBatchChange}
-                            disabled={batchesLoading}
-                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
-                        >
-                            <option value="">
-                                {batchesLoading ? 'Loading batches...' : 'Select Batch'}
-                            </option>
-                            {batches.map((batch) => (
-                                <option key={batch._id} value={batch._id}>
-                                    {batch.batchName}
-                                </option>
-                            ))}
-                        </select>
-                    </>
-                ) : (
+                                {isMentor ? (
+                                    <>
+                                        {/* Day Combination Dropdown */}
+                                        <select
+                                            value={selectedDayCombination}
+                                            onChange={onDayCombinationChange}
+                                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
+                                        >
+                                            <option value="">All Day Combinations</option>
+                                            {dayCombinations.map((combo) => (
+                                                <option key={combo._id} value={combo._id}>
+                                                    {combo.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                
+                                        {/* Timing Dropdown */}
+                                        <select
+                                            value={selectedTiming}
+                                            onChange={onTimingChange}
+                                            disabled={batchesLoading}
+                                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
+                                        >
+                                            <option value="">
+                                                {batchesLoading ? 'Loading timings...' : 'All Timings'}
+                                            </option>
+                                            {timings.map((t) => (
+                                                <option key={t._id} value={t._id}>
+                                                    {t.timeSlot}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </>
+                                ) : (
                     <>
                         {/* Branch Dropdown */}
                         <select
                             value={selectedBranch}
                             onChange={onBranchChange}
-                            disabled={branchesLoading}
-                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
+                            disabled={branchesLoading || isStaffWithoutBranchControl}
+                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium disabled:opacity-75 disabled:cursor-not-allowed"
                         >
                             {branchesLoading ? (
                                 <option value="" disabled>Loading branches...</option>
@@ -313,11 +314,15 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         getTimingsData,
         getDaysCombinationsData,
         getAllBatchesData,
-        getMentorBatchesData
+        getMentorBatchesData,
+        getUserProfile
     } = AdminService();
 
     // Role detection
-    const isMentor = localStorage.getItem("role")?.toLowerCase() === "mentor";
+    const userRole = localStorage.getItem("role")?.toLowerCase();
+    const isMentor = userRole === "mentor";
+    const isSuperAdmin = userRole === "super admin";
+    const isStaffWithoutBranchControl = !isMentor && !isSuperAdmin;
     const rawUserId = localStorage.getItem("userId");
     const loggedInUserId = (rawUserId === "undefined" || rawUserId === "null") ? "" : (rawUserId || "");
 
@@ -347,32 +352,30 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
     // State for assigned timing (for mentor view)
     const [selectedTiming, setSelectedTiming] = useState('');
 
-    // Extract unique timing slots from mentor's batches
-    const mentorTimings = useMemo(() => {
-        if (!isMentor) return [];
-        const timingMap = new Map();
-        batches.forEach(batch => {
-            if (Array.isArray(batch.timings)) {
-                batch.timings.forEach(t => {
-                    if (t && t._id) {
-                        timingMap.set(t._id.toString(), t);
-                    }
-                });
-            }
-        });
-        return Array.from(timingMap.values());
-    }, [isMentor, batches]);
+    // State for day combinations (for mentor view)
+    const [dayCombinations, setDayCombinations] = useState([]);
+    const [selectedDayCombination, setSelectedDayCombination] = useState('');
 
-    // Filter batches reactive to selected branch (for admin) or selected timing (for mentor)
+    // State for unique timing slots from mentor
+    const [mentorTimings, setMentorTimings] = useState([]);
+
+    // Filter batches reactive to selected branch (for admin) or selected timing/day combo (for mentor)
     const filteredBatches = useMemo(() => {
         if (isMentor) {
-            if (!selectedTiming) {
-                return batches;
+            let list = batches;
+            if (selectedTiming) {
+                list = list.filter(batch => 
+                    Array.isArray(batch.timings) && 
+                    batch.timings.some(t => t._id === selectedTiming)
+                );
             }
-            return batches.filter(batch => 
-                Array.isArray(batch.timings) && 
-                batch.timings.some(t => t._id === selectedTiming)
-            );
+            if (selectedDayCombination) {
+                list = list.filter(batch => 
+                    Array.isArray(batch.dayCombinations) && 
+                    batch.dayCombinations.some(d => d._id === selectedDayCombination)
+                );
+            }
+            return list;
         }
         if (!selectedBranch) {
             return allBatches;
@@ -381,7 +384,17 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
             const branchId = typeof batch.branch === 'object' && batch.branch !== null ? batch.branch._id : batch.branch;
             return branchId === selectedBranch;
         });
-    }, [isMentor, batches, allBatches, selectedBranch, selectedTiming]);
+    }, [isMentor, batches, allBatches, selectedBranch, selectedTiming, selectedDayCombination]);
+ 
+    // Filter timings reactive to the selected day combination (for mentor view)
+    const filteredTimings = useMemo(() => {
+        if (!selectedDayCombination) {
+            return mentorTimings;
+        }
+        return mentorTimings.filter(t => 
+            Array.isArray(t.days) && t.days.includes(selectedDayCombination)
+        );
+    }, [mentorTimings, selectedDayCombination]);
 
     // State for pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -406,10 +419,41 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
             if (response?.data) {
                 setBranches(response.data);
                 if (response.data.length > 0) {
-                    const firstBranchId = response.data[0]._id;
-                    setSelectedBranch(firstBranchId);
-                    // Fetch attendance immediately for the first branch
-                    await fetchAttendanceForDate(date, firstBranchId, null, 1, null);
+                    let initialBranchId = response.data[0]._id;
+                    if (isSuperAdmin) {
+                        const calicutBranch = response.data.find(branch => 
+                            branch.branchName && branch.branchName.toLowerCase().includes("calicut")
+                        );
+                        if (calicutBranch) {
+                            initialBranchId = calicutBranch._id;
+                        }
+                    } else if (isStaffWithoutBranchControl) {
+                        let staffBranchId = localStorage.getItem("branch");
+                        if (staffBranchId && staffBranchId !== "undefined" && staffBranchId !== "null") {
+                            const exists = response.data.some(b => b._id === staffBranchId);
+                            if (exists) {
+                                initialBranchId = staffBranchId;
+                            }
+                        } else {
+                            try {
+                                const profileRes = await getUserProfile();
+                                const profileBranch = profileRes?.data?.user?.branch;
+                                if (profileBranch) {
+                                    const profileBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
+                                    localStorage.setItem("branch", profileBranchId);
+                                    const exists = response.data.some(b => b._id === profileBranchId);
+                                    if (exists) {
+                                        initialBranchId = profileBranchId;
+                                    }
+                                }
+                            } catch (e) {
+                                console.error("Failed to fetch staff profile for branch selection:", e);
+                            }
+                        }
+                    }
+                    setSelectedBranch(initialBranchId);
+                    // Fetch attendance immediately for the selected branch
+                    await fetchAttendanceForDate(date, initialBranchId, null, 1, null);
                 } else {
                     await fetchAttendanceForDate(date, null, null, 1, null);
                 }
@@ -438,29 +482,100 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         }
     };
 
-    // Fetch mentor batches from backend
-    const fetchMentorBatches = async () => {
+    // Initialize data for mentor
+    const initializeMentorData = async () => {
+        try {
+            setLoading(true);
+            setBatchesLoading(true);
+            
+            // 1. Fetch batches and day combinations in parallel
+            const [batchesRes, daysRes] = await Promise.all([
+                getMentorBatchesData(loggedInUserId, selectedDate).catch(() => null),
+                getDaysCombinationsData().catch(() => null)
+            ]);
+
+            let defaultBatchId = null;
+            let defaultDayComboId = null;
+
+            // 3. Process day combinations
+            if (daysRes?.data) {
+                const combos = (daysRes.data?.data || daysRes.data || []).filter(c => c.isActive !== false && c.isDeleted !== true);
+                setDayCombinations(combos);
+ 
+                // Find matching combo for today
+                const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+                const currentDayName = daysOfWeek[new Date().getDay()];
+                const matchingCombo = combos.find(c => 
+                    c.dayCombination && Array.isArray(c.dayCombination) && 
+                    c.dayCombination.some(d => d.day === currentDayName)
+                );
+ 
+                if (matchingCombo) {
+                    defaultDayComboId = matchingCombo._id;
+                    setSelectedDayCombination(defaultDayComboId);
+                }
+            }
+ 
+            let defaultTimingId = null;
+            // 2. Process batches and timings
+            if (batchesRes?.data) {
+                const batchesData = batchesRes.data.batches || batchesRes.data || [];
+                const timingsData = batchesRes.data.timings || [];
+                setBatches(batchesData);
+                setMentorTimings(timingsData);
+ 
+                // Default select first timing for the default day combination
+                const activeTimings = defaultDayComboId 
+                    ? timingsData.filter(t => Array.isArray(t.days) && t.days.includes(defaultDayComboId))
+                    : timingsData;
+ 
+                if (activeTimings.length > 0) {
+                    defaultTimingId = activeTimings[0]._id;
+                    setSelectedTiming(defaultTimingId);
+                }
+            }
+ 
+            // 4. Fetch initial attendance using the resolved defaults
+            await fetchAttendanceForDate(
+                selectedDate,
+                null,
+                null,
+                1,
+                null, // batchId is null
+                defaultTimingId, // timingId
+                defaultDayComboId
+            );
+        } catch (err) {
+            console.error("Error initializing mentor data:", err);
+            setError("Failed to initialize mentor data");
+        } finally {
+            setLoading(false);
+            setBatchesLoading(false);
+        }
+    };
+
+    // Fetch mentor batches from backend (for manual invocation if needed)
+    const fetchMentorBatches = async (date = selectedDate) => {
         try {
             setBatchesLoading(true);
-            const response = await getMentorBatchesData(loggedInUserId);
+            const response = await getMentorBatchesData(loggedInUserId, date);
             console.log('Mentor batches response:', response);
             if (response?.data) {
-                setBatches(response.data);
-                if (response.data.length > 0) {
-                    const firstBatchId = response.data[0]._id;
-                    setSelectedBatch(firstBatchId);
-                    // Fetch attendance immediately for the first batch
-                    await fetchAttendanceForDate(selectedDate, null, null, 1, firstBatchId);
-                } else {
-                    setAttendanceRecords([]);
-                    setAllAttendanceRecords([]);
-                    setAttendance({});
-                    setTotalRecords(0);
-                    setTotalPages(1);
-                    setCurrentPage(1);
-                    setTotalPresent(0);
-                    setTotalAbsent(0);
-                }
+                const batchesData = response.data.batches || response.data || [];
+                const timingsData = response.data.timings || [];
+                setBatches(batchesData);
+                setMentorTimings(timingsData);
+ 
+                // Default select first timing for the selected day combination
+                const activeTimings = selectedDayCombination 
+                    ? timingsData.filter(t => Array.isArray(t.days) && t.days.includes(selectedDayCombination))
+                    : timingsData;
+ 
+                const nextTimingId = activeTimings.length > 0 ? activeTimings[0]._id : '';
+                setSelectedTiming(nextTimingId);
+                
+                // Fetch attendance immediately
+                await fetchAttendanceForDate(selectedDate, null, null, 1, null, nextTimingId || null, selectedDayCombination || null);
             }
         } catch (err) {
             console.error('Failed to load mentor batches:', err);
@@ -471,12 +586,13 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
     };
 
     // Fetch attendance data for selected date and filters
-    const fetchAttendanceForDate = async (date, branchId = null, courseId = null, page = 1, batchId = null, timingId = null) => {
+    const fetchAttendanceForDate = async (date, branchId = null, courseId = null, page = 1, batchId = null, timingId = null, dayComboId = undefined) => {
         try {
             const activeBatchId = batchId || selectedBatch || null;
             const activeTimingId = timingId !== undefined ? timingId : (selectedTiming || null);
-            const response = await getInternsByAttendanceDate(date, branchId, null, courseId, activeTimingId, activeBatchId);
-            console.log('Interns with attendance for date:', date, 'branch:', branchId, 'course:', courseId, 'batch:', activeBatchId, 'timing:', activeTimingId, response);
+            const activeDayComboId = dayComboId !== undefined ? dayComboId : (selectedDayCombination || null);
+            const response = await getInternsByAttendanceDate(date, branchId, activeDayComboId, courseId, activeTimingId, activeBatchId);
+            console.log('Interns with attendance for date:', date, 'branch:', branchId, 'course:', courseId, 'batch:', activeBatchId, 'timing:', activeTimingId, 'dayCombo:', activeDayComboId, response);
 
             if (response?.data?.data && response.data.data.length > 0) {
                 // Transform the response data to match our expected format
@@ -559,13 +675,13 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                 await createDailyAttendanceForAllInterns(
                     null,
                     null,
-                    null,
-                    null,
+                    selectedDayCombination || null,
+                    selectedTiming || null,
                     selectedDate,
                     selectedBatch || null
                 );
                 console.log('Daily attendance created successfully for batch:', selectedBatch);
-                await fetchAttendanceForDate(selectedDate, null, null, 1, selectedBatch || null);
+                await fetchAttendanceForDate(selectedDate, null, null, 1, selectedBatch || null, selectedTiming || null, selectedDayCombination || null);
             } else {
                 await createDailyAttendanceForAllInterns(
                     selectedBranch || null,
@@ -647,10 +763,29 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         }
     };
 
+    // Handle day combination selection (for mentor view)
+    const handleDayCombinationChange = async (e) => {
+        const dayComboId = e.target.value;
+        setSelectedDayCombination(dayComboId);
+        setCurrentPage(1); // Reset to first page when filter changes
+ 
+        // Filter timings for the new day combination
+        const activeTimings = dayComboId 
+            ? mentorTimings.filter(t => Array.isArray(t.days) && t.days.includes(dayComboId))
+            : mentorTimings;
+ 
+        // Default select first timing in listed
+        const nextTimingId = activeTimings.length > 0 ? activeTimings[0]._id : '';
+        setSelectedTiming(nextTimingId);
+ 
+        // Fetch attendance records for the selected day combination and default timing
+        await fetchAttendanceForDate(selectedDate, null, null, 1, null, nextTimingId || null, dayComboId || null);
+    };
+
     // Load data when component mounts
     useEffect(() => {
         if (isMentor) {
-            fetchMentorBatches();
+            initializeMentorData();
         } else {
             fetchBranches(selectedDate);
             fetchAllBatches();
@@ -694,11 +829,10 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
     const handleTimingChange = async (e) => {
         const timingId = e.target.value;
         setSelectedTiming(timingId);
-        setSelectedBatch(''); // Reset batch selection when timing changes
         setCurrentPage(1); // Reset to first page when filter changes
-
-        // Fetch attendance records for the selected timing (batch reset to null)
-        await fetchAttendanceForDate(selectedDate, null, null, 1, null, timingId || null);
+ 
+        // Fetch attendance records for the selected timing
+        await fetchAttendanceForDate(selectedDate, null, null, 1, null, timingId || null, selectedDayCombination || null);
     };
 
     // Handle batch selection
@@ -758,9 +892,13 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                 selectedBatch={selectedBatch}
                 onBatchChange={handleBatchChange}
                 batchesLoading={batchesLoading}
-                timings={mentorTimings}
+                timings={filteredTimings}
                 selectedTiming={selectedTiming}
                 onTimingChange={handleTimingChange}
+                dayCombinations={dayCombinations}
+                selectedDayCombination={selectedDayCombination}
+                onDayCombinationChange={handleDayCombinationChange}
+                isStaffWithoutBranchControl={isStaffWithoutBranchControl}
             />
 
             {/* Create Daily Attendance Button */}
@@ -868,10 +1006,10 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                                 <input
                                     type="date"
                                     value={selectedDate}
-                                    onChange={(e) => {
+                                    onChange={async (e) => {
                                         const newDate = e.target.value;
                                         setSelectedDate(newDate);
-
+ 
                                         // Convert the selected date to the display format (DD/MM/YYYY)
                                         const dateObj = new Date(newDate);
                                         const formattedDate = dateObj.toLocaleDateString('en-GB', {
@@ -880,15 +1018,50 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                                             year: 'numeric'
                                         });
                                         setCurrentDate(formattedDate);
-
-                                        // Fetch attendance for the new date with all selected filters
-                                        fetchAttendanceForDate(
-                                            newDate,
-                                            isMentor ? null : (selectedBranch || null),
-                                            null,
-                                            1,
-                                            selectedBatch || null
-                                        );
+ 
+                                        if (isMentor) {
+                                            // Fetch batches and timings for the new date's week
+                                            try {
+                                                setBatchesLoading(true);
+                                                const response = await getMentorBatchesData(loggedInUserId, newDate);
+                                                const batchesData = response?.data?.batches || response?.data || [];
+                                                const timingsData = response?.data?.timings || [];
+                                                setBatches(batchesData);
+                                                setMentorTimings(timingsData);
+ 
+                                                // Find first timing for the selected day combination
+                                                const activeTimings = selectedDayCombination 
+                                                    ? timingsData.filter(t => Array.isArray(t.days) && t.days.includes(selectedDayCombination))
+                                                    : timingsData;
+ 
+                                                const nextTimingId = activeTimings.length > 0 ? activeTimings[0]._id : '';
+                                                setSelectedTiming(nextTimingId);
+                                                
+                                                // Fetch attendance for the new date
+                                                await fetchAttendanceForDate(
+                                                    newDate,
+                                                    null,
+                                                    null,
+                                                    1,
+                                                    null,
+                                                    nextTimingId || null,
+                                                    selectedDayCombination || null
+                                                );
+                                            } catch (err) {
+                                                console.error("Failed to load mentor batches for new date:", err);
+                                            } finally {
+                                                setBatchesLoading(false);
+                                            }
+                                        } else {
+                                            // Fetch attendance for the new date with all selected filters
+                                            await fetchAttendanceForDate(
+                                                newDate,
+                                                selectedBranch || null,
+                                                null,
+                                                1,
+                                                selectedBatch || null
+                                            );
+                                        }
                                     }}
                                     className="w-full sm:w-auto px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500"
                                 />

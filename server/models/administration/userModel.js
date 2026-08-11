@@ -20,14 +20,9 @@ const userSchema = new mongoose.Schema(
     mobile: {
       type: String,
       required: [true, "Mobile number is required"],
-      match: [/^\d{10}$/, "Mobile number must be exactly 10 digits"], 
+      match: [/^\d{10}$/, "Mobile number must be exactly 10 digits"],
       unique: true,
       trim: true
-    },
-    description: {
-      type: String,
-      // required: [true, "Mobile number is required"],
-      match: [/^\d{10}$/, "Mobile number must be exactly 10 digits"],
     },
     password: {
       type: String,
@@ -43,6 +38,15 @@ const userSchema = new mongoose.Schema(
     role: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Role"
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null,
     }
   },
   { timestamps: true }
@@ -58,12 +62,12 @@ const dropUsernameIndex = async () => {
     // Check if collection exists
     const collections = await mongoose.connection.db.listCollections().toArray();
     const userCollectionExists = collections.some(col => col.name === 'users');
-    
+
     if (userCollectionExists) {
       // Get existing indexes
       const indexes = await User.collection.indexes();
       const usernameIndex = indexes.find(idx => idx.name === 'username_1' || (idx.key && idx.key.username));
-      
+
       if (usernameIndex) {
         await User.collection.dropIndex("username_1");
         console.log("✅ Successfully dropped old username index");

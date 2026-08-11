@@ -31,6 +31,10 @@ const StatusBadge = ({ status }) => {
 };
 
 const LeaveRequest = () => {
+  const userRole = localStorage.getItem("role")?.toLowerCase();
+  const isSuperAdmin = userRole === "super admin";
+  const isStaffWithoutBranchControl = !isSuperAdmin;
+
   const [activeTab, setActiveTab] = useState('leaveList');
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -124,7 +128,8 @@ const LeaveRequest = () => {
     getAllBatchesData,
     getAllLeaveRequests,
     updateLeaveRequestStatus,
-    postLeaveRequest
+    postLeaveRequest,
+    getUserProfile
   } = AdminService();
 
   // State for branches
@@ -165,6 +170,14 @@ const LeaveRequest = () => {
       setLoading(true);
       setError(null);
 
+      let activeBranch = branch || selectedBranch;
+      if (isStaffWithoutBranchControl) {
+        const staffBranchId = localStorage.getItem("branch");
+        if (staffBranchId && staffBranchId !== "undefined" && staffBranchId !== "null") {
+          activeBranch = staffBranchId;
+        }
+      }
+
       // Build query parameters
       const queryParams = new URLSearchParams({
         page: page.toString(),
@@ -172,7 +185,7 @@ const LeaveRequest = () => {
       });
 
       if (search) queryParams.append('search', search);
-      if (branch) queryParams.append('branch', branch);
+      if (activeBranch) queryParams.append('branch', activeBranch);
       if (month) queryParams.append('month', month);
       if (year) queryParams.append('year', year);
       if (date) queryParams.append('date', date);
@@ -218,7 +231,9 @@ const LeaveRequest = () => {
   }, [searchTerm, selectedBranch, selectedMonth, selectedYear, selectedDate]);
 
   useEffect(() => {
-    fetchLeaveRequests(1, searchTerm, selectedBranch, selectedMonth, selectedYear, selectedDate);
+    if (!isStaffWithoutBranchControl) {
+      fetchLeaveRequests(1, searchTerm, selectedBranch, selectedMonth, selectedYear, selectedDate);
+    }
   }, []);
 
   // Fetch filters from backend
@@ -233,10 +248,40 @@ const LeaveRequest = () => {
           getDaysCombinationsData().catch(() => null)
         ]);
 
-        if (branchRes?.data) setBranches(branchRes.data);
+        let availableBranches = [];
+        if (branchRes?.data) {
+          setBranches(branchRes.data);
+          availableBranches = branchRes.data;
+        }
         if (daysRes?.data) {
           setAllDaysCombinations(daysRes.data);
           setDaysCombinations(daysRes.data);
+        }
+
+        // Set initial branch for regular staff
+        if (availableBranches.length > 0 && isStaffWithoutBranchControl) {
+          let staffBranchId = localStorage.getItem("branch");
+          if (staffBranchId && staffBranchId !== "undefined" && staffBranchId !== "null") {
+            const exists = availableBranches.some(b => b._id === staffBranchId);
+            if (exists) {
+              setSelectedBranch(staffBranchId);
+            }
+          } else {
+            try {
+              const profileRes = await getUserProfile();
+              const profileBranch = profileRes?.data?.user?.branch;
+              if (profileBranch) {
+                const profileBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
+                localStorage.setItem("branch", profileBranchId);
+                const exists = availableBranches.some(b => b._id === profileBranchId);
+                if (exists) {
+                  setSelectedBranch(profileBranchId);
+                }
+              }
+            } catch (e) {
+              console.error("Failed to fetch staff profile for branch selection:", e);
+            }
+          }
         }
       } catch (err) {
         console.error('Failed to load filters:', err);
@@ -361,8 +406,16 @@ const LeaveRequest = () => {
         limit: '10000'
       });
 
+      let activeBranch = selectedBranch;
+      if (isStaffWithoutBranchControl) {
+        const staffBranchId = localStorage.getItem("branch");
+        if (staffBranchId && staffBranchId !== "undefined" && staffBranchId !== "null") {
+          activeBranch = staffBranchId;
+        }
+      }
+
       if (searchTerm) queryParams.append('search', searchTerm);
-      if (selectedBranch) queryParams.append('branch', selectedBranch);
+      if (activeBranch) queryParams.append('branch', activeBranch);
       if (selectedMonth) queryParams.append('month', selectedMonth);
       if (selectedYear) queryParams.append('year', selectedYear);
       if (selectedDate) queryParams.append('date', selectedDate);
@@ -472,10 +525,10 @@ const LeaveRequest = () => {
           <select 
             value={selectedBranch}
             onChange={(e) => setSelectedBranch(e.target.value)}
-            disabled={branchesLoading}
-            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            disabled={branchesLoading || isStaffWithoutBranchControl}
+            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:opacity-75 disabled:cursor-not-allowed"
           >
-            <option value="">All Branches</option>
+            {!isStaffWithoutBranchControl && <option value="">All Branches</option>}
             {branches.map(branch => (
               <option key={branch._id} value={branch._id}>{branch.branchName}</option>
             ))}
@@ -921,7 +974,7 @@ const LeaveRequest = () => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6 no-scrollbar">
           <div className="flex items-center mb-4">
             <div className="flex-shrink-0">{getIcon()}</div>
             <div className="ml-3">
@@ -946,6 +999,15 @@ const LeaveRequest = () => {
 
   return (
     <>
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
       <Navbar headData={headData} activeTab={activeTab} />
 
       <div className="mb-6">
@@ -961,7 +1023,7 @@ const LeaveRequest = () => {
       {/* Action Modal (Confirm Approve / Input Rejection Reason) */}
       {showActionModal && actionTarget && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4 animate-fadeIn">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden border border-gray-100">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden border border-gray-100 no-scrollbar">
             {/* Header */}
             <div className={`px-6 py-4 border-b border-gray-100 flex items-center gap-3 ${actionType === 'APPROVE' ? 'bg-green-50' : 'bg-red-50'}`}>
               {actionType === 'APPROVE' ? (
@@ -1055,7 +1117,7 @@ const LeaveRequest = () => {
             }
           `}</style>
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print:block print:bg-white print:opacity-100 print:p-0">
-            <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto print-modal-content">
+            <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto no-scrollbar print-modal-content">
               {/* Modal Header */}
               <div className="px-6 py-4 border-b border-gray-200 print:px-4 print:py-4 print-full-width">
                 <div className="flex justify-between items-start gap-4">

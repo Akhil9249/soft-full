@@ -12,7 +12,7 @@ const SuperAdminProtectedRoute = () => {
         return <Navigate to="/login" replace />;
     }
 
-    if (token && (role?.toLowerCase() !== "super admin" && role?.toLowerCase() !== "admin")) {
+    if (token && (role?.toLowerCase() !== "super admin" && role?.toLowerCase() !== "admin" && role?.toLowerCase() !== "branch admin")) {
         return <Navigate to="/student-management" replace />;
     }
   

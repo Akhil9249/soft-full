@@ -57,7 +57,11 @@ const checkUserRole = async (req, res, next, requiredRole) => {
     const normalizedUserRole = userRole.toLowerCase();
     const normalizedRequiredRole = requiredRole.toLowerCase();
     
-    if (normalizedUserRole !== normalizedRequiredRole) {
+    const isMatched = normalizedUserRole === normalizedRequiredRole || 
+      (normalizedRequiredRole === "admin" && normalizedUserRole === "branch admin") ||
+      (normalizedRequiredRole === "branch admin" && normalizedUserRole === "admin");
+    
+    if (!isMatched) {
       return res.status(401).json({
         message: "You are UnAuthorized",
       });
@@ -111,6 +115,14 @@ const checkMultipleRoles = async (req, res, next, allowedRoles) => {
     // Normalize roles for comparison (case-insensitive)
     const normalizedUserRole = userRole.toLowerCase();
     const normalizedAllowedRoles = allowedRoles.map(role => role.toLowerCase());
+    
+    // Treat "admin" and "branch admin" interchangeably
+    if (normalizedAllowedRoles.includes("admin") && !normalizedAllowedRoles.includes("branch admin")) {
+      normalizedAllowedRoles.push("branch admin");
+    }
+    if (normalizedAllowedRoles.includes("branch admin") && !normalizedAllowedRoles.includes("admin")) {
+      normalizedAllowedRoles.push("admin");
+    }
     
     if (!normalizedAllowedRoles.includes(normalizedUserRole)) {
       return res.status(401).json({

@@ -22,6 +22,9 @@ const getDefaultDates = () => {
 };
 
 export const WeeklySchedule = () => {
+  const userRole = localStorage.getItem("role")?.toLowerCase();
+  const isSuperAdmin = userRole === "super admin";
+  const isStaffWithoutBranchControl = !isSuperAdmin;
 
   const [activeTab, setActiveTab] = useState('weekly-schedule');
   const [batches, setBatches] = useState([]);
@@ -71,7 +74,7 @@ export const WeeklySchedule = () => {
   const defaultDates = getDefaultDates();
   const [startDate, setStartDate] = useState(defaultDates.startDate);
   const [endDate, setEndDate] = useState(defaultDates.endDate);
-  const { getBatchesData, getAllBatchesData, getWeeklySchedulesData, postWeeklySchedulesData, putWeeklySchedulesData, deleteWeeklySchedulesData, deleteWeeklyScheduleDocument, getAllActiveStaffData, getModulesData, getTopicsData, updateWeeklyScheduleSubject, updateWeeklyScheduleNote, getBranchesData, getTimingsData, getDaysCombinationsData } = AdminService();
+  const { getBatchesData, getAllBatchesData, getWeeklySchedulesData, postWeeklySchedulesData, putWeeklySchedulesData, deleteWeeklySchedulesData, deleteWeeklyScheduleDocument, getAllActiveStaffData, getModulesData, getTopicsData, updateWeeklyScheduleSubject, updateWeeklyScheduleNote, getBranchesData, getTimingsData, getDaysCombinationsData, getUserProfile } = AdminService();
 
   const showModalMessage = (message, type = 'info') => {
     setModalMessage(message);
@@ -215,12 +218,38 @@ export const WeeklySchedule = () => {
       const fetchedBranches = Array.isArray(res?.data) ? res.data : [];
       setBranches(fetchedBranches);
       if (fetchedBranches.length > 0) {
-        const calicutBranch = fetchedBranches.find(b => b.branchName.toLowerCase().includes('calicut'));
-        if (calicutBranch) {
-          setSelectedBranch(calicutBranch._id);
+        let initialBranchId = fetchedBranches[0]._id;
+        if (isSuperAdmin) {
+          const calicutBranch = fetchedBranches.find(b => b.branchName.toLowerCase().includes('calicut'));
+          if (calicutBranch) {
+            initialBranchId = calicutBranch._id;
+          }
         } else {
-          setSelectedBranch(fetchedBranches[0]._id);
+          // Regular staff member
+          let staffBranchId = localStorage.getItem("branch");
+          if (staffBranchId && staffBranchId !== "undefined" && staffBranchId !== "null") {
+            const exists = fetchedBranches.some(b => b._id === staffBranchId);
+            if (exists) {
+              initialBranchId = staffBranchId;
+            }
+          } else {
+            try {
+              const profileRes = await getUserProfile();
+              const profileBranch = profileRes?.data?.user?.branch;
+              if (profileBranch) {
+                const profileBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
+                localStorage.setItem("branch", profileBranchId);
+                const exists = fetchedBranches.some(b => b._id === profileBranchId);
+                if (exists) {
+                  initialBranchId = profileBranchId;
+                }
+              }
+            } catch (e) {
+              console.error("Failed to fetch staff profile for branch selection:", e);
+            }
+          }
         }
+        setSelectedBranch(initialBranchId);
       }
     } catch (err) {
       console.error('Failed to load branches:', err);
@@ -256,7 +285,7 @@ export const WeeklySchedule = () => {
 
   const isBatchAssigned = (batchId) => {
     return weeklySchedules.some(schedule =>
-      schedule.schedule?.sub_details?.batch?.some(batch => batch._id === batchId)
+      schedule.schedule?.sub_details?.batch?.some(batch => batch._id === batchId && batch.status === 'Active')
     );
   };
 
@@ -265,7 +294,7 @@ export const WeeklySchedule = () => {
       setLoading(true);
       setError('');
       const res = await getAllActiveStaffData();
-      const mentorStaff = res.data?.filter(staff => staff.role?.role === 'mentor') || [];
+      const mentorStaff = res.data?.filter(staff => staff.role?.role === 'mentor' && staff.employmentStatus === 'Active') || [];
       const transformedMentors = mentorStaff.map(staff => ({
         _id: staff._id,
         name: staff.fullName,
@@ -290,7 +319,8 @@ export const WeeklySchedule = () => {
       setError('');
       // Even if dates/branch are empty, passing them will return all or filter dynamically.
       const res = await getWeeklySchedulesData(startDate, endDate, selectedBranch);
-      setWeeklySchedules(res.data || []);
+      const filteredSchedules = (res.data || []).filter(ws => ws.mentor?.employmentStatus === 'Active');
+      setWeeklySchedules(filteredSchedules);
     } catch (err) {
       console.error('Failed to load weekly schedules:', err);
       setError('Failed to load weekly schedules');
@@ -960,12 +990,15 @@ export const WeeklySchedule = () => {
                 <p className="text-xs sm:text-sm text-gray-500">Assign batches to timings</p>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2 sm:space-x-2">
-                <select
+                 <select
                   value={selectedBranch}
                   onChange={(e) => setSelectedBranch(e.target.value)}
-                  className="w-full sm:w-auto p-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                  disabled={branchesLoading || isStaffWithoutBranchControl}
+                  className="w-full sm:w-auto p-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 disabled:opacity-75 disabled:cursor-not-allowed"
                 >
-                  <option value="">{branchesLoading ? 'Loading branches...' : 'Choose Branch'}</option>
+                  {!isStaffWithoutBranchControl && (
+                    <option value="">{branchesLoading ? 'Loading branches...' : 'Choose Branch'}</option>
+                  )}
                   {branches.map(branch => (
                     <option key={branch._id} value={branch._id}>{branch.branchName}</option>
                   ))}
@@ -1065,7 +1098,7 @@ export const WeeklySchedule = () => {
                                 (!selectedBranch || ws.schedule?.sub_details?.branch?._id === selectedBranch)
                               );
 
-                              const batches = currentSchedule?.schedule?.sub_details?.batch || [];
+                              const batches = (currentSchedule?.schedule?.sub_details?.batch || []).filter(b => b.status === 'Active');
                               const subject = currentSchedule?.schedule?.sub_details?.subject || '';
 
                               return (

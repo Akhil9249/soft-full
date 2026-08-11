@@ -9,10 +9,17 @@ const Role = require("../../models/administration/roleModel");
 const { createDailyAttendanceRecords, updateInternAttendance, getAttendanceSummary } = require("../../services/attendanceCronService");
 
 // -------------------- HELPER FUNCTION: Get Mentor's Interns from WeeklySchedule --------------------
-const getMentorInternsFromWeeklySchedule = async (mentorId) => {
+const getMentorInternsFromWeeklySchedule = async (mentorId, date = null) => {
   try {
+    const query = { mentor: mentorId };
+    if (date) {
+      const targetDate = new Date(date);
+      query.startDate = { $lte: targetDate };
+      query.endDate = { $gte: targetDate };
+    }
+
     // Get all mentor's weekly schedules
-    const weeklySchedules = await WeeklySchedule.find({ mentor: mentorId })
+    const weeklySchedules = await WeeklySchedule.find(query)
       .populate({
         path: 'schedule.sub_details.batch',
         populate: {
@@ -96,7 +103,7 @@ const checkMentorPermissions = async (mentorId, internId) => {
     }
 
     // If mentor is Admin or Super Admin, allow access to all interns
-    if (roleName === 'admin' || roleName === 'super admin') {
+    if (roleName === 'admin' || roleName === 'branch admin' || roleName === 'super admin') {
       return { allowed: true };
     }
 
@@ -360,7 +367,7 @@ const updateInternsAttendance = async (req, res) => {
     }
 
     // Super Admin and Admin can update any attendance record
-    if (userRole === 'super admin' || userRole === 'admin') {
+    if (userRole === 'super admin' || userRole === 'admin' || userRole === 'branch admin') {
       // Allow update for all interns
     } else if (userRole === 'mentor') {
       // For mentors, check if they have permission for this intern
@@ -372,7 +379,7 @@ const updateInternsAttendance = async (req, res) => {
       }
     } else {
       return res.status(403).json({
-        message: "Access denied: Only Super Admin, Admin, or assigned Mentors can update attendance records"
+        message: "Access denied: Only Super Admin, Branch Admin, or assigned Mentors can update attendance records"
       });
     }
 
@@ -422,7 +429,7 @@ const deleteInternsAttendance = async (req, res) => {
     }
 
     // Super Admin and Admin can delete any attendance record
-    if (userRole === 'super admin' || userRole === 'admin') {
+    if (userRole === 'super admin' || userRole === 'admin' || userRole === 'branch admin') {
       // Allow delete for all interns
     } else if (userRole === 'mentor') {
       // For mentors, check if they have permission for this intern
@@ -434,7 +441,7 @@ const deleteInternsAttendance = async (req, res) => {
       }
     } else {
       return res.status(403).json({
-        message: "Access denied: Only Super Admin, Admin, or assigned Mentors can delete attendance records"
+        message: "Access denied: Only Super Admin, Branch Admin, or assigned Mentors can delete attendance records"
       });
     }
 
@@ -611,7 +618,7 @@ const createDailyAttendanceForAllInterns = async (req, res) => {
     const { branchId, courseId, days, timingId, date, batchId } = req.body;
 
     // Super Admin and Admin can create attendance for all interns
-    if (userRole === 'super admin' || userRole === 'admin') {
+    if (userRole === 'super admin' || userRole === 'admin' || userRole === 'branch admin') {
       let allowedInternIds = null;
       if (batchId) {
         const batchDoc = await Batch.findById(batchId);
@@ -624,7 +631,8 @@ const createDailyAttendanceForAllInterns = async (req, res) => {
             days,
             courseId,
             branchId,
-            mentorId: null
+            mentorId: null,
+            date
           });
           weeklyScheduleInternIds = weeklyScheduleResult.interns.map(intern => intern._id.toString());
         } else if (branchId) {
@@ -656,7 +664,7 @@ const createDailyAttendanceForAllInterns = async (req, res) => {
       });
     } else if (userRole === 'mentor') {
       // For mentors, check if filters are passed
-      const mentorInterns = await getMentorInternsFromWeeklySchedule(userId);
+      const mentorInterns = await getMentorInternsFromWeeklySchedule(userId, date);
       let allowedInternIds = mentorInterns.interns.map(intern => intern._id);
 
       if (allowedInternIds.length === 0) {
@@ -679,7 +687,8 @@ const createDailyAttendanceForAllInterns = async (req, res) => {
             days,
             courseId,
             branchId,
-            mentorId: userId
+            mentorId: userId,
+            date
           });
           filteredIds = weeklyScheduleResult.interns.map(intern => intern._id.toString());
         } else if (branchId) {
@@ -711,7 +720,7 @@ const createDailyAttendanceForAllInterns = async (req, res) => {
       });
     } else {
       res.status(403).json({
-        message: "Access denied: Only Super Admin, Admin, or assigned Mentors can create daily attendance records"
+        message: "Access denied: Only Super Admin, Branch Admin, or assigned Mentors can create daily attendance records"
       });
     }
   } catch (error) {
@@ -842,7 +851,7 @@ const getMentorInterns = async (req, res) => {
     // Allow mentors to get their own interns, or admins to get any mentor's interns
     const targetMentorId = (mentorId && mentorId !== "undefined" && mentorId !== "null") ? mentorId : userId;
 
-    if (userRole !== 'admin' && userRole !== 'super admin' && targetMentorId.toString() !== userId.toString()) {
+    if (userRole !== 'admin' && userRole !== 'branch admin' && userRole !== 'super admin' && targetMentorId.toString() !== userId.toString()) {
       return res.status(403).json({
         message: "Access denied: You can only view your own assigned interns"
       });
@@ -883,15 +892,25 @@ const getMentorBatches = async (req, res) => {
 
     const targetMentorId = (mentorId && mentorId !== "undefined" && mentorId !== "null") ? mentorId : userId;
 
-    if (userRole !== 'admin' && userRole !== 'super admin' && targetMentorId.toString() !== userId.toString()) {
+    if (userRole !== 'admin' && userRole !== 'branch admin' && userRole !== 'super admin' && targetMentorId.toString() !== userId.toString()) {
       return res.status(403).json({
         message: "Access denied: You can only view your own assigned batches"
       });
     }
 
-    const weeklySchedules = await WeeklySchedule.find({ mentor: targetMentorId })
+    const query = { mentor: targetMentorId };
+    if (req.query.date) {
+      const targetDate = new Date(req.query.date);
+      query.startDate = { $lte: targetDate };
+      query.endDate = { $gte: targetDate };
+    }
+
+    const weeklySchedules = await WeeklySchedule.find(query)
       .populate({
         path: 'schedule.time'
+      })
+      .populate({
+        path: 'schedule.sub_details.day'
       })
       .populate({
         path: 'schedule.sub_details.batch',
@@ -907,6 +926,7 @@ const getMentorBatches = async (req, res) => {
     weeklySchedules.forEach(scheduleDoc => {
       if (scheduleDoc.schedule && scheduleDoc.schedule.sub_details && scheduleDoc.schedule.sub_details.batch) {
         const timeSlotObj = scheduleDoc.schedule.time;
+        const dayComboObj = scheduleDoc.schedule.sub_details.day;
         
         scheduleDoc.schedule.sub_details.batch.forEach(batch => {
           if (batch) {
@@ -915,6 +935,7 @@ const getMentorBatches = async (req, res) => {
               // Convert to object if it's a Mongoose document
               const batchData = batch.toObject ? batch.toObject() : { ...batch };
               batchData.timings = [];
+              batchData.dayCombinations = [];
               batchMap.set(batchId, batchData);
             }
             
@@ -928,18 +949,76 @@ const getMentorBatches = async (req, res) => {
                 });
               }
             }
+
+            if (dayComboObj) {
+              const dayComboIdStr = dayComboObj._id ? dayComboObj._id.toString() : dayComboObj.toString();
+              const hasDayCombo = cachedBatch.dayCombinations.some(d => d._id.toString() === dayComboIdStr);
+              if (!hasDayCombo) {
+                cachedBatch.dayCombinations.push({
+                  _id: dayComboIdStr,
+                  name: dayComboObj.name || ''
+                });
+              }
+            }
           }
         });
       }
     });
-
     const uniqueBatches = Array.from(batchMap.values());
 
+    // Map timing ID to timing slot details and its assigned day combinations
+    const timingMap = new Map();
+    weeklySchedules.forEach(scheduleDoc => {
+      if (scheduleDoc.schedule && scheduleDoc.schedule.time) {
+        const t = scheduleDoc.schedule.time;
+        const d = scheduleDoc.schedule.sub_details?.day;
+        const timingId = t._id.toString();
+        
+        if (!timingMap.has(timingId)) {
+          timingMap.set(timingId, {
+            _id: t._id.toString(),
+            timeSlot: t.timeSlot,
+            days: []
+          });
+        }
+        
+        if (d) {
+          const dayIdStr = d._id ? d._id.toString() : d.toString();
+          const cachedTiming = timingMap.get(timingId);
+          if (!cachedTiming.days.includes(dayIdStr)) {
+            cachedTiming.days.push(dayIdStr);
+          }
+        }
+      }
+    });
+    
+    const mentorTimingsList = Array.from(timingMap.values());
+
+    if (mentorTimingsList.length === 0) {
+      let mentorDoc = await Staff.findById(targetMentorId).populate('time');
+      if (!mentorDoc) {
+        mentorDoc = await User.findById(targetMentorId).populate('time');
+      }
+      if (mentorDoc && Array.isArray(mentorDoc.time)) {
+        mentorDoc.time.forEach(t => {
+          mentorTimingsList.push({
+            _id: t._id.toString(),
+            timeSlot: t.timeSlot,
+            days: []
+          });
+        });
+      }
+    }
+
     res.status(200).json({
-      message: "Mentor's batches retrieved successfully",
-      data: uniqueBatches
+      message: "Mentor's batches and timings retrieved successfully",
+      data: {
+        batches: uniqueBatches,
+        timings: mentorTimingsList
+      }
     });
   } catch (error) {
+    console.error("Error retrieving mentor batches:", error);
     res.status(500).json({
       message: error.message || "Error retrieving mentor's batches"
     });
@@ -949,7 +1028,7 @@ const getMentorBatches = async (req, res) => {
 // -------------------- HELPER FUNCTION: Get Interns by WeeklySchedule Filters --------------------
 const getInternsByWeeklyScheduleFilters = async (filters = {}) => {
   try {
-    const { timingId, days, courseId, branchId, mentorId } = filters;
+    const { timingId, days, courseId, branchId, mentorId, date } = filters;
 
     // Build the base query for WeeklySchedule
     let weeklyScheduleQuery = {};
@@ -957,6 +1036,13 @@ const getInternsByWeeklyScheduleFilters = async (filters = {}) => {
     // If mentorId is provided, filter by mentor
     if (mentorId) {
       weeklyScheduleQuery.mentor = mentorId;
+    }
+
+    // If date is provided, filter by date range
+    if (date) {
+      const targetDate = new Date(date);
+      weeklyScheduleQuery.startDate = { $lte: targetDate };
+      weeklyScheduleQuery.endDate = { $gte: targetDate };
     }
 
     // If timingId is provided, filter by timing
@@ -1100,7 +1186,7 @@ const getInternsByAttendanceDate = async (req, res) => {
     const userRole = await getUserRoleName(userId);
     if (userRole === 'mentor') {
       // For mentors, get all interns from mentor's weekly schedule
-      const mentorInterns = await getMentorInternsFromWeeklySchedule(userId);
+      const mentorInterns = await getMentorInternsFromWeeklySchedule(userId, date);
       const allowedInternIds = mentorInterns.interns.map(intern => intern._id);
 
       if (allowedInternIds.length === 0) {
@@ -1144,7 +1230,8 @@ const getInternsByAttendanceDate = async (req, res) => {
           days,
           courseId,
           branchId,
-          mentorId: userRole === 'mentor' ? userId : null
+          mentorId: userRole === 'mentor' ? userId : null,
+          date
         });
 
         const weeklyScheduleInternIds = weeklyScheduleResult.interns.map(intern => intern._id.toString());
@@ -1171,7 +1258,8 @@ const getInternsByAttendanceDate = async (req, res) => {
           days,
           courseId,
           branchId,
-          mentorId: userRole === 'mentor' ? userId : null
+          mentorId: userRole === 'mentor' ? userId : null,
+          date
         });
 
         if (weeklyScheduleResult.interns.length === 0) {

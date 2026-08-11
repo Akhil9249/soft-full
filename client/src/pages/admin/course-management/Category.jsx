@@ -307,6 +307,14 @@ export const Category = () => {
     setActiveTab('category-list');
   };
 
+  const handleTabChange = (tabName) => {
+    if (tabName === 'category-list') {
+      handleCancelEdit();
+    } else {
+      setActiveTab(tabName);
+    }
+  };
+
   const handleDeleteCategory = (category) => {
     setDeletingCategory(category);
     setShowDeleteModal(true);
@@ -467,7 +475,7 @@ export const Category = () => {
       <Navbar headData={headData} activeTab={activeTab}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="w-full sm:w-auto">
-            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={handleTabChange} />
           </div>
 
           <div className="flex justify-end w-full sm:w-auto">

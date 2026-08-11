@@ -32,6 +32,7 @@ const materialSchema = new mongoose.Schema({
     default: []
   },
   isActive: { type: Boolean, default: true },
+  allowDownload: { type: Boolean, default: true },
   isDeleted: {
     type: Boolean,
     default: false,

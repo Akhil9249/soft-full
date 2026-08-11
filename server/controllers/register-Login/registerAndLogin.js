@@ -97,68 +97,12 @@ const login = async (req, res, next) => {
       return next(error);
     }
 
-    // let userType = null;
 
-    // if (role === 'Mentor') {
-    //   userType = 'Mentor';
-    // } else if (role === 'Admin') {
-    //   userType = 'Admin';
-    // } else {
-    //   userType = 'Intern';
-    // }
 
 
     let user = null;
     let userData = null;
     let userTypeName = '';
-
-
-    // Determine which model to query based on userType
-    // switch (userType.toLowerCase()) {
-
-    //   case 'admin':
-    //     user = await User.findOne({ email, isActive: true });
-    //     userTypeName = 'Admin';
-    //     if (user) {
-    //       userData = {
-    //         name: user?.name,
-    //         phone: user?.phone,
-    //         email: user?.email,
-    //         role: user?.role,
-    //       };
-    //     }
-
-    //     break;
-
-    //   case 'mentor':
-    //     user = await Mentor.findOne({ email, isActive: true });
-    //     userTypeName = 'Mentor';
-    //     if (user) {
-    //       userData = {
-    //         name: user?.fullName,
-    //         role: user?.role,
-    //         email: user?.user?.officialEmail,
-    //         phone: user?.mentorPhoneNumber,
-    //       };
-    //     }
-    //     break;
-
-    //   default:
-
-    //     user = await internModel.findOne({ email, isActive: true });
-    //     userTypeName = 'Intern';
-    //     if (user) {
-    //       userData = {
-    //         fullName: user?.fullName,
-    //         role: user?.role,
-    //         email: user?.email,
-    //         phone: user?.internPhoneNumber,
-    //         isActive: user?.isActive,
-    //       };
-    //     }
-    //     break;
-    // }
-
 
     // Auto-detect user type across User, Staff, and Intern collections
     user = await User.findOne({ email, isActive: true }).populate('role', 'role');
@@ -174,6 +118,13 @@ const login = async (req, res, next) => {
     } else {
       user = await Staff.findOne({ email, isActive: true }).populate('role', 'role');
       if (user) {
+        if (user.employmentStatus !== 'Active') {
+          const error = {
+            status: 403,
+            message: "Login denied. Your employment status is not Active.",
+          };
+          return next(error);
+        }
         userTypeName = 'Staff';
         userData = {
           id: user._id,
@@ -181,6 +132,7 @@ const login = async (req, res, next) => {
           role: user.role?.role || 'Staff',
           email: user.officialEmail,
           phone: user.staffPhoneNumber,
+          branch: user.branch ? user.branch.toString() : "",
         };
       } else {
         // Query both personal email and officialEmail for interns
@@ -192,6 +144,13 @@ const login = async (req, res, next) => {
           isActive: true
         });
         if (user) {
+          if (user.courseStatus !== 'Ongoing') {
+            const error = {
+              status: 403,
+              message: "Login denied. Your course status is not Ongoing.",
+            };
+            return next(error);
+          }
           userTypeName = 'Intern';
           userData = {
             id: user._id,

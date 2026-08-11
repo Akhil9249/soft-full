@@ -9,6 +9,7 @@ const { startAttendanceCron } = require("./cron/attendanceCron");
 const registerAndLoginRoute = require("./routes/registerAndLoginRoute");
 const staffRoutes = require("./routes/staffRoutes");
 const internRoutes = require("./routes/internRoutes");
+const userRoutes = require("./routes/userRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const courseRoutes = require("./routes/courseRoutes");
 const courseTypeRoutes = require("./routes/courseTypeRoutes");
@@ -74,6 +75,7 @@ app.use("/api", registerAndLoginRoute);
 
 app.use("/api/staff", staffRoutes);
 app.use("/api/intern", internRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/roles", roleRoutes);
 
 app.use("/api/category", categoryRoutes);

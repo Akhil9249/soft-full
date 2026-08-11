@@ -109,8 +109,8 @@ export const selectHasRole = (role) => (state) => {
 };
 
 export const selectIsAdmin = (state) => {
-  const userRole = selectUserRole(state);
-  return userRole === 'admin' || userRole === 'superadmin';
+  const userRole = selectUserRole(state)?.toLowerCase();
+  return userRole === 'admin' || userRole === 'branch admin' || userRole === 'superadmin' || userRole === 'super admin';
 };
 
 export const selectIsSuperAdmin = (state) => {

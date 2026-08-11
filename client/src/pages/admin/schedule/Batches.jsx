@@ -164,7 +164,8 @@ export const Batches = () => {
       setError('');
       // const res = await axiosPrivate.get('http://localhost:3000/api/intern');
       const res = await getInternsData();
-      setAvailableInterns(res.data || []);
+      const ongoingInterns = (res.data || []).filter(intern => intern.courseStatus === "Ongoing");
+      setAvailableInterns(ongoingInterns);
     } catch (err) {
       showNotification('error', 'Error', err?.response?.data?.message || 'Failed to load interns');
     } finally {
@@ -443,6 +444,14 @@ export const Batches = () => {
     setActiveTab('batches');
   };
 
+  const handleTabChange = (tabName) => {
+    if (tabName === 'batches') {
+      handleCancelEdit();
+    } else {
+      setActiveTab(tabName);
+    }
+  };
+
   const handleViewBatch = (batch) => {
     setViewingBatch(batch);
     setShowViewModal(true);
@@ -696,7 +705,7 @@ export const Batches = () => {
       <Navbar headData={headData} activeTab={activeTab}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="w-full sm:w-auto">
-            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={handleTabChange} />
           </div>
 
           <div className="flex justify-end w-full sm:w-auto">
@@ -1358,7 +1367,7 @@ export const Batches = () => {
             }
           `}</style>
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print:block print:bg-white print:opacity-100 print:p-0">
-            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto print-modal-content">
+            <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto no-scrollbar print-modal-content">
             {/* Modal Header */}
             <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6 border-b border-gray-200 print:px-4 print:py-4 print-full-width">
               <div className="flex justify-between items-start gap-4">
@@ -1496,7 +1505,7 @@ export const Batches = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div className="flex items-center mb-4">
               <div className="flex-shrink-0">
                 <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1531,6 +1540,15 @@ export const Batches = () => {
           </div>
         </div>
       )}
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </>
   )
 }

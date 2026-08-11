@@ -31,7 +31,6 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isMentor, setIsMentor] = useState(false);
   const [modal, setModal] = useState({
     isOpen: false,
     type: '', // 'success' or 'error'
@@ -75,12 +74,11 @@ const Login = () => {
       e.preventDefault();
       setLoading(true);
 
-      console.log("Logging in with:", { email, password, role: isMentor ? "Mentor" : "Admin" });
+      console.log("Logging in with:", { email, password });
 
       let userData = {
         email: email,
-        password: password,
-        role: isMentor ? "Mentor" : "Admin"
+        password: password
       }
       const response = await postLogin(userData);
       console.log(response);
@@ -91,14 +89,18 @@ const Login = () => {
         const id = response?.data?.userData?.id;
         const image = response?.data?.userData?.image || "";
         const name = response?.data?.userData?.name || "";
+        const branch = response?.data?.userData?.branch || "";
 
         localStorage.setItem("accessToken", accessToken)
         localStorage.setItem("role", role)
         localStorage.setItem("userId", id) // Storing user ID
         localStorage.setItem("profileImage", image)
         localStorage.setItem("name", name)
+        if (branch) {
+          localStorage.setItem("branch", branch)
+        }
 
-        setAuth({ accessToken, role, id, image, name })
+        setAuth({ accessToken, role, id, image, name, branch })
 
         // Show success modal
         showModal('success', 'Login Successful!', `Welcome back, ${name}! Redirecting to your dashboard...`);
@@ -106,7 +108,7 @@ const Login = () => {
         // Navigate after a short delay to show the success message
         setTimeout(() => {
           const userRole = role?.toLowerCase() || '';
-          if (userRole === 'super admin' || userRole === 'admin') {
+          if (userRole === 'super admin' || userRole === 'admin' || userRole === 'branch admin') {
             navigate("/dashboard");
           } else if (userRole === 'intern') {
             navigate("/student/attendance-dashboard");
@@ -198,20 +200,6 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Mentor Checkbox */}
-          <div className="flex items-center">
-            <input
-              id="isMentor"
-              type="checkbox"
-              checked={isMentor}
-              onChange={(e) => setIsMentor(e.target.checked)}
-              disabled={loading}
-              className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded disabled:opacity-75"
-            />
-            <label htmlFor="isMentor" className="ml-2 block text-sm text-gray-700">
-              Are you a Staff?
-            </label>
-          </div>
 
           {/* Log In Button */}
           <button

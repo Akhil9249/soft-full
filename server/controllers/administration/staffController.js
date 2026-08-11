@@ -248,7 +248,7 @@ const getStaff = async (req, res) => {
     // Restrict branch and exclude own details for admin
     if (req.userId) {
       const loggedInUser = await Staff.findById(req.userId).populate('role');
-      if (loggedInUser && loggedInUser.role && loggedInUser.role.role.toLowerCase() === 'admin') {
+      if (loggedInUser && loggedInUser.role && (loggedInUser.role.role.toLowerCase() === 'admin' || loggedInUser.role.role.toLowerCase() === 'branch admin')) {
         branch = loggedInUser.branch; // Override to admin's branch
         query._id = { $ne: req.userId };
       }
@@ -317,7 +317,7 @@ const getAllStaff = async (req, res) => {
     let query = {};
     if (req.userId) {
       const loggedInUser = await Staff.findById(req.userId).populate('role');
-      if (loggedInUser && loggedInUser.role && loggedInUser.role.role.toLowerCase() === 'admin') {
+      if (loggedInUser && loggedInUser.role && (loggedInUser.role.role.toLowerCase() === 'admin' || loggedInUser.role.role.toLowerCase() === 'branch admin')) {
         query.branch = loggedInUser.branch;
         query._id = { $ne: req.userId };
       }
@@ -345,7 +345,7 @@ const getAllActiveStaff = async (req, res) => {
     let query = { isActive: true };
     if (req.userId) {
       const loggedInUser = await Staff.findById(req.userId).populate('role');
-      if (loggedInUser && loggedInUser.role && loggedInUser.role.role.toLowerCase() === 'admin') {
+      if (loggedInUser && loggedInUser.role && (loggedInUser.role.role.toLowerCase() === 'admin' || loggedInUser.role.role.toLowerCase() === 'branch admin')) {
         query.branch = loggedInUser.branch;
         query._id = { $ne: req.userId };
       }
@@ -617,7 +617,7 @@ const searchStaff = async (req, res) => {
 
     if (req.userId) {
       const loggedInUser = await Staff.findById(req.userId).populate('role');
-      if (loggedInUser && loggedInUser.role && loggedInUser.role.role.toLowerCase() === 'admin') {
+      if (loggedInUser && loggedInUser.role && (loggedInUser.role.role.toLowerCase() === 'admin' || loggedInUser.role.role.toLowerCase() === 'branch admin')) {
         query.branch = loggedInUser.branch;
         query._id = { $ne: req.userId };
       }

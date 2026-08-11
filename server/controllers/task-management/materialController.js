@@ -8,10 +8,10 @@ const deleteFromCloudinary = async (url) => {
   try {
     const parts = url.split('/upload/');
     if (parts.length < 2) return;
-    
+
     let pathPart = parts[1].replace(/^v\d+\//, ''); // Remove version
     const isRaw = url.includes('/raw/upload/');
-    
+
     let publicId = pathPart;
     if (!isRaw) {
       // Remove extension for images
@@ -20,7 +20,7 @@ const deleteFromCloudinary = async (url) => {
         publicId = pathPart.substring(0, lastDotIndex);
       }
     }
-    
+
     await cloudinary.uploader.destroy(publicId, { resource_type: isRaw ? 'raw' : 'image' });
     console.log(`Deleted from cloudinary: ${publicId}`);
   } catch (err) {
@@ -39,7 +39,8 @@ const createMaterial = async (req, res) => {
       branch,
       batches,
       interns,
-      individualInterns
+      individualInterns,
+      allowDownload
     } = req.body;
 
     console.log("Creating material:", {
@@ -127,7 +128,8 @@ const createMaterial = async (req, res) => {
       audience: audience,
       branch: branchArray,
       batches: cleanBatches,
-      individualInterns: cleanIndividualInterns
+      individualInterns: cleanIndividualInterns,
+      allowDownload: allowDownload !== undefined ? (allowDownload === 'true' || allowDownload === true) : true
     });
 
     res.status(201).json({
@@ -156,7 +158,7 @@ const getMaterials = async (req, res) => {
     const branch = req.query.branch || '';
 
     // Build query object
-    let query = { 
+    let query = {
       isActive: true,
       branch: { $exists: true, $not: { $size: 0 } }
     };
@@ -264,7 +266,7 @@ const getMaterialById = async (req, res) => {
 const updateMaterial = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const currentMaterial = await Material.findById(id);
     if (!currentMaterial) {
       if (req.file) await deleteFromCloudinary(req.file.path);
@@ -280,7 +282,8 @@ const updateMaterial = async (req, res) => {
       audience,
       branch,
       batches,
-      individualInterns
+      individualInterns,
+      allowDownload
     } = req.body;
 
     // Validate audience if provided
@@ -346,7 +349,7 @@ const updateMaterial = async (req, res) => {
     let attachmentsValue = currentMaterial.attachments || undefined;
     if (req.file) {
       // New file uploaded
-      
+
       // Delete old attachment from Cloudinary if it exists
       if (currentMaterial.attachments && currentMaterial.attachments !== req.file.path) {
         await deleteFromCloudinary(currentMaterial.attachments);
@@ -364,6 +367,9 @@ const updateMaterial = async (req, res) => {
 
     if (audience) updateData.audience = audience;
     if (branchArray !== undefined) updateData.branch = branchArray;
+    if (allowDownload !== undefined) {
+      updateData.allowDownload = (allowDownload === 'true' || allowDownload === true);
+    }
     updateData.batches = cleanBatches;
     updateData.individualInterns = cleanIndividualInterns;
 
@@ -402,10 +408,10 @@ const updateMaterial = async (req, res) => {
 const deleteMaterial = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Find material first to get the attachment URL
     const materialToDelete = await Material.findById(id);
-    
+
     if (!materialToDelete) {
       return res.status(404).json({
         message: "Material not found"
@@ -416,7 +422,7 @@ const deleteMaterial = async (req, res) => {
     if (materialToDelete.attachments) {
       await deleteFromCloudinary(materialToDelete.attachments);
     }
-    
+
     // Soft delete the material and remove the attachment reference
     const material = await Material.findByIdAndUpdate(
       id,
@@ -544,6 +550,14 @@ const downloadAttachment = async (req, res) => {
     const material = await Material.findById(id);
     if (!material || !material.attachments) {
       return res.status(404).json({ message: "Material or attachment not found" });
+    }
+
+    if (material.allowDownload === false) {
+      const Intern = require("../../models/administration/internModel");
+      const isIntern = await Intern.exists({ _id: req.userId });
+      if (isIntern) {
+        return res.status(403).json({ message: "Downloading this material is disabled by the mentor/administrator." });
+      }
     }
 
     const attachmentUrl = material.attachments;
@@ -721,7 +735,7 @@ const getMyMaterials = async (req, res) => {
       isActive: true,
       $or: baseConditions
     }).populate('mentor', 'fullName email');
-    
+
     const uniqueMentorsMap = new Map();
     allAssignedMaterials.forEach(m => {
       if (m.mentor && m.mentor._id) {

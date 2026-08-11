@@ -503,6 +503,11 @@ const Material = () => {
   // Handle attachment download
   const handleDownloadAttachment = async (material) => {
     try {
+      if (material.allowDownload === false) {
+        showNotification('error', 'Download Restricted', 'Downloading has been disabled for this material by the mentor/administrator.');
+        return;
+      }
+
       if (!material.attachments) {
         showNotification('error', 'Download Error', 'No attachment available for this material.');
         return;
@@ -548,7 +553,25 @@ const Material = () => {
 
     } catch (error) {
       console.error('Error downloading attachment:', error);
-      showNotification('error', 'Download Error', error?.response?.data?.message || 'Failed to download attachment. Please try again.');
+      let errMsg = 'Failed to download attachment. Please try again.';
+      
+      if (error?.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const parsed = JSON.parse(text);
+          if (parsed && parsed.message) {
+            errMsg = parsed.message;
+          }
+        } catch (e) {
+          console.error("Failed to parse error blob:", e);
+        }
+      } else if (error?.response?.data?.message) {
+        errMsg = error.response.data.message;
+      } else if (error?.message) {
+        errMsg = error.message;
+      }
+
+      showNotification('error', 'Download Restricted', errMsg);
     }
   };
 
@@ -715,9 +738,9 @@ const Material = () => {
               <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Audience Type</h4>
               <div className="flex items-center">
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${material.audience === 'All interns' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                    material.audience === 'By batches' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                      material.audience === 'By Branches' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
-                        'bg-green-100 text-green-800 border border-green-200'
+                  material.audience === 'By batches' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                    material.audience === 'By Branches' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
+                      'bg-green-100 text-green-800 border border-green-200'
                   }`}>
                   {material.audience}
                 </span>
@@ -788,13 +811,15 @@ const Material = () => {
                       >
                         View Full
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDownloadAttachment(material)}
-                        className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors shadow-sm"
-                      >
-                        Download
-                      </button>
+                      {material.allowDownload !== false && (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadAttachment(material)}
+                          className="px-3 py-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors shadow-sm"
+                        >
+                          Download
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -1065,15 +1090,17 @@ const Material = () => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                       </svg>
                                     </button>
-                                    <button
-                                      onClick={() => handleDownloadAttachment(material)}
-                                      className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer p-1 rounded hover:bg-blue-50"
-                                      title="Download attachment"
-                                    >
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                      </svg>
-                                    </button>
+                                    {material.allowDownload !== false && (
+                                      <button
+                                        onClick={() => handleDownloadAttachment(material)}
+                                        className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer p-1 rounded hover:bg-blue-50"
+                                        title="Download attachment"
+                                      >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                        </svg>
+                                      </button>
+                                    )}
                                   </>
                                 ) : (
                                   <span className="text-gray-400">-</span>
@@ -1168,15 +1195,17 @@ const Material = () => {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                   </svg>
                                 </button>
-                                <button
-                                  onClick={() => handleDownloadAttachment(material)}
-                                  className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer p-1 rounded hover:bg-blue-50"
-                                  title="Download attachment"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                  </svg>
-                                </button>
+                                {material.allowDownload !== false && (
+                                  <button
+                                    onClick={() => handleDownloadAttachment(material)}
+                                    className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer p-1 rounded hover:bg-blue-50"
+                                    title="Download attachment"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                    </svg>
+                                  </button>
+                                )}
                               </>
                             ) : (
                               <span className="text-gray-400">-</span>

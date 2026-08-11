@@ -109,6 +109,14 @@ export const Branch = () => {
         setActiveTab('branches');
     };
 
+    const handleTabChange = (tabName) => {
+        if (tabName === 'branches') {
+            handleCancel();
+        } else {
+            setActiveTab(tabName);
+        }
+    };
+
     // Handle toggle status directly
     const handleToggleStatus = async (branch) => {
         try {
@@ -166,7 +174,7 @@ export const Branch = () => {
   return (
     <>
         <Navbar headData={headData} activeTab={activeTab}>
-          <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+          <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={handleTabChange} />
         </Navbar>
 
     <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg sm:rounded-xl shadow-lg">

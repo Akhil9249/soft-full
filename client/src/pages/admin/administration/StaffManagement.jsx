@@ -327,8 +327,8 @@ export const StaffManagement = () => {
         { value: "newStaff", label: isEditMode ? "Edit Staff" : "New Staff" }
     ];
 
-    const departments = ['Choose Department', 'UI/UX', 'Sales', 'Front office', 'Mern', 'Flutter', 'Python', 'Accounting', 'Digital Marketing'];
-    const employmentStatus = ['Choose Employment Status', 'Active', 'Inactive'];
+    const departments = ['Choose Department', 'HR', 'Accounting', 'Front Office' , 'Sales', 'UI/UX', 'Mern', 'Flutter', 'Python', 'Digital Marketing','Data Science','Data Analytics','Business Development'];
+    const employmentStatus = ['Choose Employment Status', 'Active','Pause', 'Inactive'];
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -414,6 +414,14 @@ export const StaffManagement = () => {
         setPhotoPreview(null);
         setResumePreview(null);
         setActiveTab('staffList');
+    };
+
+    const handleTabChange = (tabName) => {
+        if (tabName === 'staffList') {
+            handleCancelEdit();
+        } else {
+            setActiveTab(tabName);
+        }
     };
 
     const handleDeleteStaff = (staffMember) => {
@@ -788,11 +796,19 @@ export const StaffManagement = () => {
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <div className="flex-shrink-0 h-10 w-10">
-                                                    <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
-                                                        <span className="text-orange-600 font-medium text-sm">
-                                                            {staffMember.fullName?.charAt(0)?.toUpperCase() || 'S'}
-                                                        </span>
-                                                    </div>
+                                                    {staffMember.photo ? (
+                                                        <img
+                                                            src={staffMember.photo}
+                                                            alt={staffMember.fullName}
+                                                            className="h-10 w-10 rounded-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                                                            <span className="text-orange-600 font-medium text-sm">
+                                                                {staffMember.fullName?.charAt(0)?.toUpperCase() || 'S'}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="ml-4">
                                                     <div className="text-sm font-medium text-gray-900">{staffMember.fullName}</div>
@@ -865,11 +881,19 @@ export const StaffManagement = () => {
                             <div key={staffMember._id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                                 <div className="flex items-start gap-3 mb-3">
                                     <div className="flex-shrink-0 h-12 w-12">
-                                        <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
-                                            <span className="text-orange-600 font-medium text-base">
-                                                {staffMember.fullName?.charAt(0)?.toUpperCase() || 'S'}
-                                            </span>
-                                        </div>
+                                        {staffMember.photo ? (
+                                            <img
+                                                src={staffMember.photo}
+                                                alt={staffMember.fullName}
+                                                className="h-12 w-12 rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
+                                                <span className="text-orange-600 font-medium text-base">
+                                                    {staffMember.fullName?.charAt(0)?.toUpperCase() || 'S'}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <h3 className="text-base font-semibold text-gray-900 truncate">{staffMember.fullName}</h3>
@@ -1414,7 +1438,7 @@ export const StaffManagement = () => {
 
         return (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+                <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto no-scrollbar">
                     <div className="p-4 sm:p-6">
                         <div className="flex items-center mb-4">
                             <div className="flex-shrink-0">
@@ -1445,8 +1469,17 @@ export const StaffManagement = () => {
 
     return (
         <div>
+            <style>{`
+                .no-scrollbar::-webkit-scrollbar {
+                    display: none;
+                }
+                .no-scrollbar {
+                    -ms-overflow-style: none;
+                    scrollbar-width: none;
+                }
+            `}</style>
             <Navbar headData={headData} activeTab={activeTab}>
-                <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+                <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={handleTabChange} />
             </Navbar>
 
             {/* Conditional Rendering */}
@@ -1458,7 +1491,7 @@ export const StaffManagement = () => {
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto no-scrollbar">
                         <div className="flex items-center mb-4">
                             <div className="flex-shrink-0">
                                 <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -1530,7 +1563,7 @@ export const StaffManagement = () => {
                         }
                     `}</style>
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 print:block print:bg-white print:opacity-100 print:p-0">
-                        <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto print-modal-content">
+                        <div className="bg-white rounded-xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto no-scrollbar print-modal-content">
                             {/* Modal Header */}
                             <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-200 print:px-4 print:py-4 print-full-width">
                                 <div className="flex justify-between items-start gap-4">

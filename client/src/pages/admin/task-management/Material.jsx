@@ -22,6 +22,7 @@ const Material = () => {
     mentor: '',
     attachments: null, // Will store File object or URL string
     audience: 'All interns',
+    allowDownload: true,
   });
 
   // Audience-specific selections
@@ -164,22 +165,34 @@ const Material = () => {
     const role = localStorage.getItem("role")?.toLowerCase() || "";
     if (role === "super admin") {
       if (branches.length > 0 && !filters.branch) {
-        const defaultBranch = branches[0]._id;
+        const calicutBranch = branches.find(b => b.branchName?.toLowerCase().includes("calicut"));
+        const defaultBranch = calicutBranch ? calicutBranch._id : branches[0]._id;
         setFilters(prev => ({ ...prev, branch: defaultBranch }));
         loadMaterials(1, searchTerm, filters.audience, filters.mentor, defaultBranch);
       }
     } else {
-      const loggedInUserId = localStorage.getItem("userId");
-      if (loggedInUserId && mentors.length > 0) {
-        const loggedInStaff = mentors.find(m => m._id === loggedInUserId);
-        const ownBranchId = loggedInStaff?.branch?._id || loggedInStaff?.branch || "";
-        if (ownBranchId && !filters.branch) {
+      let ownBranchId = localStorage.getItem("branch");
+      if (ownBranchId && ownBranchId !== "undefined" && ownBranchId !== "null") {
+        if (!filters.branch) {
           setFilters(prev => ({ ...prev, branch: ownBranchId }));
           loadMaterials(1, searchTerm, filters.audience, filters.mentor, ownBranchId);
         }
+      } else {
+        // Fallback: fetch dynamically
+        adminService.getUserProfile().then(profileRes => {
+          const profileBranch = profileRes?.data?.user?.branch;
+          if (profileBranch) {
+            const profileBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
+            localStorage.setItem("branch", profileBranchId);
+            if (!filters.branch) {
+              setFilters(prev => ({ ...prev, branch: profileBranchId }));
+              loadMaterials(1, searchTerm, filters.audience, filters.mentor, profileBranchId);
+            }
+          }
+        }).catch(err => console.error("Error fetching branch fallback:", err));
       }
     }
-  }, [mentors, branches]);
+  }, [branches]);
 
   const isFirstRender = useRef(true);
 
@@ -418,6 +431,7 @@ const Material = () => {
       if (formData.title) payload.append('title', formData.title.trim());
       if (formData.mentor) payload.append('mentor', formData.mentor);
       if (formData.audience) payload.append('audience', formData.audience);
+      payload.append('allowDownload', formData.allowDownload);
 
       // Handle attachments file upload
       if (formData?.attachments instanceof File) {
@@ -466,6 +480,7 @@ const Material = () => {
       mentor: '',
       attachments: null,
       audience: 'All interns',
+      allowDownload: true,
     });
     setSelectedBatches([]);
     setSelectedInterns([]);
@@ -474,6 +489,15 @@ const Material = () => {
     setSelectedFile(null);
     setFileName('');
     setEditingMaterial(null);
+  };
+
+  const handleTabChange = (tabName) => {
+    if (tabName === 'materialList') {
+      resetForm();
+      setActiveTab('materialList');
+    } else {
+      setActiveTab(tabName);
+    }
   };
 
   // Handle data population when editing material and data becomes available
@@ -525,6 +549,7 @@ const Material = () => {
       mentor: material.mentor._id,
       attachments: material.attachments || null, // Store as URL string or null
       audience: material.audience,
+      allowDownload: material.allowDownload !== undefined ? material.allowDownload : true,
     });
 
     // Set file name for display if attachment exists
@@ -632,18 +657,27 @@ const Material = () => {
   };
 
   // Handle attachment view
-  const handleViewAttachment = (material) => {
+  const handleViewAttachment = async (material) => {
     try {
       if (!material.attachments) {
         showNotification('error', 'View Error', 'No attachment available for this material.');
         return;
       }
 
-      // Directly open the Cloudinary URL in a new tab
-      // This avoids backend proxy errors like 401 Unauthorized
-      window.open(material.attachments, '_blank', 'noopener,noreferrer');
+      setLoading(true);
+      // Fetch file as blob using AdminService method (ensures proper authentication and avoids direct Cloudinary navigation)
+      const response = await adminService.downloadMaterialAttachment(material._id);
+
+      const blob = new Blob([response.data], {
+        type: response.headers['content-type'] || 'application/pdf'
+      });
+
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setLoading(false);
 
     } catch (error) {
+      setLoading(false);
       console.error('Error viewing attachment:', error);
       showNotification('error', 'View Error', 'Failed to open attachment. Please try again.');
     }
@@ -692,7 +726,7 @@ const Material = () => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto no-scrollbar">
           <div className="p-4 sm:p-6">
             <div className="flex items-center mb-4">
               <div className="flex-shrink-0">
@@ -763,7 +797,7 @@ const Material = () => {
           </div>
 
           {/* Body */}
-          <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm text-gray-600">
+          <div className="p-6 overflow-y-auto no-scrollbar space-y-6 flex-1 text-sm text-gray-600">
             {/* Mentor Info */}
             <div className="flex items-center space-x-3 bg-blue-50 p-4 rounded-xl border border-blue-100">
               <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
@@ -793,12 +827,11 @@ const Material = () => {
             <div className="space-y-2">
               <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Audience Type</h4>
               <div className="flex items-center">
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
-                  material.audience === 'All interns' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                  material.audience === 'By batches' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                  material.audience === 'By Branches' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
-                  'bg-green-100 text-green-800 border border-green-200'
-                }`}>
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${material.audience === 'All interns' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                    material.audience === 'By batches' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                      material.audience === 'By Branches' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
+                        'bg-green-100 text-green-800 border border-green-200'
+                  }`}>
                   {material.audience}
                 </span>
               </div>
@@ -834,7 +867,12 @@ const Material = () => {
 
             {/* Attachments & Preview */}
             <div className="space-y-2">
-              <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Attachment</h4>
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Attachment</h4>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${material.allowDownload !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  {material.allowDownload !== false ? 'Intern Download Allowed' : 'Intern Download Disabled'}
+                </span>
+              </div>
               {material.attachments ? (
                 <div className="border border-gray-200 rounded-xl overflow-hidden bg-gray-50 shadow-inner">
                   {/* File preview */}
@@ -932,7 +970,7 @@ const Material = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div className="flex items-center mb-4">
               <div className="flex-shrink-0">
                 <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -973,7 +1011,7 @@ const Material = () => {
       <Navbar headData="Material" activeTab={activeTab}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="w-full sm:w-auto">
-            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={handleTabChange} />
           </div>
           <div className="flex justify-end w-full sm:w-auto">
             <button className="flex items-center px-4 py-2 bg-white text-gray-600 rounded-md font-medium border border-gray-300 hover:bg-gray-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 text-sm sm:text-base">
@@ -1121,8 +1159,13 @@ const Material = () => {
                       {materials.map((material) => (
                         <tr key={material._id} className="hover:bg-gray-50 transition-colors">
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                               {material.title}
+                              {material.allowDownload === false && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-800" title="Intern downloads disabled">
+                                  No DL
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
@@ -1445,70 +1488,83 @@ const Material = () => {
               <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800 border-b pb-2">
                 {editingMaterial ? 'Edit Material' : 'Material Details'}
               </h3>
-
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+ 
+                 {/* Title Input */}
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700">Title</label>
+                   <input
+                     name="title"
+                     type="text"
+                     placeholder="Enter Material Title"
+                     value={formData.title}
+                     onChange={handleInputChange}
+                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 transition-colors text-sm h-[38px]"
+                     required
+                   />
+                 </div>
+ 
+                 {/* Assigned Mentor Dropdown */}
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700">Assigned Mentor</label>
+                   <select
+                     name="mentor"
+                     value={formData.mentor}
+                     onChange={handleInputChange}
+                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white text-sm h-[38px]"
+                     required
+                   >
+                     <option value="">Choose Mentor</option>
+                     {mentors.map(mentor => (
+                       <option key={mentor._id} value={mentor._id}>
+                         {mentor.fullName}
+                       </option>
+                     ))}
+                   </select>
+                 </div>
+ 
+                 {/* Attachments Upload */}
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700">Attachments <span className="text-gray-400">(Optional - JPG/PNG/PDF only)</span></label>
+                   <div className="relative flex items-center w-full px-3 py-1.5 border border-gray-300 rounded-md focus-within:ring-1 focus-within:ring-orange-500 bg-white mt-1 h-[38px]">
+                     <span className="text-gray-500 flex-1 truncate pr-2 text-sm">
+                       {formData?.attachments instanceof File
+                         ? formData.attachments.name
+                         : formData?.attachments && typeof formData.attachments === 'string'
+                           ? 'Existing file (click to change)'
+                           : 'Upload Attachment (Image/PDF)'}
+                     </span>
+                     <input
+                       key={editingMaterial ? editingMaterial._id : 'new-material'}
+                       onChange={handleFileUpload}
+                       type="file"
+                       accept="image/jpeg,image/jpg,image/png,application/pdf,.pdf"
+                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                       id="file-upload"
+                       name="attachments"
+                     />
+                     <div className="pointer-events-none flex-shrink-0">
+                       <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                         <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm3-4a1 1 0 011-1h6a1 1 0 011 1v2a1 1 0 01-1 1H7a1 1 0 01-1-1v-2z" clipRule="evenodd"></path>
+                       </svg>
+                     </div>
+                   </div>
+                 </div>
+               </div>
 
-                {/* Title Input */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Title</label>
-                  <input
-                    name="title"
-                    type="text"
-                    placeholder="Enter Material Title"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 transition-colors text-sm h-[38px]"
-                    required
-                  />
-                </div>
-
-                {/* Assigned Mentor Dropdown */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Assigned Mentor</label>
-                  <select
-                    name="mentor"
-                    value={formData.mentor}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white text-sm h-[38px]"
-                    required
-                  >
-                    <option value="">Choose Mentor</option>
-                    {mentors.map(mentor => (
-                      <option key={mentor._id} value={mentor._id}>
-                        {mentor.fullName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Attachments Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Attachments <span className="text-gray-400">(Optional - JPG/PNG/PDF only)</span></label>
-                  <div className="relative flex items-center w-full px-3 py-1.5 border border-gray-300 rounded-md focus-within:ring-1 focus-within:ring-orange-500 bg-white mt-1 h-[38px]">
-                    <span className="text-gray-500 flex-1 truncate pr-2 text-sm">
-                      {formData?.attachments instanceof File
-                        ? formData.attachments.name
-                        : formData?.attachments && typeof formData.attachments === 'string'
-                          ? 'Existing file (click to change)'
-                          : 'Upload Attachment (Image/PDF)'}
-                    </span>
-                    <input
-                      key={editingMaterial ? editingMaterial._id : 'new-material'}
-                      onChange={handleFileUpload}
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,application/pdf,.pdf"
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      id="file-upload"
-                      name="attachments"
-                    />
-                    <div className="pointer-events-none flex-shrink-0">
-                      <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2zm3-4a1 1 0 011-1h6a1 1 0 011 1v2a1 1 0 01-1 1H7a1 1 0 01-1-1v-2z" clipRule="evenodd"></path>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </div>
+               {/* Allow Download Checkbox */}
+               <div className="flex items-center pt-2">
+                 <label className="flex items-center space-x-3 cursor-pointer select-none">
+                   <input
+                     type="checkbox"
+                     name="allowDownload"
+                     checked={formData.allowDownload}
+                     onChange={(e) => setFormData({ ...formData, allowDownload: e.target.checked })}
+                     className="h-5 w-5 text-orange-600 border-gray-300 rounded focus:ring-orange-500 cursor-pointer"
+                   />
+                   <span className="text-sm font-medium text-gray-700">Allow Interns to Download</span>
+                 </label>
+               </div>
             </div>
 
             {/* 2. Audience Selection Section */}
@@ -1862,6 +1918,15 @@ const Material = () => {
         )}
       </div>
 
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </>
   )
 }

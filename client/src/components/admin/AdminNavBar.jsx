@@ -176,7 +176,7 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                   )}
 
                   {/* Staff Management - Only for Super Admin and Admin */}
-                  {(auth?.role?.toLowerCase() === "super admin" || auth?.role?.toLowerCase() === "admin") && (
+                  {(auth?.role?.toLowerCase() === "super admin" || auth?.role?.toLowerCase() === "admin" || auth?.role?.toLowerCase() === "branch admin") && (
                     <li>
                       <Link
                         to="/staff-management"
@@ -349,42 +349,48 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               </div>
               {openSections.schedule && (
                 <ul className="pl-8 mt-2 space-y-2 text-sm text-gray-500">
-                  <li>
-                    <Link
-                      to="/batches"
-                      onClick={() => handleNavItemClick('/batches')}
-                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/batches'
-                        ? 'bg-orange-100 text-orange-600 font-semibold'
-                        : 'hover:text-orange-500 hover:bg-orange-50'
-                        }`}
-                    >
-                      Batches
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/timings"
-                      onClick={() => handleNavItemClick('/timings')}
-                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/timings'
-                        ? 'bg-orange-100 text-orange-600 font-semibold'
-                        : 'hover:text-orange-500 hover:bg-orange-50'
-                        }`}
-                    >
-                      Timings
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/weekly-schedule"
-                      onClick={() => handleNavItemClick('/weekly-schedule')}
-                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/weekly-schedule'
-                        ? 'bg-orange-100 text-orange-600 font-semibold'
-                        : 'hover:text-orange-500 hover:bg-orange-50'
-                        }`}
-                    >
-                      Weekly Schedule
-                    </Link>
-                  </li>
+                  {!(auth?.role?.toLowerCase() === 'mentor' || localStorage.getItem("role")?.toLowerCase() === 'mentor') && (
+                    <li>
+                      <Link
+                        to="/batches"
+                        onClick={() => handleNavItemClick('/batches')}
+                        className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/batches'
+                          ? 'bg-orange-100 text-orange-600 font-semibold'
+                          : 'hover:text-orange-500 hover:bg-orange-50'
+                          }`}
+                      >
+                        Batches
+                      </Link>
+                    </li>
+                  )}
+                  {!(auth?.role?.toLowerCase() === 'mentor' || localStorage.getItem("role")?.toLowerCase() === 'mentor') && (
+                    <li>
+                      <Link
+                        to="/timings"
+                        onClick={() => handleNavItemClick('/timings')}
+                        className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/timings'
+                          ? 'bg-orange-100 text-orange-600 font-semibold'
+                          : 'hover:text-orange-500 hover:bg-orange-50'
+                          }`}
+                      >
+                        Timings
+                      </Link>
+                    </li>
+                  )}
+                  {!(auth?.role?.toLowerCase() === 'mentor' || localStorage.getItem("role")?.toLowerCase() === 'mentor') && (
+                    <li>
+                      <Link
+                        to="/weekly-schedule"
+                        onClick={() => handleNavItemClick('/weekly-schedule')}
+                        className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/weekly-schedule'
+                          ? 'bg-orange-100 text-orange-600 font-semibold'
+                          : 'hover:text-orange-500 hover:bg-orange-50'
+                          }`}
+                      >
+                        Weekly Schedule
+                      </Link>
+                    </li>
+                  )}
                   <li>
                     <Link
                       to="/mentor-batches"
@@ -526,7 +532,7 @@ const Navbar = ({ headData, activeTab, children }) => {
 
   // Get user data from localStorage
   const userName = localStorage.getItem("name") || "User";
-  const userRole = localStorage.getItem("role") || "Admin";
+  const userRole = localStorage.getItem("role") || "Branch Admin";
   const userImage = localStorage.getItem("profileImage");
 
   const handleLogout = async () => {

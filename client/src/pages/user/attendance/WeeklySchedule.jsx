@@ -87,32 +87,6 @@ const WeeklySchedule = () => {
       setAllSchedules(schedulesList);
       setInternDetails(intern);
 
-      // Dynamic date defaulting:
-      // If there are schedules but none for the current week, default to the week of the most recent schedule
-      if (schedulesList.length > 0) {
-        const currentWeekDates = getDefaultDates();
-        
-        const getLocalYYYYMMDD = (dateStr) => {
-          const date = new Date(dateStr);
-          const offset = date.getTimezoneOffset();
-          const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-          return localDate.toISOString().split('T')[0];
-        };
-
-        const hasCurrentWeekSchedule = schedulesList.some(s => {
-          if (!s.startDate || !s.endDate) return false;
-          const schedStart = getLocalYYYYMMDD(s.startDate);
-          const schedEnd = getLocalYYYYMMDD(s.endDate);
-          return schedStart >= currentWeekDates.startDate && schedEnd <= currentWeekDates.endDate;
-        });
-
-        if (!hasCurrentWeekSchedule) {
-          const sorted = [...schedulesList].sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
-          const latestSched = sorted[0];
-          setStartDate(getLocalYYYYMMDD(latestSched.startDate));
-          setEndDate(getLocalYYYYMMDD(latestSched.endDate));
-        }
-      }
     } catch (err) {
       console.error('Error fetching student schedules:', err);
       setError(err.response?.data?.message || 'Failed to fetch weekly schedule');

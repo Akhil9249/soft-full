@@ -495,6 +495,52 @@ export const TaskManagement = () => {
     }
   };
 
+  const handleViewAttachment = async (taskOrUrl) => {
+    if (!taskOrUrl) return;
+
+    // If it's a string URL
+    if (typeof taskOrUrl === 'string') {
+      if (taskOrUrl.startsWith('blob:')) {
+        window.open(taskOrUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      if (editingTask && editingTask._id) {
+        try {
+          setLoading(true);
+          const response = await downloadTaskAttachment(editingTask._id);
+          const blob = new Blob([response.data], { 
+            type: response.headers['content-type'] || 'application/pdf' 
+          });
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank', 'noopener,noreferrer');
+          setLoading(false);
+        } catch (error) {
+          setLoading(false);
+          window.open(taskOrUrl, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
+      window.open(taskOrUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // If it's a task object
+    try {
+      setLoading(true);
+      const response = await downloadTaskAttachment(taskOrUrl._id);
+      const blob = new Blob([response.data], { 
+        type: response.headers['content-type'] || 'application/pdf' 
+      });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setLoading(false);
+    } catch (error) {
+      setLoading(false);
+      console.error('Error viewing attachment:', error);
+      showNotification('error', 'View Error', 'Failed to view attachment. Please try again.');
+    }
+  };
+
   // Cleanup object URLs to avoid memory leaks
   useEffect(() => {
     return () => {
@@ -565,22 +611,34 @@ export const TaskManagement = () => {
     const role = localStorage.getItem("role")?.toLowerCase() || "";
     if (role === "super admin") {
       if (branches.length > 0 && !filters.branch) {
-        const defaultBranch = branches[0]._id;
+        const calicutBranch = branches.find(b => b.branchName?.toLowerCase().includes("calicut"));
+        const defaultBranch = calicutBranch ? calicutBranch._id : branches[0]._id;
         setFilters(prev => ({ ...prev, branch: defaultBranch }));
         fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, defaultBranch);
       }
     } else {
-      const loggedInUserId = localStorage.getItem("userId");
-      if (loggedInUserId && mentors.length > 0) {
-        const loggedInStaff = mentors.find(m => m._id === loggedInUserId);
-        const ownBranchId = loggedInStaff?.branch?._id || loggedInStaff?.branch || "";
-        if (ownBranchId && !filters.branch) {
+      let ownBranchId = localStorage.getItem("branch");
+      if (ownBranchId && ownBranchId !== "undefined" && ownBranchId !== "null") {
+        if (!filters.branch) {
           setFilters(prev => ({ ...prev, branch: ownBranchId }));
           fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, ownBranchId);
         }
+      } else {
+        // Fallback: fetch dynamically
+        adminService.getUserProfile().then(profileRes => {
+          const profileBranch = profileRes?.data?.user?.branch;
+          if (profileBranch) {
+            const profileBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
+            localStorage.setItem("branch", profileBranchId);
+            if (!filters.branch) {
+              setFilters(prev => ({ ...prev, branch: profileBranchId }));
+              fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, profileBranchId);
+            }
+          }
+        }).catch(err => console.error("Error fetching branch fallback:", err));
       }
     }
-  }, [mentors, branches]);
+  }, [branches]);
 
   const isFirstRender = useRef(true);
 
@@ -750,6 +808,14 @@ export const TaskManagement = () => {
     setIsBranchDropdownOpen(false);
     setActiveTab('tasks-list');
     // Note: File input will be reset automatically by the key prop
+  };
+
+  const handleTabChange = (tabName) => {
+    if (tabName === 'tasks-list') {
+      handleCancelEdit();
+    } else {
+      setActiveTab(tabName);
+    }
   };
 
   const handleDeleteClick = (task) => {
@@ -1128,7 +1194,7 @@ export const TaskManagement = () => {
       <Navbar headData={headData} activeTab={activeTab}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="w-full sm:w-auto">
-            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={handleTabChange} />
           </div>
 
           <div className="flex justify-end w-full sm:w-auto">
@@ -1193,7 +1259,7 @@ export const TaskManagement = () => {
                 >
                   <option value="">All Audience</option>
                   <option value="By batches">By batches</option>
-                  <option value="By courses">By courses</option>
+                  <option value="By category">By category</option>
                   <option value="Individual interns">Individual interns</option>
                 </select>
                 <select
@@ -1283,12 +1349,12 @@ export const TaskManagement = () => {
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${task.status === 'Completed'
-                                ? 'bg-green-100 text-green-800'
-                                : task.status === 'In Progress'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : task.status === 'Cancelled'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-yellow-100 text-yellow-800'
+                              ? 'bg-green-100 text-green-800'
+                              : task.status === 'In Progress'
+                                ? 'bg-blue-100 text-blue-800'
+                                : task.status === 'Cancelled'
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-yellow-100 text-yellow-800'
                               }`}>
                               {task.status}
                             </span>
@@ -1365,12 +1431,12 @@ export const TaskManagement = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium">Status:</span>
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${task.status === 'Completed'
-                              ? 'bg-green-100 text-green-800'
-                              : task.status === 'In Progress'
-                                ? 'bg-blue-100 text-blue-800'
-                                : task.status === 'Cancelled'
-                                  ? 'bg-red-100 text-red-800'
-                                  : 'bg-yellow-100 text-yellow-800'
+                            ? 'bg-green-100 text-green-800'
+                            : task.status === 'In Progress'
+                              ? 'bg-blue-100 text-blue-800'
+                              : task.status === 'Cancelled'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-yellow-100 text-yellow-800'
                             }`}>
                             {task.status}
                           </span>
@@ -1419,8 +1485,8 @@ export const TaskManagement = () => {
                     onClick={() => handlePageChange(pagination.currentPage - 1)}
                     disabled={!pagination.hasPrevPage || loading}
                     className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasPrevPage && !loading
-                        ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                        : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                      ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                      : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
                       }`}
                   >
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1441,8 +1507,8 @@ export const TaskManagement = () => {
                     onClick={() => handlePageChange(pagination.currentPage + 1)}
                     disabled={!pagination.hasNextPage || loading}
                     className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasNextPage && !loading
-                        ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                        : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                      ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                      : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
                       }`}
                   >
                     {loading ? 'Loading...' : 'Next'}
@@ -1505,7 +1571,7 @@ export const TaskManagement = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                   </button>
-                  
+
                   {isModuleDropdownOpen && (
                     <div className="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
                       {modulesLoading ? (
@@ -1520,9 +1586,8 @@ export const TaskManagement = () => {
                               setFormData(prev => ({ ...prev, module: module.moduleName }));
                               setIsModuleDropdownOpen(false);
                             }}
-                            className={`p-2 hover:bg-orange-500 hover:text-white cursor-pointer text-sm transition-colors ${
-                              formData.module === module.moduleName ? 'bg-orange-50 text-orange-700 font-semibold' : 'text-gray-700'
-                            }`}
+                            className={`p-2 hover:bg-orange-500 hover:text-white cursor-pointer text-sm transition-colors ${formData.module === module.moduleName ? 'bg-orange-50 text-orange-700 font-semibold' : 'text-gray-700'
+                              }`}
                           >
                             {module.moduleName}
                           </div>
@@ -1730,10 +1795,9 @@ export const TaskManagement = () => {
 
                       {/* Action Buttons */}
                       <div className="flex items-center gap-2 w-full sm:w-auto justify-end sm:justify-start">
-                        <a
-                          href={attachmentPreview}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => handleViewAttachment(attachmentPreview)}
                           className="px-3 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-md border border-orange-200 transition-colors flex items-center gap-1"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1741,7 +1805,7 @@ export const TaskManagement = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
                           Preview
-                        </a>
+                        </button>
                         {!isEditMode && (
                           <button
                             type="button"
@@ -2297,7 +2361,7 @@ export const TaskManagement = () => {
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div className="p-4 sm:p-6">
               {/* Modal Header */}
               <div className="flex items-center mb-4">
@@ -2359,7 +2423,7 @@ export const TaskManagement = () => {
       {/* View Task Details Modal */}
       {showViewModal && viewingTask && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto no-scrollbar">
             {/* Modal Header */}
             <div className="px-4 sm:px-6 py-4 border-b border-gray-200">
               <div className="flex justify-between items-start gap-4">
@@ -2425,10 +2489,8 @@ export const TaskManagement = () => {
                       <p className="text-xs text-gray-500 mt-0.5 font-medium">Secure Cloudinary Document</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <a
-                        href={viewingTask.attachments}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={() => handleViewAttachment(viewingTask)}
                         className="px-3.5 py-2 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-all flex items-center gap-1.5"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2436,7 +2498,7 @@ export const TaskManagement = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                         View Document
-                      </a>
+                      </button>
                       <button
                         onClick={() => handleDownloadAttachment(viewingTask)}
                         className="px-3.5 py-2 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-all flex items-center gap-1.5"
@@ -2501,6 +2563,15 @@ export const TaskManagement = () => {
           </div>
         </div>
       )}
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </>
   )
 }

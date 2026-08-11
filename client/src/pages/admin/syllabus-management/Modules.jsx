@@ -354,6 +354,52 @@ export const Modules = () => {
     }
   };
 
+  const handleViewModuleFile = async (moduleOrUrl) => {
+    if (!moduleOrUrl) return;
+
+    // If it's a string URL
+    if (typeof moduleOrUrl === 'string') {
+      if (moduleOrUrl.startsWith('blob:')) {
+        window.open(moduleOrUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      if (editingModule && editingModule._id) {
+        try {
+          setLoading(true);
+          const response = await downloadModuleFile(editingModule._id);
+          const blob = new Blob([response.data], { 
+            type: response.headers['content-type'] || 'application/pdf' 
+          });
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank', 'noopener,noreferrer');
+          setLoading(false);
+        } catch (error) {
+          setLoading(false);
+          window.open(moduleOrUrl, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
+      window.open(moduleOrUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // If it's a module object
+    try {
+      setLoading(true);
+      const response = await downloadModuleFile(moduleOrUrl._id);
+      const blob = new Blob([response.data], { 
+        type: response.headers['content-type'] || 'application/pdf' 
+      });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setLoading(false);
+    } catch (error) {
+      setLoading(false);
+      console.error('Error viewing document:', error);
+      showNotification('error', 'View Error', 'Failed to view document. Please try again.');
+    }
+  };
+
   // No client-side filtering needed - server handles it
 
   const handleEditModule = (module) => {
@@ -377,6 +423,14 @@ export const Modules = () => {
     setModuleImagePreview(null);
     setModuleTopics([]);
     setActiveTab('modules-list');
+  };
+
+  const handleTabChange = (tabName) => {
+    if (tabName === 'modules-list') {
+      handleCancelEdit();
+    } else {
+      setActiveTab(tabName);
+    }
   };
 
   // Handle delete module
@@ -601,7 +655,7 @@ export const Modules = () => {
       <Navbar headData={headData} activeTab={activeTab}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="w-full sm:w-auto">
-            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={handleTabChange} />
           </div>
 
           <div className="flex justify-end w-full sm:w-auto">
@@ -719,14 +773,12 @@ export const Modules = () => {
                                 <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
                                 </svg>
-                                <a 
-                                  href={module.moduleImage} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
+                                <button 
+                                  onClick={() => handleViewModuleFile(module)}
                                   className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                                 >
                                   View
-                                </a>
+                                </button>
                                 <span className="text-gray-300">|</span>
                                 <button 
                                   onClick={() => handleDownloadModuleFile(module)}
@@ -809,14 +861,12 @@ export const Modules = () => {
                               <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                                 <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
                               </svg>
-                              <a 
-                                href={module.moduleImage} 
-                                target="_blank" 
-                                  rel="noopener noreferrer"
+                              <button 
+                                onClick={() => handleViewModuleFile(module)}
                                 className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                               >
                                 View
-                              </a>
+                              </button>
                               <span className="text-gray-300">|</span>
                               <button 
                                 onClick={() => handleDownloadModuleFile(module)}
@@ -1319,14 +1369,12 @@ export const Modules = () => {
                       </div>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      <a 
-                        href={viewingModule.moduleImage} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                      <button 
+                        onClick={() => handleViewModuleFile(viewingModule)}
                         className="px-3 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded hover:bg-orange-100 transition-colors"
                       >
                         View
-                      </a>
+                      </button>
                       <button 
                         onClick={() => handleDownloadModuleFile(viewingModule)}
                         className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 transition-colors"

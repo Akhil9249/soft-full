@@ -1,5 +1,4 @@
 const { User } = require("../../models/administration/userModel.js");
-const { Product } = require("../../models/productModel.js");
 const Role = require("../../models/administration/roleModel.js");
 const mongoose = require("mongoose");
 
@@ -17,36 +16,26 @@ const getUserRoleName = async (userId) => {
   }
 };
 
-// ✅ Get All Users
+// ✅ Get All Users (helper)
 const getAllusers = async (res) => {
   try {
-    // Get admin role to exclude admin users
-    const adminRole = await Role.findOne({ role: "Admin" });
-    if (!adminRole) {
-      return res.status(500).json({
-        success: false,
-        message: "Admin role not found in system.",
-      });
-    }
+    const adminRole = await Role.findOne({ role: { $regex: /^(admin|branch admin)$/i } });
+    const superAdminRole = await Role.findOne({ role: { $regex: /^super admin$/i } });
+    
+    const excludeRoles = [];
+    if (adminRole) excludeRoles.push(adminRole._id);
+    if (superAdminRole) excludeRoles.push(superAdminRole._id);
 
     const users = await User.find({ 
-      role: { $ne: adminRole._id },
-      isActive: true 
+      role: { $nin: excludeRoles },
+      isActive: true,
+      isDeleted: { $ne: true }
     }).populate('role', 'role');
     
-    if (!users || users.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No users found. Please add users first.",
-      });
-    }
     return users;
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "An error occurred while retrieving the users.",
-      error: error.message,
-    });
+    console.error("Error in getAllusers helper:", error);
+    return [];
   }
 };
 
@@ -63,76 +52,30 @@ const getUser = async (req, res) => {
     }
 
     let users = null;
+    const superAdminRole = await Role.findOne({ role: { $regex: /^super admin$/i } });
+    const adminRole = await Role.findOne({ role: { $regex: /^(admin|branch admin)$/i } });
 
-    if (userRole === "Super Admin" || userRole === "super admin") {
-      // Get super admin role to exclude super admins
-      const superAdminRole = await Role.findOne({ role: "Super Admin" });
-      if (superAdminRole) {
-        users = await User.find({ 
-          role: { $ne: superAdminRole._id },
-          isActive: true 
-        }).populate('role', 'role');
-      } else {
-        users = await User.find({ isActive: true }).populate('role', 'role');
-      }
-    } else if (userRole === "Admin" || userRole === "admin") {
-      // For admin users, get users based on their products
-      // Step 1: Get all product IDs added by the admin
-      const adminProducts = await Product.find({ agent: userId }).select("_id");
-      const productIds = adminProducts.map(p => p._id);
-
-      if (productIds.length === 0) {
-        users = []; // No products added by admin
-      } else {
-        // Step 2: Aggregate orders that include those products
-        const orderUsers = await Order.aggregate([
-          {
-            $unwind: "$orderItems",
-          },
-          {
-            $match: {
-              "orderItems.product": { $in: productIds },
-            },
-          },
-          {
-            $lookup: {
-              from: "users",
-              localField: "user",
-              foreignField: "_id",
-              as: "userDetails",
-            },
-          },
-          {
-            $unwind: "$userDetails",
-          },
-          {
-            $group: {
-              _id: "$user", // Group by user ID to avoid duplicates
-              user: { $first: "$userDetails" },
-            },
-          },
-          {
-            $project: {
-              _id: 0,
-              user: 1,
-            },
-          },
-        ]);
-
-        users = orderUsers.map(u => u.user); // Return array of user objects
-      }
-    }
-
-    //  else {
-    //   users = await User.find({ role: { $nin: ["Super Admin", "admin", "Manager"] } });
-
-    // }
-
-
-    if (!users) {
-      return res.status(404).json({
+    if (userRole.toLowerCase() === "super admin") {
+      // Super admin sees all users except super admins
+      const excludeRoles = superAdminRole ? [superAdminRole._id] : [];
+      users = await User.find({ 
+        role: { $nin: excludeRoles },
+        isDeleted: { $ne: true }
+      }).populate('role', 'role');
+    } else if (userRole.toLowerCase() === "admin" || userRole.toLowerCase() === "branch admin") {
+      // Admin/Branch Admin sees all users except super admins and admins/branch admins
+      const excludeRoles = [];
+      if (superAdminRole) excludeRoles.push(superAdminRole._id);
+      if (adminRole) excludeRoles.push(adminRole._id);
+      
+      users = await User.find({ 
+        role: { $nin: excludeRoles },
+        isDeleted: { $ne: true }
+      }).populate('role', 'role');
+    } else {
+      return res.status(403).json({
         success: false,
-        message: "User not found.",
+        message: "Access denied.",
       });
     }
 
@@ -171,8 +114,8 @@ const toggleUserStatus = async (req, res) => {
       });
     }
 
-    // Find the category and toggle isActive
-    const user = await User.findById(id);
+    // Find the user and toggle isActive
+    const user = await User.findOne({ _id: id, isDeleted: { $ne: true } });
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -213,7 +156,14 @@ const getUserById = async (req, res) => {
     }
 
     // Find the user first
-    const userData = await User.findById(userId);
+    let userData = await User.findById(userId);
+    let userType = "User";
+
+    if (!userData) {
+      const { Staff } = require("../../models/administration/staffModel");
+      userData = await Staff.findById(userId);
+      userType = "Staff";
+    }
 
     if (!userData) {
       return res.status(404).json({
@@ -221,12 +171,16 @@ const getUserById = async (req, res) => {
         message: "User not found.",
       });
     }
+
     const user = {
-      name: userData?.name,
-      email: userData?.email,
-      phone: userData?.phone,
-      image: userData?.image,
+      name: userData?.name || userData?.fullName,
+      email: userData?.email || userData?.officialEmail,
+      phone: userData?.phone || userData?.staffPhoneNumber,
+      image: userData?.image || userData?.photo,
+      branch: userData?.branch || null,
+      userType,
     };
+
     res.status(200).json({
       success: true,
       message: "User retrieved successfully.",
@@ -241,8 +195,149 @@ const getUserById = async (req, res) => {
   }
 };
 
+// ✅ Update User (PUT)
+const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, mobile, password, role, isActive } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required.",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid User ID.",
+      });
+    }
+
+    const user = await User.findOne({ _id: id, isDeleted: { $ne: true } });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // Check unique email and mobile if they are being updated to different values
+    if (email && email.toLowerCase() !== user.email) {
+      const emailExist = await User.findOne({ email: email.toLowerCase(), isDeleted: { $ne: true } });
+      if (emailExist) {
+        return res.status(422).json({
+          success: false,
+          message: "Email already in use.",
+        });
+      }
+      user.email = email.toLowerCase();
+    }
+
+    if (mobile && mobile !== user.mobile) {
+      const mobileExist = await User.findOne({ mobile, isDeleted: { $ne: true } });
+      if (mobileExist) {
+        return res.status(422).json({
+          success: false,
+          message: "Mobile number already in use.",
+        });
+      }
+      user.mobile = mobile;
+    }
+
+    if (name) user.name = name;
+
+    if (password) {
+      const { generatePasswordHash } = require("../../utils/bcrypt.js");
+      user.password = await generatePasswordHash(password);
+    }
+
+    if (role) {
+      const roleDoc = await Role.findOne({ _id: role });
+      if (!roleDoc) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid role.",
+        });
+      }
+      user.role = roleDoc._id;
+    }
+
+    if (isActive !== undefined) user.isActive = isActive;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "User updated successfully.",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        role: user.role,
+        isActive: user.isActive
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while updating the user.",
+      error: error.message,
+    });
+  }
+};
+
+// ✅ Soft Delete User (DELETE)
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required.",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid User ID.",
+      });
+    }
+
+    const user = await User.findOne({ _id: id, isDeleted: { $ne: true } });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    user.isDeleted = true;
+    user.deletedAt = new Date();
+    user.isActive = false; // Disable logins immediately
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "User deleted successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while deleting the user.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getUser,
   toggleUserStatus,
   getUserById,
+  updateUser,
+  deleteUser,
 };

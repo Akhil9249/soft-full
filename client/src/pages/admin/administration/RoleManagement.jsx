@@ -685,6 +685,15 @@ export const RoleManagement = () => {
     }
   };
 
+  // Handle tab change
+  const handleTabChange = (tabName) => {
+    if (tabName === 'roles') {
+      cancelEdit();
+    } else {
+      setActiveTab(tabName);
+    }
+  };
+
   // Pagination handlers
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
@@ -1083,7 +1092,7 @@ export const RoleManagement = () => {
         <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6 sm:mt-8">
           <button 
             type="button"
-            onClick={editingRole ? cancelEdit : () => setActiveTab('roles')}
+            onClick={editingRole ? cancelEdit : () => handleTabChange('roles')}
             className="w-full sm:w-auto px-4 sm:px-6 py-2 border border-gray-300 rounded-md font-medium text-gray-700 hover:bg-gray-100 transition-colors duration-200"
           >
             {editingRole ? 'Cancel Edit' : 'Cancel'}
@@ -1230,7 +1239,7 @@ export const RoleManagement = () => {
     <>
     {/* Content Tabs & Actions */}
     <Navbar headData={headData} activeTab={activeTab}>
-      <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={handleTabChange} />
     </Navbar>
 
     {/* Conditional Rendering */}

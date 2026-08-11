@@ -41,7 +41,7 @@ export const Courses = () => {
   const syllabusStatus = ['Choose Syllabus Status', 'Pending', 'In Progress', 'Completed'];
   const placementStatus = ['Choose Placement Status', 'Placed', 'Not Placed'];
   const roles = ['Choose Role', 'super admin', 'admin', 'mentor', 'intern'];
-  const durations = ['3 Months', '6 Months', '1 Year'];
+  const durations = ['3 Months', '4 Months', '5 Months', '6 Months', '1 Year'];
   const courseTypes = ['Regular', 'Offer', 'Online'];
   const [categories, setCategories] = useState([]);
   const [courseList, setCourseList] = useState([]);
@@ -249,6 +249,52 @@ export const Courses = () => {
     }
   };
 
+  const handleViewSyllabus = async (courseOrUrl) => {
+    if (!courseOrUrl) return;
+
+    // If it's a string URL
+    if (typeof courseOrUrl === 'string') {
+      if (courseOrUrl.startsWith('blob:')) {
+        window.open(courseOrUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      if (editingCourse && editingCourse._id) {
+        try {
+          setLoading(true);
+          const response = await downloadCourseSyllabus(editingCourse._id);
+          const blob = new Blob([response.data], { 
+            type: response.headers['content-type'] || 'application/pdf' 
+          });
+          const url = URL.createObjectURL(blob);
+          window.open(url, '_blank', 'noopener,noreferrer');
+          setLoading(false);
+        } catch (error) {
+          setLoading(false);
+          window.open(courseOrUrl, '_blank', 'noopener,noreferrer');
+        }
+        return;
+      }
+      window.open(courseOrUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // If it's a course object
+    try {
+      setLoading(true);
+      const response = await downloadCourseSyllabus(courseOrUrl._id);
+      const blob = new Blob([response.data], { 
+        type: response.headers['content-type'] || 'application/pdf' 
+      });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setLoading(false);
+    } catch (error) {
+      setLoading(false);
+      console.error('Error viewing syllabus:', error);
+      showNotification('error', 'View Error', 'Failed to view syllabus. Please try again.');
+    }
+  };
+
   // No client-side filtering needed - server handles it
 
   const handleEditCourse = (course) => {
@@ -274,6 +320,14 @@ export const Courses = () => {
     });
     setSyllabusPreview(null);
     setActiveTab('courses');
+  };
+
+  const handleTabChange = (tabName) => {
+    if (tabName === 'courses') {
+      handleCancelEdit();
+    } else {
+      setActiveTab(tabName);
+    }
   };
 
   const handleDeleteCourse = (course) => {
@@ -954,7 +1008,7 @@ export const Courses = () => {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
-                          <div className="text-sm text-gray-500">ID: {course._id?.slice(-6) || 'N/A'}</div>
+                          {/* <div className="text-sm text-gray-500">ID: {course._id?.slice(-6) || 'N/A'}</div> */}
                         </div>
                       </div>
                     </td>
@@ -986,14 +1040,12 @@ export const Courses = () => {
                           <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
                           </svg>
-                          <a 
-                            href={course.syllabus} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
+                          <button 
+                            onClick={() => handleViewSyllabus(course)}
                             className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                           >
                             View
-                          </a>
+                          </button>
                           <span className="text-gray-300">|</span>
                           <button 
                             onClick={() => handleDownloadSyllabus(course)}
@@ -1084,14 +1136,12 @@ export const Courses = () => {
                         <svg className="w-4 h-4 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"></path>
                         </svg>
-                        <a 
-                          href={course.syllabus} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                        <button 
+                          onClick={() => handleViewSyllabus(course)}
                           className="text-blue-600 hover:text-blue-800 text-xs font-semibold"
                         >
                           View
-                        </a>
+                        </button>
                         <span className="text-gray-300">|</span>
                         <button 
                           onClick={() => handleDownloadSyllabus(course)}
@@ -1599,7 +1649,7 @@ export const Courses = () => {
         <div className="flex-1 ">
 
           <Navbar headData={headData} activeTab={activeTab}>
-            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={handleTabChange} />
           </Navbar>
 
           {activeTab === 'courses' ? renderCoursesList() : renderNewCourseForm()}
@@ -1705,14 +1755,12 @@ export const Courses = () => {
                       </div>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      <a 
-                        href={viewingCourse.syllabus} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                      <button 
+                        onClick={() => handleViewSyllabus(viewingCourse)}
                         className="px-3 py-1.5 text-xs font-medium text-orange-600 bg-orange-50 border border-orange-200 rounded hover:bg-orange-100 transition-colors"
                       >
                         View
-                      </a>
+                      </button>
                       <button 
                         onClick={() => handleDownloadSyllabus(viewingCourse)}
                         className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 transition-colors"

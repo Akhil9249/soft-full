@@ -264,6 +264,14 @@ export const Topics = () => {
     setActiveTab('topics-list');
   };
 
+  const handleTabChange = (tabName) => {
+    if (tabName === 'topics-list') {
+      handleCancelEdit();
+    } else {
+      setActiveTab(tabName);
+    }
+  };
+
   // Handle delete topic
   const handleDeleteTopic = (topic) => {
     setDeletingTopic(topic);
@@ -468,7 +476,7 @@ export const Topics = () => {
       <Navbar headData={headData} activeTab={activeTab}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="w-full sm:w-auto">
-            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+            <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={handleTabChange} />
           </div>
 
           <div className="flex justify-end w-full sm:w-auto">

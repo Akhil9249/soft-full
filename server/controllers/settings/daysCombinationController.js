@@ -1,5 +1,8 @@
 // controllers/settings/daysCombinationController.js
 const DayCombination = require("../../models/settings/daysCombinationModel");
+const { Staff } = require("../../models/administration/staffModel");
+const { User } = require("../../models/administration/userModel");
+const Branch = require("../../models/settings/branchModel");
 
 // Create new day combination
 const createDayCombination = async (req, res) => {
@@ -38,7 +41,36 @@ const createDayCombination = async (req, res) => {
 // Get all day combinations
 const getDayCombinations = async (req, res) => {
     try {
-        const combinations = await DayCombination.find().populate("dayCombination").sort({ createdAt: -1 });
+        const userId = req.userId;
+        let combinations;
+
+        if (userId) {
+            // Find role of userId
+            let user = await Staff.findById(userId).populate('role', 'role');
+            let roleName = user?.role?.role;
+            if (!roleName) {
+                user = await User.findById(userId).populate('role', 'role');
+                roleName = user?.role?.role;
+            }
+
+            if (roleName?.toLowerCase() === 'mentor' && user?.branch) {
+                // If mentor, get their branch and find the day combinations assigned to that branch
+                const branchDoc = await Branch.findById(user.branch);
+                if (branchDoc && branchDoc.days && branchDoc.days.length > 0) {
+                    combinations = await DayCombination.find({
+                        _id: { $in: branchDoc.days }
+                    }).populate("dayCombination").sort({ createdAt: -1 });
+                } else {
+                    combinations = [];
+                }
+            }
+        }
+
+        // Fallback: If not mentor or no combinations found for mentor's branch, return all combinations
+        if (!combinations) {
+            combinations = await DayCombination.find().populate("dayCombination").sort({ createdAt: -1 });
+        }
+
         res.status(200).json({ message: "Day combinations retrieved successfully", data: combinations });
     } catch (error) {
         console.log("Error getting day combinations:", error);

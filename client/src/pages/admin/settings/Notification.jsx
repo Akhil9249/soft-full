@@ -151,20 +151,7 @@ const NotificationForm = memo(({
                     </div>
                 </div>
 
-                {/* Push Notification Checkbox */}
-                <div className="flex items-center space-x-2">
-                    <input
-                        type="checkbox"
-                        id="push-notification"
-                            name="pushNotification"
-                            checked={formData.pushNotification}
-                            onChange={handleInputChange}
-                        className="w-4 h-4 text-[#F9A825] bg-gray-100 rounded border-gray-300 focus:ring-[#F9A825]"
-                    />
-                    <label htmlFor="push-notification" className="text-sm text-gray-600">
-                        Push Notification
-                    </label>
-                </div>
+
             </div>
 
                 {/* Audience Selection Section */}
@@ -631,8 +618,7 @@ export const Notification = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [notificationToDelete, setNotificationToDelete] = useState(null);
 
-    // State for expandable rows
-    const [expandedRows, setExpandedRows] = useState(new Set());
+
     const [exporting, setExporting] = useState(false);
 
     // Filters
@@ -1052,6 +1038,14 @@ export const Notification = () => {
         setActiveTab('notifications');
     }, []);
 
+    const handleTabChange = useCallback((tabName) => {
+        if (tabName === 'notifications') {
+            handleCancelEdit();
+        } else {
+            setActiveTab(tabName);
+        }
+    }, [handleCancelEdit]);
+
     // Delete notification handler
     const handleDeleteClick = useCallback((notification) => {
         setNotificationToDelete(notification);
@@ -1103,18 +1097,7 @@ export const Notification = () => {
         setViewingNotification(null);
     }, []);
 
-    // Toggle row expansion
-    const toggleRowExpansion = useCallback((notificationId) => {
-        setExpandedRows(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(notificationId)) {
-                newSet.delete(notificationId);
-            } else {
-                newSet.add(notificationId);
-            }
-            return newSet;
-        });
-    }, []);
+
 
     // Pagination handlers
     const handlePageChange = useCallback((page) => {
@@ -1276,44 +1259,38 @@ export const Notification = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th scope="col" className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Title
                                 </th>
-                                <th scope="col" className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Type
                                 </th>
-                                <th scope="col" className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Audience
                                 </th>
-                                <th scope="col" className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Branch
                                 </th>
-                                <th scope="col" className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Push Notification
-                                </th>
-                                <th scope="col" className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Created Date
                                 </th>
-                                <th scope="col" className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Actions
                                 </th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {notifications.map((notification) => {
-                                const isExpanded = expandedRows.has(notification._id);
-                                const hasAudienceDetails = notification.batches?.length > 0 || notification.courses?.length > 0 || notification.individualInterns?.length > 0;
-                                
                                 return (
                                     <React.Fragment key={notification._id}>
                                         {/* Main row */}
                                         <tr className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
+                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
+                                                <div className="flex items-center justify-center">
                                                     <div className="w-8 h-8 bg-[#F9A825]/10 rounded-full flex items-center justify-center mr-3">
                                                         <BellRing className="w-4 h-4 text-[#F9A825]" />
                                                     </div>
-                                                    <div>
+                                                    <div className="text-left">
                                                         <div className="text-sm font-medium text-gray-900 max-w-xs truncate" title={notification.title}>
                                                             {notification.title}
                                                         </div>
@@ -1323,35 +1300,17 @@ export const Notification = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                                                 <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                                                     {notification.type}
                                                 </span>
                                             </td>
-                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
-                                                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                                        {notification.audience}
-                                                    </span>
-                                                    {hasAudienceDetails && (
-                                                        <button
-                                                            onClick={() => toggleRowExpansion(notification._id)}
-                                                            className="ml-2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                                                            title={isExpanded ? "Hide details" : "Show details"}
-                                                        >
-                                                            <svg 
-                                                                className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
-                                                                fill="none" 
-                                                                stroke="currentColor" 
-                                                                viewBox="0 0 24 24"
-                                                            >
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                                                            </svg>
-                                                        </button>
-                                                    )}
-                                                </div>
+                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
+                                                <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                    {notification.audience}
+                                                </span>
                                             </td>
-                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                                                 {notification.branch ? (
                                                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
                                                         {notification.branch.branchName || notification.branch}
@@ -1360,40 +1319,31 @@ export const Notification = () => {
                                                     <span className="text-gray-400 text-sm">-</span>
                                                 )}
                                             </td>
-                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                                                {notification.pushNotification ? (
-                                                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
-                                                        Yes
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-400 text-sm">No</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
+                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center">
                                                 <div>
                                                     <div>{notification.createdAt ? new Date(notification.createdAt).toLocaleDateString() : 'N/A'}</div>
                                                     <div className="text-[10px] sm:text-xs">{notification.createdAt ? new Date(notification.createdAt).toLocaleTimeString() : 'N/A'}</div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
-                                                <div className="flex space-x-2">
-                                                    <button
+                                             <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium text-center">
+                                                <div className="flex justify-center space-x-2">
+                                                    <button 
                                                         onClick={() => handleViewNotification(notification)}
-                                                        className="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded text-xs font-medium transition-colors"
-                                                        title="View notification"
+                                                        className="text-blue-600 hover:text-blue-900 font-medium px-1"
+                                                        title="View notification details"
                                                     >
                                                         View
                                                     </button>
-                                                    <button
+                                                    <button 
                                                         onClick={() => handleEditNotification(notification)}
-                                                        className="text-[#F9A825] hover:text-[#F9A825]/80 bg-[#F9A825]/10 hover:bg-[#F9A825]/20 px-2 py-1 rounded text-xs font-medium transition-colors"
+                                                        className="text-orange-600 hover:text-orange-900 font-medium px-1"
                                                         title="Edit notification"
                                                     >
                                                         Edit
                                                     </button>
-                                                    <button
+                                                    <button 
                                                         onClick={() => handleDeleteClick(notification)}
-                                                        className="text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-2 py-1 rounded text-xs font-medium transition-colors"
+                                                        className="text-red-600 hover:text-red-900 font-medium px-1"
                                                         title="Delete notification"
                                                     >
                                                         Delete
@@ -1402,59 +1352,6 @@ export const Notification = () => {
                                             </td>
                                         </tr>
                                         
-                                        {/* Expanded row with audience details */}
-                                        {isExpanded && hasAudienceDetails && (
-                                            <tr className="bg-gray-50">
-                                                <td colSpan="7" className="px-4 lg:px-6 py-4">
-                                                    <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                                        <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center">
-                                                            <svg className="w-4 h-4 mr-2 text-[#F9A825]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                                                            </svg>
-                                                            Target Audience Details
-                                                        </h4>
-                                                        <div className="space-y-3">
-                                                            {notification.batches?.length > 0 && (
-                                                                <div>
-                                                                    <span className="text-xs font-medium text-gray-600 mb-2 block">Batches:</span>
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {notification.batches.map((batch, index) => (
-                                                                            <span key={index} className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-full font-medium">
-                                                                                {typeof batch === 'object' ? batch.batchName : batch}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            {notification.courses?.length > 0 && (
-                                                                <div>
-                                                                    <span className="text-xs font-medium text-gray-600 mb-2 block">Courses:</span>
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {notification.courses.map((course, index) => (
-                                                                            <span key={index} className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-full font-medium">
-                                                                                {typeof course === 'object' ? course.courseName : course}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            {notification.individualInterns?.length > 0 && (
-                                                                <div>
-                                                                    <span className="text-xs font-medium text-gray-600 mb-2 block">Individual Interns:</span>
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {notification.individualInterns.map((intern, index) => (
-                                                                            <span key={index} className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full font-medium">
-                                                                                {typeof intern === 'object' ? intern.fullName : intern}
-                                                                            </span>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
                                     </React.Fragment>
                                 );
                             })}
@@ -1465,9 +1362,6 @@ export const Notification = () => {
                 {/* Mobile Card View */}
                 <div className="md:hidden space-y-4">
                     {notifications.map((notification) => {
-                        const hasAudienceDetails = notification.batches?.length > 0 || notification.courses?.length > 0 || notification.individualInterns?.length > 0;
-                        const isExpanded = expandedRows.has(notification._id);
-                        
                         return (
                             <div key={notification._id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                                 <div className="flex items-start justify-between mb-3">
@@ -1497,78 +1391,12 @@ export const Notification = () => {
                                                     {notification.branch.branchName || notification.branch}
                                                 </span>
                                             )}
-                                            {notification.pushNotification && (
-                                                <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
-                                                    Push
-                                                </span>
-                                            )}
                                         </div>
                                         <div className="text-xs text-gray-500 mt-2">
                                             {notification.createdAt ? new Date(notification.createdAt).toLocaleDateString() : 'N/A'} {notification.createdAt ? new Date(notification.createdAt).toLocaleTimeString() : 'N/A'}
                                         </div>
                                     </div>
                                 </div>
-                                
-                                {hasAudienceDetails && (
-                                    <button
-                                        onClick={() => toggleRowExpansion(notification._id)}
-                                        className="w-full mb-3 text-xs text-gray-600 hover:text-gray-800 flex items-center justify-center py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
-                                    >
-                                        {isExpanded ? 'Hide Details' : 'Show Details'}
-                                        <svg 
-                                            className={`w-3 h-3 ml-2 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
-                                            fill="none" 
-                                            stroke="currentColor" 
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-                                        </svg>
-                                    </button>
-                                )}
-                                
-                                {isExpanded && hasAudienceDetails && (
-                                    <div className="bg-gray-50 rounded-lg p-3 mb-3 border border-gray-200">
-                                        <h4 className="text-xs font-medium text-gray-900 mb-2">Target Audience Details</h4>
-                                        <div className="space-y-2">
-                                            {notification.batches?.length > 0 && (
-                                                <div>
-                                                    <span className="text-xs font-medium text-gray-600">Batches:</span>
-                                                    <div className="flex flex-wrap gap-1 mt-1">
-                                                        {notification.batches.map((batch, index) => (
-                                                            <span key={index} className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
-                                                                {typeof batch === 'object' ? batch.batchName : batch}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {notification.courses?.length > 0 && (
-                                                <div>
-                                                    <span className="text-xs font-medium text-gray-600">Courses:</span>
-                                                    <div className="flex flex-wrap gap-1 mt-1">
-                                                        {notification.courses.map((course, index) => (
-                                                            <span key={index} className="px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded-full">
-                                                                {typeof course === 'object' ? course.courseName : course}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {notification.individualInterns?.length > 0 && (
-                                                <div>
-                                                    <span className="text-xs font-medium text-gray-600">Individual Interns:</span>
-                                                    <div className="flex flex-wrap gap-1 mt-1">
-                                                        {notification.individualInterns.map((intern, index) => (
-                                                            <span key={index} className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
-                                                                {typeof intern === 'object' ? intern.fullName : intern}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
                                 
                                 <div className="flex flex-col gap-2">
                                     <button
@@ -1698,13 +1526,12 @@ export const Notification = () => {
                 n.type || 'N/A',
                 n.audience || 'N/A',
                 (n.branch?.branchName || (typeof n.branch === 'string' ? n.branch : '-') || '-'),
-                n.pushNotification ? 'Yes' : 'No',
                 (n.createdAt ? new Date(n.createdAt).toLocaleDateString('en-GB') : 'N/A')
             ]);
 
             autoTable(doc, {
                 startY: 35,
-                head: [['Title', 'Type', 'Audience', 'Branch', 'Push Notification', 'Created']],
+                head: [['Title', 'Type', 'Audience', 'Branch', 'Created']],
                 body: tableData,
                 theme: 'striped',
                 headStyles: { fillColor: [247, 147, 30], textColor: 255, fontStyle: 'bold', fontSize: 9 },
@@ -1714,7 +1541,6 @@ export const Notification = () => {
                     2: { cellWidth: 'auto', halign: 'left', fontSize: 8 },
                     3: { cellWidth: 'auto', halign: 'left', fontSize: 8 },
                     4: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
-                    5: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
                 },
                 styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak', lineWidth: 0.1 },
                 margin: { left: 10, right: 10 },
@@ -1741,7 +1567,7 @@ export const Notification = () => {
     return (
         <>
         <Navbar headData={headData} activeTab={activeTab}>
-          <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+          <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={handleTabChange} />
         </Navbar>
         <div className="flex-1">
             {activeTab === 'notifications' && <NotificationsView />}
@@ -1877,7 +1703,7 @@ export const Notification = () => {
                             <p className="leading-6"><span className="font-semibold text-gray-900">Type:</span> <span className="text-gray-600">{viewingNotification.type || 'N/A'}</span></p>
                             <p className="leading-6"><span className="font-semibold text-gray-900">Audience:</span> <span className="text-gray-600">{viewingNotification.audience || 'N/A'}</span></p>
                             <p className="leading-6"><span className="font-semibold text-gray-900">Branch:</span> <span className="text-gray-600">{viewingNotification.branch?.branchName || (typeof viewingNotification.branch === 'string' ? viewingNotification.branch : 'N/A')}</span></p>
-                            <p className="leading-6"><span className="font-semibold text-gray-900">Push Notification:</span> <span className="text-gray-600">{viewingNotification.pushNotification ? 'Yes' : 'No'}</span></p>
+
                             <p className="leading-6"><span className="font-semibold text-gray-900">Created:</span> <span className="text-gray-600">{viewingNotification.createdAt ? new Date(viewingNotification.createdAt).toLocaleString() : 'N/A'}</span></p>
                             {viewingNotification._id && (
                                 <p className="leading-6"><span className="font-semibold text-gray-900">ID:</span> <span className="text-gray-600">{viewingNotification._id.slice(-6)}</span></p>

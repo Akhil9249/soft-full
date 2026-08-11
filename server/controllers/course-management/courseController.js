@@ -47,7 +47,7 @@ const createCourse = async (req, res) => {
     }
 
     // Check if course with same name already exists in this category
-    const existingCourse = await Course.findOne({ courseName, category });
+    const existingCourse = await Course.findOne({ courseName, category, isDeleted: { $ne: true } });
     if (existingCourse) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({ message: "Course with this name already exists in this category" });
@@ -95,7 +95,7 @@ const getCourses = async (req, res) => {
     const courseType = req.query.courseType || '';
 
     // Build query object
-    let query = {};
+    let query = { isDeleted: { $ne: true } };
 
     // Add search functionality
     if (search) {
@@ -147,7 +147,7 @@ const getCourses = async (req, res) => {
 // Get single course
 const getCourseById = async (req, res) => {
   try {
-    const course = await Course.findById(req.params.id)
+    const course = await Course.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
       .populate("category", "categoryName")
       .populate("modules", "moduleName totalTopics");
     if (!course) return res.status(404).json({ message: "Course not found" });
@@ -163,7 +163,7 @@ const updateCourse = async (req, res) => {
     const { modules, category: newCategoryId, syllabus } = req.body;
     
     // Get current course to check if category is changing
-    const currentCourse = await Course.findById(req.params.id);
+    const currentCourse = await Course.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     if (!currentCourse) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(404).json({ message: "Course not found" });
@@ -227,15 +227,14 @@ const updateCourse = async (req, res) => {
 // Delete course
 const deleteCourse = async (req, res) => {
   try {
-    const course = await Course.findById(req.params.id);
+    const course = await Course.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
     if (!course) return res.status(404).json({ message: "Course not found" });
 
-    // Clean up syllabus file if it exists
-    if (course.syllabus) {
-      await deleteFromCloudinary(course.syllabus);
-    }
-
-    await Course.findByIdAndDelete(req.params.id);
+    // Mark as soft deleted
+    course.isDeleted = true;
+    course.deletedAt = new Date();
+    course.isActive = false;
+    await course.save();
 
     // Remove course from category's courses array
     const category = await Category.findById(course.category);

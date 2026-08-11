@@ -46,7 +46,7 @@ const getWeeklySchedules = async (req, res) => {
     const weeklySchedules = await WeeklySchedule.find(filter)
       .populate({
         path: 'mentor',
-        select: 'fullName email'
+        select: 'fullName email employmentStatus'
       })
       .populate({
         path: 'schedule.time',
@@ -62,7 +62,7 @@ const getWeeklySchedules = async (req, res) => {
       })
       .populate({
         path: 'schedule.sub_details.batch',
-        select: 'batchName branchName'
+        select: 'batchName branchName status'
       });
     console.log('Found weekly schedules:', weeklySchedules.length);
     res.status(200).json({ message: "Weekly schedules retrieved successfully", data: weeklySchedules });
@@ -71,14 +71,14 @@ const getWeeklySchedules = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
+ 
 // Get Single Weekly Schedule
 const getWeeklyScheduleById = async (req, res) => {
   try {
     const weeklySchedule = await WeeklySchedule.findById(req.params.id)
       .populate({
         path: 'mentor',
-        select: 'fullName email'
+        select: 'fullName email employmentStatus'
       })
       .populate({
         path: 'schedule.time',
@@ -94,7 +94,7 @@ const getWeeklyScheduleById = async (req, res) => {
       })
       .populate({
         path: 'schedule.sub_details.batch',
-        select: 'batchName branchName'
+        select: 'batchName branchName status'
       });
 
     if (!weeklySchedule) return res.status(404).json({ message: "Weekly schedule not found" });

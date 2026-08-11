@@ -531,7 +531,8 @@ const searchInterns = async (req, res) => {
         { batch: { $regex: searchRegex } },
         { companyName: { $regex: searchRegex } },
         { jobRole: { $regex: searchRegex } }
-      ]
+      ],
+      courseStatus: "Ongoing"
     };
 
     // Role-based branch restriction: only super admin sees all
