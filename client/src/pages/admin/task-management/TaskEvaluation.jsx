@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import AdminService from '../../../services/admin-api-service/AdminService';
 import Tabs from '../../../components/button/Tabs';
 import { Navbar } from '../../../components/admin/AdminNavBar';
@@ -6,6 +7,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export const TaskEvaluation = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('submissions-list');
   const [tasks, setTasks] = useState([]);
   const [selectedTask, setSelectedTask] = useState('');
@@ -17,7 +19,7 @@ export const TaskEvaluation = () => {
   
   // Loading states
   const [loading, setLoading] = useState(false);
-  const [tasksLoading, setTasksLoading] = useState(false);
+  const [tasksLoading, setTasksLoading] = useState(true);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
 
   // Form State
@@ -249,7 +251,8 @@ export const TaskEvaluation = () => {
         setTasksLoading(true);
         // Fetch tasks
         const tasksRes = await getTasksData('page=1&limit=10000');
-        setTasks(tasksRes?.data || []);
+        const tasksList = tasksRes?.data || [];
+        setTasks(tasksList);
         
         // Fetch interns
         const internsRes = await getInternsData('page=1&limit=10000');
@@ -262,6 +265,15 @@ export const TaskEvaluation = () => {
         // Fetch modules
         const modulesRes = await getModulesData('page=1&limit=10000');
         setModules(modulesRes?.data || []);
+
+        // Auto select task if state passed from TaskManagement
+        if (location.state?.taskId) {
+          setSelectedTask(location.state.taskId);
+          const targetTask = tasksList.find(t => t._id === location.state.taskId);
+          if (targetTask?.module) {
+            setSelectedModule(targetTask.module);
+          }
+        }
       } catch (err) {
         console.error('Failed to load form lookup data:', err);
         showNotification('error', 'Error', 'Failed to load lookup data');
@@ -270,7 +282,7 @@ export const TaskEvaluation = () => {
       }
     };
     loadLookups();
-  }, []);
+  }, [location.state]);
 
   // Fetch submissions when a task is selected
   useEffect(() => {
@@ -482,8 +494,15 @@ export const TaskEvaluation = () => {
       </Navbar>
 
       <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
-          {activeTab === 'submissions-list' ? (
-            <div className="space-y-6">
+        {tasksLoading ? (
+          <div className="flex items-center justify-center p-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+              <p className="text-gray-500 text-lg">Loading evaluation data...</p>
+            </div>
+          </div>
+        ) : activeTab === 'submissions-list' ? (
+          <div className="space-y-6">
               {/* Task Selector Card */}
               <div className="bg-gray-50 rounded-lg py-2.5 px-4 border border-gray-200/60 grid grid-cols-1 md:grid-cols-3 items-end gap-3">
                 <div className="w-full">
@@ -510,9 +529,11 @@ export const TaskEvaluation = () => {
                     className="w-full p-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 h-[38px]"
                   >
                     <option value="">Choose Task</option>
-                    {(selectedModule 
-                      ? tasks.filter(t => t.module === selectedModule) 
-                      : tasks
+                    {(location.state?.taskId
+                      ? tasks.filter(t => t._id === location.state.taskId)
+                      : (selectedModule 
+                          ? tasks.filter(t => t.module === selectedModule) 
+                          : tasks)
                     ).map(task => (
                       <option key={task._id} value={task._id}>{task.title}</option>
                     ))}

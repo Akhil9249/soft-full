@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom';
 import Tabs from '../../../components/button/Tabs';
 import { Navbar } from '../../../components/admin/AdminNavBar';
 // import useAxiosPrivate from '../../../hooks/useAxiosPrivate';
@@ -7,6 +8,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export const TaskManagement = () => {
+  const navigate = useNavigate();
 
   // State to manage the active tab. 'tasks-list' is the default.
   const [activeTab, setActiveTab] = useState('tasks-list');
@@ -1300,12 +1302,12 @@ export const TaskManagement = () => {
                       <tr>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
                         <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Task Type</th>
                         <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
                         <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Mentor</th>
                         <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Audience</th>
                         <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                         <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                        <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Evaluation</th>
                         <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
@@ -1327,11 +1329,6 @@ export const TaskManagement = () => {
                                 <div className="text-sm text-gray-500">ID: {task._id?.slice(-6) || 'N/A'}</div>
                               </div>
                             </div>
-                          </td>
-                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
-                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                              {task.taskType}
-                            </span>
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
@@ -1361,6 +1358,14 @@ export const TaskManagement = () => {
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
                             {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                            <button
+                              onClick={() => navigate('/task-evaluation', { state: { taskId: task._id } })}
+                              className="text-orange-600 hover:text-orange-700 font-semibold inline-flex items-center gap-1 hover:underline"
+                            >
+                              Evaluate
+                            </button>
                           </td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex justify-center space-x-2">
@@ -1444,6 +1449,12 @@ export const TaskManagement = () => {
                         <div><span className="font-medium">Due Date:</span> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</div>
                       </div>
                       <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-200">
+                        <button
+                          onClick={() => navigate('/task-evaluation', { state: { taskId: task._id } })}
+                          className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 transition-colors"
+                        >
+                          Evaluate
+                        </button>
                         <button
                           onClick={() => handleViewTask(task)}
                           className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"

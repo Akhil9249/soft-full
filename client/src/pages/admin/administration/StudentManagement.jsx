@@ -150,16 +150,7 @@ export const StudentManagement = () => {
       const branchesData = (res?.data || []).filter(b => b.isActive !== false);
       setBranches(branchesData);
       
-      if (branchesData.length > 0) {
-        const calicutBranch = branchesData.find(b => b.branchName.toLowerCase().includes('calicut'));
-        const defaultBranchId = calicutBranch ? calicutBranch._id : branchesData[0]._id;
-        setFilters(prev => ({
-          ...prev,
-          branch: defaultBranchId
-        }));
-      } else {
-        fetchInterns(1, searchTerm, filters.courseStatus, filters.course, '', filters.batch);
-      }
+      fetchInterns(1, searchTerm, filters.courseStatus, filters.course, '', filters.batch);
     } catch (err) {
       console.error('Failed to load branches:', err);
       // Set default branches if API fails
@@ -784,11 +775,14 @@ export const StudentManagement = () => {
               {branchesLoading ? (
                 <option>Loading branches...</option>
               ) : (
-                branches.map(branch => (
-                  <option key={branch._id} value={branch._id}>
-                    {branch.branchName}
-                  </option>
-                ))
+                <>
+                  <option value="">All Branches</option>
+                  {branches.map(branch => (
+                    <option key={branch._id} value={branch._id}>
+                      {branch.branchName}
+                    </option>
+                  ))}
+                </>
               )}
             </select>
           )}

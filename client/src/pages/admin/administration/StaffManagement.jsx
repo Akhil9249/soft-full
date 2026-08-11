@@ -167,16 +167,7 @@ export const StaffManagement = () => {
             const branchesData = (res.data?.data || res.data || []).filter(b => b.isActive !== false);
             setBranches(Array.isArray(branchesData) ? branchesData : []);
 
-            if (branchesData.length > 0) {
-                const calicutBranch = branchesData.find(b => b.branchName.toLowerCase().includes('calicut'));
-                const defaultBranchId = calicutBranch ? calicutBranch._id : branchesData[0]._id;
-                setFilters(prev => ({
-                    ...prev,
-                    branch: defaultBranchId
-                }));
-            } else {
-                fetchStaff(1, searchTerm, filters.department, filters.employmentStatus, '');
-            }
+            fetchStaff(1, searchTerm, filters.department, filters.employmentStatus, '');
         } catch (err) {
             console.error('Failed to load branches:', err);
             setBranches([]);
@@ -733,6 +724,7 @@ export const StaffManagement = () => {
                             onChange={(e) => handleFilterChange('branch', e.target.value)}
                             className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                         >
+                            <option value="">All Branches</option>
                             {branches.map(branch => (
                                 <option key={branch._id} value={branch._id}>{branch.branchName}</option>
                             ))}
@@ -782,7 +774,6 @@ export const StaffManagement = () => {
                                 <tr>
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -820,7 +811,6 @@ export const StaffManagement = () => {
                                             <div className="text-sm text-gray-900">{staffMember.email}</div>
                                             <div className="text-sm text-gray-500">{staffMember.officialEmail}</div>
                                         </td>
-                                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{staffMember.department}</td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{staffMember.role?.role || 'N/A'}</td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{staffMember.branch?.branchName || 'N/A'}</td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
@@ -841,7 +831,7 @@ export const StaffManagement = () => {
                                                     View Batches
                                                 </button>
                                             ) : (
-                                                <span className="text-gray-400 text-xs italic">N/A</span>
+                                                <span className="text-gray-400 text-xs italic">No Batches</span>
                                             )}
                                         </td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium flex justify-center">
