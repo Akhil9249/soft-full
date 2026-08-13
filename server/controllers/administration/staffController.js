@@ -1,6 +1,7 @@
 // controllers/staffController.js
 const mongoose = require("mongoose");
 const { Staff } = require("../../models/administration/staffModel");
+const { User } = require("../../models/administration/userModel");
 const WeeklySchedule = require("../../models/schedule/weeklyScheduleModel");
 const Timing = require("../../models/schedule/timingModel");
 const { generatePasswordHash } = require("../../utils/bcrypt");
@@ -12,10 +13,10 @@ const deleteFromCloudinary = async (url) => {
   try {
     const parts = url.split('/upload/');
     if (parts.length < 2) return;
-    
+
     let pathPart = parts[1].replace(/^v\d+\//, ''); // Remove version
     const isRaw = url.includes('/raw/upload/');
-    
+
     let publicId = pathPart;
     if (!isRaw) {
       // Remove extension for images
@@ -24,7 +25,7 @@ const deleteFromCloudinary = async (url) => {
         publicId = pathPart.substring(0, lastDotIndex);
       }
     }
-    
+
     await cloudinary.uploader.destroy(publicId, { resource_type: isRaw ? 'raw' : 'image' });
     console.log(`Deleted from cloudinary: ${publicId}`);
   } catch (err) {
@@ -45,7 +46,7 @@ const createDefaultWeeklySchedule = async (mentorId) => {
     // Get default timings (you may need to adjust this based on your timing data)
     // const defaultTimings = await Timing.find({ isActive: true }).limit(3);
     const defaultTimings = await Timing.find().limit(3);
-    
+
     if (defaultTimings.length === 0) {
       console.log('No default timings found, creating weekly schedule without specific timings');
       // Create a weekly schedule with empty schedule array
@@ -66,7 +67,7 @@ const createDefaultWeeklySchedule = async (mentorId) => {
           batch: []
         },
         {
-          days: "TTS", 
+          days: "TTS",
           subject: "No class assigned",
           batch: []
         }
@@ -116,8 +117,8 @@ const addStaff = async (req, res) => {
     } = req.body;
 
     // Validate required fields according to schema
-    if (!fullName || !dateOfBirth || !gender || !email || !staffPhoneNumber || 
-        !department || !dateOfJoining || !employmentStatus || !officialEmail || !password) {
+    if (!fullName || !dateOfBirth || !gender || !email || !staffPhoneNumber ||
+      !department || !dateOfJoining || !employmentStatus || !officialEmail || !password) {
       return res.status(400).json({ message: "All required fields must be provided" });
     }
 
@@ -157,13 +158,13 @@ const addStaff = async (req, res) => {
     // Handle uploaded files
     let photoUrl = photo || null;
     let resumeUrl = resume || null;
-    
+
     if (req.files) {
       // Handle photo upload
       if (req.files.photo && req.files.photo[0]) {
         photoUrl = req.files.photo[0].path; // Cloudinary URL
       }
-      
+
       // Handle resume upload
       if (req.files.resume && req.files.resume[0]) {
         resumeUrl = req.files.resume[0].path; // Cloudinary URL
@@ -219,9 +220,9 @@ const addStaff = async (req, res) => {
       }
     }
 
-    res.status(201).json({ 
-      message: "Staff created successfully", 
-      data: populatedStaff 
+    res.status(201).json({
+      message: "Staff created successfully",
+      data: populatedStaff
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error creating staff" });
@@ -292,10 +293,10 @@ const getStaff = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
       message: "Staff fetched successfully",
-      success: true, 
+      success: true,
       data: staff,
       pagination: {
         currentPage: page,
@@ -328,11 +329,11 @@ const getAllStaff = async (req, res) => {
       .populate('role', 'role description')
       .select('-password')
       .sort({ createdAt: -1 });
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
       success: true,
-      message: "All staff fetched successfully", 
-      data: staff 
+      message: "All staff fetched successfully",
+      data: staff
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error fetching all staff" });
@@ -344,9 +345,15 @@ const getAllActiveStaff = async (req, res) => {
   try {
     let query = { isActive: true };
     if (req.userId) {
-      const loggedInUser = await Staff.findById(req.userId).populate('role');
-      if (loggedInUser && loggedInUser.role && (loggedInUser.role.role.toLowerCase() === 'admin' || loggedInUser.role.role.toLowerCase() === 'branch admin')) {
-        query.branch = loggedInUser.branch;
+      let loggedInUser = await Staff.findById(req.userId).populate('role');
+      if (!loggedInUser) {
+        loggedInUser = await User.findById(req.userId).populate('role');
+      }
+      if (loggedInUser && loggedInUser.role) {
+        const roleName = loggedInUser.role.role.toLowerCase();
+        if (roleName !== 'super admin') {
+          query.branch = loggedInUser.branch;
+        }
         query._id = { $ne: req.userId };
       }
     }
@@ -377,9 +384,9 @@ const getStaffById = async (req, res) => {
     if (!staff) {
       return res.status(404).json({ message: "Staff not found" });
     }
-    res.status(200).json({ 
-      message: "Staff fetched successfully", 
-      data: staff 
+    res.status(200).json({
+      message: "Staff fetched successfully",
+      data: staff
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error fetching staff" });
@@ -461,7 +468,7 @@ const updateStaff = async (req, res) => {
     // Handle uploaded files
     let photoUrl = photo || undefined;
     let resumeUrl = resume || undefined;
-    
+
     if (req.files) {
       // Handle photo upload - only update if new file is uploaded
       if (req.files.photo && req.files.photo[0]) {
@@ -470,7 +477,7 @@ const updateStaff = async (req, res) => {
         }
         photoUrl = req.files.photo[0].path; // Cloudinary URL
       }
-      
+
       // Handle resume upload - only update if new file is uploaded
       if (req.files.resume && req.files.resume[0]) {
         if (existingStaff.resume && existingStaff.resume !== req.files.resume[0].path) {
@@ -555,9 +562,9 @@ const updateStaff = async (req, res) => {
       }
     }
 
-    res.status(200).json({ 
-      message: "Staff updated successfully", 
-      data: staff 
+    res.status(200).json({
+      message: "Staff updated successfully",
+      data: staff
     });
   } catch (error) {
     res.status(400).json({ message: error.message || "Error updating staff" });
@@ -581,7 +588,7 @@ const deleteStaff = async (req, res) => {
     }
 
     const staff = await Staff.findByIdAndDelete(req.params.id).select('-password');
-    res.status(200).json({ 
+    res.status(200).json({
       message: "Staff deleted successfully",
       data: { deletedStaff: staff }
     });
@@ -594,16 +601,16 @@ const deleteStaff = async (req, res) => {
 const searchStaff = async (req, res) => {
   try {
     const { q } = req.query;
-    
+
     if (!q || q.trim() === '') {
       return res.status(400).json({ message: "Search query is required" });
     }
 
     const searchTerm = q.trim();
-    
+
     // Create search regex for case-insensitive search
     const searchRegex = new RegExp(searchTerm, 'i');
-    
+
     let query = {
       $or: [
         { fullName: { $regex: searchRegex } },
@@ -630,9 +637,9 @@ const searchStaff = async (req, res) => {
       .select('-password')
       .limit(20); // Limit results to 20 for performance
 
-    res.status(200).json({ 
+    res.status(200).json({
       message: `Found ${staff.length} staff member(s) matching "${searchTerm}"`,
-      data: staff 
+      data: staff
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error searching staff" });
@@ -643,20 +650,20 @@ const searchStaff = async (req, res) => {
 const getStaffByStatus = async (req, res) => {
   try {
     const { status } = req.params; // 'Active' or 'Inactive'
-    
+
     if (!["Active", "Inactive"].includes(status)) {
       return res.status(400).json({ message: "Status must be Active or Inactive" });
     }
-    
+
     const staff = await Staff.find({ employmentStatus: status })
       .populate('branch', 'branchName')
       .populate('role', 'role description')
       .select('-password')
       .sort({ createdAt: -1 });
-    
-    res.status(200).json({ 
-      message: `Staff with status '${status}' fetched successfully`, 
-      data: staff 
+
+    res.status(200).json({
+      message: `Staff with status '${status}' fetched successfully`,
+      data: staff
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error fetching staff by status" });
@@ -667,16 +674,16 @@ const getStaffByStatus = async (req, res) => {
 const getStaffByBranch = async (req, res) => {
   try {
     const { branchId } = req.params;
-    
+
     const staff = await Staff.find({ branch: branchId })
       .populate('branch', 'branchName')
       .populate('role', 'role description')
       .select('-password')
       .sort({ createdAt: -1 });
-    
-    res.status(200).json({ 
-      message: "Staff by branch fetched successfully", 
-      data: staff 
+
+    res.status(200).json({
+      message: "Staff by branch fetched successfully",
+      data: staff
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error fetching staff by branch" });
@@ -687,16 +694,16 @@ const getStaffByBranch = async (req, res) => {
 const getStaffByDepartment = async (req, res) => {
   try {
     const { department } = req.params;
-    
+
     const staff = await Staff.find({ department })
       .populate('branch', 'branchName')
       .populate('role', 'role description')
       .select('-password')
       .sort({ createdAt: -1 });
-    
-    res.status(200).json({ 
-      message: `Staff in department '${department}' fetched successfully`, 
-      data: staff 
+
+    res.status(200).json({
+      message: `Staff in department '${department}' fetched successfully`,
+      data: staff
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error fetching staff by department" });
@@ -708,18 +715,18 @@ const toggleStaffStatus = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.id);
     if (!staff) return res.status(404).json({ message: "Staff not found" });
-    
+
     staff.isActive = !staff.isActive;
     await staff.save();
-    
+
     const updatedStaff = await Staff.findById(staff._id)
       .populate('branch', 'branchName')
       .populate('role', 'role description')
       .select('-password');
-    
-    res.status(200).json({ 
-      message: `Staff ${updatedStaff.isActive ? 'activated' : 'deactivated'} successfully`, 
-      data: updatedStaff 
+
+    res.status(200).json({
+      message: `Staff ${updatedStaff.isActive ? 'activated' : 'deactivated'} successfully`,
+      data: updatedStaff
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error toggling staff status" });
@@ -730,20 +737,20 @@ const toggleStaffStatus = async (req, res) => {
 const getStaffByRole = async (req, res) => {
   try {
     const { roleId } = req.params; // Role ObjectId
-    
+
     if (!mongoose.Types.ObjectId.isValid(roleId)) {
       return res.status(400).json({ message: "Invalid role ID format" });
     }
-    
+
     const staff = await Staff.find({ role: roleId })
       .populate('branch', 'branchName')
       .populate('role', 'role description')
       .select('-password')
       .sort({ createdAt: -1 });
-    
-    res.status(200).json({ 
-      message: `Staff with role ID '${roleId}' fetched successfully`, 
-      data: staff 
+
+    res.status(200).json({
+      message: `Staff with role ID '${roleId}' fetched successfully`,
+      data: staff
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error fetching staff by role" });

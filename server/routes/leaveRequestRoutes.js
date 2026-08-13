@@ -7,13 +7,14 @@ const {
   updateLeaveRequestStatus,
 } = require('../controllers/attendance/leaveRequestController');
 const { checkAuth } = require('../middlewares/checkAuth');
+const { checkPermission } = require('../middlewares/checkPermission');
 
 // User routes
 router.post('/', checkAuth, createLeaveRequest);
 router.get('/my', checkAuth, getMyLeaveRequests);
 
 // Admin/Staff routes
-router.get('/all', checkAuth, getAllLeaveRequests);
-router.patch('/:id/status', checkAuth, updateLeaveRequestStatus);
+router.get('/all', checkAuth, checkPermission('leaveRequestManagement', 'viewLeaveRequest'), getAllLeaveRequests);
+router.patch('/:id/status', checkAuth, checkPermission('leaveRequestManagement', 'editLeaveRequest'), updateLeaveRequestStatus);
 
 module.exports = router;

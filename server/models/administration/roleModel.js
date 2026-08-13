@@ -105,12 +105,6 @@ const roleSchema = new mongoose.Schema({
       editRole: { type: Boolean, default: false },
       deleteRole: { type: Boolean, default: false }
     },
-    userManagement: {
-      addUser: { type: Boolean, default: false },
-      viewUser: { type: Boolean, default: false },
-      editUser: { type: Boolean, default: false },
-      deleteUser: { type: Boolean, default: false }
-    },
     notificationManagement: {
       addNotification: { type: Boolean, default: false },
       viewNotification: { type: Boolean, default: false },

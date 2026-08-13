@@ -18,11 +18,11 @@ const getUserRoleName = async (userId) => {
     if (user && user.role) {
       return user.role.role;
     }
-    
+
     // Check if user is in User collection (for super admin/admin) - now with role reference
     user = await User.findById(userId).populate('role', 'role');
     console.log("user=========", user?.role?.role);
-  
+
     if (user && user.role) {
       return user.role.role;
     }
@@ -34,7 +34,7 @@ const getUserRoleName = async (userId) => {
         return user.role;
       }
     }
-    
+
     return null;
   } catch (error) {
     console.error("Error getting user role:", error);
@@ -46,7 +46,7 @@ const getUserRoleName = async (userId) => {
 const checkUserRole = async (req, res, next, requiredRole) => {
   try {
     const userRole = await getUserRoleName(req.userId);
-    
+
     if (!userRole) {
       return res.status(401).json({
         message: "User not found",
@@ -56,11 +56,11 @@ const checkUserRole = async (req, res, next, requiredRole) => {
     // Check if user has the required role (case-insensitive comparison)
     const normalizedUserRole = userRole.toLowerCase();
     const normalizedRequiredRole = requiredRole.toLowerCase();
-    
-    const isMatched = normalizedUserRole === normalizedRequiredRole || 
+
+    const isMatched = normalizedUserRole === normalizedRequiredRole ||
       (normalizedRequiredRole === "admin" && normalizedUserRole === "branch admin") ||
       (normalizedRequiredRole === "branch admin" && normalizedUserRole === "admin");
-    
+
     if (!isMatched) {
       return res.status(401).json({
         message: "You are UnAuthorized",
@@ -71,7 +71,7 @@ const checkUserRole = async (req, res, next, requiredRole) => {
 
   } catch (error) {
     res.status(401).json({
-        message: "You are UnAuthorized",
+      message: "You are UnAuthorized",
     });
   }
 };
@@ -100,22 +100,22 @@ const checkAccountant = async (req, res, next) => {
 const checkMultipleRoles = async (req, res, next, allowedRoles) => {
   try {
     console.log("Checking multiple roles for userId:====", req.userId);
-    
+
     const userRole = await getUserRoleName(req.userId);
 
     console.log("userRole", userRole);
     console.log("allowedRoles", allowedRoles);
-    
+
     if (!userRole) {
       return res.status(401).json({
         message: "User not found",
       });
     }
-    
+
     // Normalize roles for comparison (case-insensitive)
     const normalizedUserRole = userRole.toLowerCase();
     const normalizedAllowedRoles = allowedRoles.map(role => role.toLowerCase());
-    
+
     // Treat "admin" and "branch admin" interchangeably
     if (normalizedAllowedRoles.includes("admin") && !normalizedAllowedRoles.includes("branch admin")) {
       normalizedAllowedRoles.push("branch admin");
@@ -123,7 +123,7 @@ const checkMultipleRoles = async (req, res, next, allowedRoles) => {
     if (normalizedAllowedRoles.includes("branch admin") && !normalizedAllowedRoles.includes("admin")) {
       normalizedAllowedRoles.push("admin");
     }
-    
+
     if (!normalizedAllowedRoles.includes(normalizedUserRole)) {
       return res.status(401).json({
         message: "You are UnAuthorized",
@@ -134,15 +134,15 @@ const checkMultipleRoles = async (req, res, next, allowedRoles) => {
 
   } catch (error) {
     res.status(401).json({
-        message: "You are UnAuthorized",
+      message: "You are UnAuthorized",
     });
   }
 };
 
 module.exports = {
-    checkSuperAdmin,
-    checkAdmin,
-    checkMentor,
-    checkAccountant,
-    checkMultipleRoles
+  checkSuperAdmin,
+  checkAdmin,
+  checkMentor,
+  checkAccountant,
+  checkMultipleRoles
 };

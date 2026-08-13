@@ -1,6 +1,31 @@
 // controllers/schedule/weeklyScheduleController.js
 const WeeklySchedule = require("../../models/schedule/weeklyScheduleModel");
 const Batch = require("../../models/schedule/batchModel");
+const { Staff } = require("../../models/administration/staffModel");
+const { User } = require("../../models/administration/userModel");
+
+const getEffectiveBranchForUser = async (userId, requestedBranch) => {
+  if (!userId) return requestedBranch;
+  
+  try {
+    let loggedInUser = await Staff.findById(userId).populate('role');
+    if (!loggedInUser) {
+      loggedInUser = await User.findById(userId).populate('role');
+    }
+    
+    if (loggedInUser && loggedInUser.role) {
+      const roleName = loggedInUser.role.role?.toLowerCase() || '';
+      if (roleName !== 'super admin') {
+        return loggedInUser.branch;
+      }
+    }
+  } catch (error) {
+    console.error("Error getting effective branch for user:", error);
+  }
+  
+  return requestedBranch;
+};
+
 
 const createWeeklySchedule = async (req, res) => {
   try {
@@ -34,13 +59,15 @@ const getWeeklySchedules = async (req, res) => {
     console.log('Fetching weekly schedules...');
     const { startDate, endDate, branch } = req.query;
 
+    const effectiveBranch = await getEffectiveBranchForUser(req.userId, branch);
+
     let filter = {};
     if (startDate && endDate) {
       filter.startDate = { $gte: new Date(startDate) };
       filter.endDate = { $lte: new Date(endDate) };
     }
-    if (branch) {
-      filter['schedule.sub_details.branch'] = branch;
+    if (effectiveBranch) {
+      filter['schedule.sub_details.branch'] = effectiveBranch;
     }
 
     const weeklySchedules = await WeeklySchedule.find(filter)
@@ -71,7 +98,7 @@ const getWeeklySchedules = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
- 
+
 // Get Single Weekly Schedule
 const getWeeklyScheduleById = async (req, res) => {
   try {
@@ -406,9 +433,11 @@ const getAllMentorsWithBatches = async (req, res) => {
     const branch = req.query.branch;
     const { startDate, endDate } = req.query;
 
+    const effectiveBranch = await getEffectiveBranchForUser(req.userId, branch);
+
     let filter = {};
-    if (branch) {
-      filter['schedule.sub_details.branch'] = branch;
+    if (effectiveBranch) {
+      filter['schedule.sub_details.branch'] = effectiveBranch;
     }
     if (startDate && endDate) {
       filter.startDate = { $gte: new Date(startDate) };
@@ -584,7 +613,7 @@ const getAllMentorsWithBatches = async (req, res) => {
             }
           }
         }
-        
+
         if (finalBatch) {
           finalBatch.dayCombination = Array.from(batchDays).join(', ') || 'N/A';
         }
@@ -665,7 +694,7 @@ const getWeeklyScheduleByInternId = async (req, res) => {
 
     // 1. Find all active/non-deleted batches where this intern is a member
     const batches = await Batch.find({ interns: userId, isDeleted: { $ne: true } });
-    
+
     let weeklySchedules = [];
     if (batches && batches.length > 0) {
       const batchIds = batches.map(b => b._id);

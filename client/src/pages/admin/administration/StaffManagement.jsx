@@ -318,8 +318,8 @@ export const StaffManagement = () => {
         { value: "newStaff", label: isEditMode ? "Edit Staff" : "New Staff" }
     ];
 
-    const departments = ['Choose Department', 'HR', 'Accounting', 'Front Office' , 'Sales', 'UI/UX', 'Mern', 'Flutter', 'Python', 'Digital Marketing','Data Science','Data Analytics','Business Development'];
-    const employmentStatus = ['Choose Employment Status', 'Active','Pause', 'Inactive'];
+    const departments = ['Choose Department', 'HR', 'Accounting', 'Front Office', 'Sales', 'UI/UX', 'Mern', 'Flutter', 'Python', 'Digital Marketing', 'Data Science', 'Data Analytics', 'Business Development'];
+    const employmentStatus = ['Choose Employment Status', 'Active', 'Pause', 'Inactive'];
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -815,8 +815,8 @@ export const StaffManagement = () => {
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{staffMember.branch?.branchName || 'N/A'}</td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
                                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${staffMember.employmentStatus === 'Active'
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-red-100 text-red-800'
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
                                                 }`}>
                                                 {staffMember.employmentStatus}
                                             </span>
@@ -891,8 +891,8 @@ export const StaffManagement = () => {
                                         <p className="text-xs text-gray-500 truncate">{staffMember.email}</p>
                                     </div>
                                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${staffMember.employmentStatus === 'Active'
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-red-100 text-red-800'
+                                        ? 'bg-green-100 text-green-800'
+                                        : 'bg-red-100 text-red-800'
                                         }`}>
                                         {staffMember.employmentStatus}
                                     </span>
@@ -951,8 +951,8 @@ export const StaffManagement = () => {
                             onClick={() => handlePageChange(pagination.currentPage - 1)}
                             disabled={!pagination.hasPrevPage || loading}
                             className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasPrevPage && !loading
-                                    ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                                    : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                                ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                                : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
                                 }`}
                         >
                             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -973,8 +973,8 @@ export const StaffManagement = () => {
                             onClick={() => handlePageChange(pagination.currentPage + 1)}
                             disabled={!pagination.hasNextPage || loading}
                             className={`px-4 py-2 text-sm font-medium rounded-md border transition-colors duration-200 flex items-center ${pagination.hasNextPage && !loading
-                                    ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
-                                    : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
+                                ? 'text-gray-700 bg-white border-gray-300 hover:bg-gray-50'
+                                : 'text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed'
                                 }`}
                         >
                             {loading ? 'Loading...' : 'Next'}

@@ -19,72 +19,62 @@ const {
   getMyAttendance
 } = require("../controllers/attendance/internsAttendanceController");
 
-// Import middleware for role checking
-const { checkAdmin, checkMentor, checkMultipleRoles } = require("../middlewares/checkRole");
 const { checkAuth } = require("../middlewares/checkAuth");
+const { checkPermission } = require("../middlewares/checkPermission");
 
 // Async wrapper to handle promises
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// Create middleware wrapper for checkMultipleRoles
-const checkRoles = (roles) => {
-  return (req, res, next) => {
-    checkMultipleRoles(req, res, next, roles);
-  };
-};
-
 // -------------------- INTERNS ATTENDANCE ROUTES --------------------
 
-
-
 // GET /api/interns-attendance/my-attendance - Get logged-in intern's attendance records
-router.get("/my-attendance", checkAuth, checkRoles(["intern"]), asyncHandler(getMyAttendance));
+router.get("/my-attendance", checkAuth, asyncHandler(getMyAttendance));
 
 // GET /api/interns-attendance - Get all interns attendance with pagination and filters
-router.get("/", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(getInternsAttendance));
+router.get("/", checkAuth, checkPermission('attendanceManagement', 'viewAttendance'), asyncHandler(getInternsAttendance));
 
 // GET /api/interns-attendance/interns-by-date - Get interns based on attendance collection for a specific date
-router.get("/interns-by-date",checkAuth , checkRoles(["admin", "mentor","super admin"]), asyncHandler(getInternsByAttendanceDate));
+router.get("/interns-by-date", checkAuth, checkPermission('attendanceManagement', 'viewAttendance'), asyncHandler(getInternsByAttendanceDate));
 
 // GET /api/interns-attendance/summary-report - Get detailed attendance summary report
-router.get("/summary-report", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(getAttendanceSummaryReport));
+router.get("/summary-report", checkAuth, checkPermission('attendanceManagement', 'viewAttendance'), asyncHandler(getAttendanceSummaryReport));
 
 // GET /api/interns-attendance/date-range - Get interns attendance by date range
-router.get("/date-range/range", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(getInternsAttendanceByDateRange));
+router.get("/date-range/range", checkAuth, checkPermission('attendanceManagement', 'viewAttendance'), asyncHandler(getInternsAttendanceByDateRange));
 
 // GET /api/interns-attendance/summary - Get interns attendance summary
-router.get("/summary/overview", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(getInternsAttendanceSummary));
+router.get("/summary/overview", checkAuth, checkPermission('attendanceManagement', 'viewAttendance'), asyncHandler(getInternsAttendanceSummary));
 
 // GET /api/interns-attendance/mentor-interns/:mentorId? - Get interns for a mentor based on WeeklySchedule
-router.get("/mentor-interns/:mentorId?", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(getMentorInterns));
+router.get("/mentor-interns/:mentorId?", checkAuth, checkPermission('attendanceManagement', 'viewAttendance'), asyncHandler(getMentorInterns));
 
 // GET /api/interns-attendance/mentor-batches/:mentorId? - Get batches for a mentor based on WeeklySchedule
-router.get("/mentor-batches/:mentorId?", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(getMentorBatches));
+router.get("/mentor-batches/:mentorId?", checkAuth, checkPermission('attendanceManagement', 'viewAttendance'), asyncHandler(getMentorBatches));
 
 // GET /api/interns-attendance/month - Get all interns attendance for a specific month
-router.get("/month", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(getInternsAttendanceByMonth));
+router.get("/month", checkAuth, checkPermission('attendanceManagement', 'viewAttendance'), asyncHandler(getInternsAttendanceByMonth));
 
 // GET /api/interns-attendance/:id - Get single interns attendance by ID
-router.get("/:id", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(getInternsAttendanceById));
-
+router.get("/:id", checkAuth, checkPermission('attendanceManagement', 'viewAttendance'), asyncHandler(getInternsAttendanceById));
 
 // POST /api/interns-attendance - Create new interns attendance
-router.post("/", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(addInternsAttendance));
+router.post("/", checkAuth, checkPermission('attendanceManagement', 'addAttendance'), asyncHandler(addInternsAttendance));
 
 // PUT /api/interns-attendance/update-single - Update single intern attendance
-router.put("/update-single", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(updateSingleInternAttendance));
+router.put("/update-single", checkAuth, checkPermission('attendanceManagement', 'editAttendance'), asyncHandler(updateSingleInternAttendance));
 
 // PUT /api/interns-attendance/:id - Update interns attendance
-router.put("/:id", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(updateInternsAttendance));
+router.put("/:id", checkAuth, checkPermission('attendanceManagement', 'editAttendance'), asyncHandler(updateInternsAttendance));
 
 // DELETE /api/interns-attendance/:id - Delete interns attendance (soft delete)
-router.delete("/:id", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(deleteInternsAttendance));
-
+router.delete("/:id", checkAuth, checkPermission('attendanceManagement', 'deleteAttendance'), asyncHandler(deleteInternsAttendance));
 
 // POST /api/interns-attendance/create-daily - Create daily attendance for all ongoing interns
-router.post("/create-daily", checkAuth, checkRoles(["super admin", "admin", "mentor"]), asyncHandler(createDailyAttendanceForAllInterns));
+router.post("/create-daily", checkAuth, checkPermission('attendanceManagement', 'addAttendance'), asyncHandler(createDailyAttendanceForAllInterns));
+
+module.exports = router;
 
 
 

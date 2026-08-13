@@ -8,10 +8,10 @@ const getDefaultDates = () => {
   const day = today.getDay();
   const sunday = new Date(today);
   sunday.setDate(today.getDate() - day);
-  
+
   const saturday = new Date(sunday);
   saturday.setDate(sunday.getDate() + 6);
-  
+
   const getLocalYYYYMMDD = (date) => {
     const offset = date.getTimezoneOffset();
     const localDate = new Date(date.getTime() - (offset * 60 * 1000));
@@ -57,7 +57,7 @@ export const WeeklySchedule = () => {
   const [noteModalTarget, setNoteModalTarget] = useState(null);
   const [noteValue, setNoteValue] = useState('');
   const [savingNote, setSavingNote] = useState(false);
-  
+
   const [hoveredBatchInfo, setHoveredBatchInfo] = useState(null);
   const [hoveredNoteInfo, setHoveredNoteInfo] = useState(null);
 
@@ -91,10 +91,10 @@ export const WeeklySchedule = () => {
   const getWeekRange = (dateString) => {
     const dateObj = new Date(dateString);
     const day = dateObj.getDay();
-    
+
     const sunday = new Date(dateObj);
     sunday.setDate(dateObj.getDate() - day);
-    
+
     const saturday = new Date(sunday);
     saturday.setDate(sunday.getDate() + 6);
 
@@ -104,9 +104,9 @@ export const WeeklySchedule = () => {
       return localDate.toISOString().split('T')[0];
     };
 
-    return { 
-      startDate: getLocalYYYYMMDD(sunday), 
-      endDate: getLocalYYYYMMDD(saturday) 
+    return {
+      startDate: getLocalYYYYMMDD(sunday),
+      endDate: getLocalYYYYMMDD(saturday)
     };
   };
 
@@ -141,7 +141,7 @@ export const WeeklySchedule = () => {
       // Create new schedule objects
       const clonePromises = weeklySchedules.map(async (scheduleDoc) => {
         const batchIds = scheduleDoc.schedule?.sub_details?.batch?.map(b => b._id) || [];
-        
+
         const newScheduleData = {
           startDate: targetStart,
           endDate: targetEnd,
@@ -163,7 +163,7 @@ export const WeeklySchedule = () => {
       await Promise.all(clonePromises);
       showToastMessage('Schedule successfully cloned to the target week!', 'success');
       setShowCloneModal(false);
-      
+
       // Navigate to the target cloned week
       setStartDate(targetStart);
       setEndDate(targetEnd);
@@ -216,40 +216,46 @@ export const WeeklySchedule = () => {
       setBranchesLoading(true);
       const res = await getBranchesData();
       const fetchedBranches = Array.isArray(res?.data) ? res.data : [];
-      setBranches(fetchedBranches);
+
+      let initialBranchId = '';
       if (fetchedBranches.length > 0) {
-        let initialBranchId = fetchedBranches[0]._id;
+        initialBranchId = fetchedBranches[0]._id;
         if (isSuperAdmin) {
           const calicutBranch = fetchedBranches.find(b => b.branchName.toLowerCase().includes('calicut'));
           if (calicutBranch) {
             initialBranchId = calicutBranch._id;
           }
+          setBranches(fetchedBranches);
         } else {
           // Regular staff member
           let staffBranchId = localStorage.getItem("branch");
-          if (staffBranchId && staffBranchId !== "undefined" && staffBranchId !== "null") {
-            const exists = fetchedBranches.some(b => b._id === staffBranchId);
-            if (exists) {
-              initialBranchId = staffBranchId;
-            }
-          } else {
+          if (!staffBranchId || staffBranchId === "undefined" || staffBranchId === "null") {
             try {
               const profileRes = await getUserProfile();
               const profileBranch = profileRes?.data?.user?.branch;
               if (profileBranch) {
-                const profileBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
-                localStorage.setItem("branch", profileBranchId);
-                const exists = fetchedBranches.some(b => b._id === profileBranchId);
-                if (exists) {
-                  initialBranchId = profileBranchId;
-                }
+                staffBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
+                localStorage.setItem("branch", staffBranchId);
               }
             } catch (e) {
               console.error("Failed to fetch staff profile for branch selection:", e);
             }
           }
+
+          if (staffBranchId && staffBranchId !== "undefined" && staffBranchId !== "null") {
+            const exists = fetchedBranches.some(b => b._id === staffBranchId);
+            if (exists) {
+              initialBranchId = staffBranchId;
+            }
+          }
+
+          // Filter branches array to only include the staff's branch
+          const staffBranch = fetchedBranches.find(b => b._id === initialBranchId);
+          setBranches(staffBranch ? [staffBranch] : fetchedBranches);
         }
         setSelectedBranch(initialBranchId);
+      } else {
+        setBranches([]);
       }
     } catch (err) {
       console.error('Failed to load branches:', err);
@@ -283,6 +289,16 @@ export const WeeklySchedule = () => {
     setSearchTerm(searchValue);
   };
 
+  const formatDate = (dateInput) => {
+    if (!dateInput) return 'N/A';
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) return 'N/A';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
+  };
+
   const isBatchAssigned = (batchId) => {
     return weeklySchedules.some(schedule =>
       schedule.schedule?.sub_details?.batch?.some(batch => batch._id === batchId && batch.status === 'Active')
@@ -294,7 +310,8 @@ export const WeeklySchedule = () => {
       setLoading(true);
       setError('');
       const res = await getAllActiveStaffData();
-      const mentorStaff = res.data?.filter(staff => staff.role?.role === 'mentor' && staff.employmentStatus === 'Active') || [];
+      // Fetch staff with role 'staff' or 'mentor'
+      const mentorStaff = res.data?.filter(staff => (staff.role?.role === 'staff' || staff.role?.role === 'mentor') && staff.employmentStatus === 'Active') || [];
       const transformedMentors = mentorStaff.map(staff => ({
         _id: staff._id,
         name: staff.fullName,
@@ -317,8 +334,16 @@ export const WeeklySchedule = () => {
       console.log('Fetching weekly schedules...');
       setLoading(true);
       setError('');
-      // Even if dates/branch are empty, passing them will return all or filter dynamically.
-      const res = await getWeeklySchedulesData(startDate, endDate, selectedBranch);
+
+      const effectiveBranch = isStaffWithoutBranchControl ? (localStorage.getItem("branch") || selectedBranch) : selectedBranch;
+
+      if (isStaffWithoutBranchControl && (!effectiveBranch || effectiveBranch === 'undefined' || effectiveBranch === 'null')) {
+        setWeeklySchedules([]);
+        setLoading(false);
+        return;
+      }
+
+      const res = await getWeeklySchedulesData(startDate, endDate, effectiveBranch);
       const filteredSchedules = (res.data || []).filter(ws => ws.mentor?.employmentStatus === 'Active');
       setWeeklySchedules(filteredSchedules);
     } catch (err) {
@@ -356,16 +381,21 @@ export const WeeklySchedule = () => {
     let filteredBatches = allBatches;
     let filteredMentors = allMentors;
 
-    if (selectedBranch) {
+    const effectiveBranch = isStaffWithoutBranchControl ? (localStorage.getItem("branch") || selectedBranch) : selectedBranch;
+
+    if (effectiveBranch && effectiveBranch !== 'undefined' && effectiveBranch !== 'null') {
       filteredBatches = allBatches.filter(batch => {
         const branchId = typeof batch.branch === 'object' && batch.branch !== null ? batch.branch._id : batch.branch;
-        return branchId === selectedBranch;
+        return branchId === effectiveBranch;
       });
 
       filteredMentors = allMentors.filter(mentor => {
         const branchId = typeof mentor.branch === 'object' && mentor.branch !== null ? mentor.branch._id : mentor.branch;
-        return branchId === selectedBranch;
+        return branchId === effectiveBranch;
       });
+    } else if (isStaffWithoutBranchControl) {
+      filteredBatches = [];
+      filteredMentors = [];
     }
 
     if (searchTerm.trim()) {
@@ -376,7 +406,7 @@ export const WeeklySchedule = () => {
 
     setBatches(filteredBatches);
     setMentors(filteredMentors);
-  }, [selectedBranch, allBatches, allMentors, searchTerm]);
+  }, [selectedBranch, allBatches, allMentors, searchTerm, isStaffWithoutBranchControl]);
 
   useEffect(() => {
     fetchBatches();
@@ -666,9 +696,9 @@ export const WeeklySchedule = () => {
         const mentor = mentors[mentorIndex];
         let mentorTimings = [];
         if (mentor.time && mentor.time.length > 0) {
-            mentorTimings = timings.filter(t => 
-                mentor.time.some(mt => String(mt._id || mt) === String(t._id))
-            );
+          mentorTimings = timings.filter(t =>
+            mentor.time.some(mt => String(mt._id || mt) === String(t._id))
+          );
         }
         const timeSlot = mentorTimings[slotIndex];
         const targetDaysName = dayCombo.name;
@@ -931,15 +961,15 @@ export const WeeklySchedule = () => {
                 placeholder="Search Batch"
                 value={searchTerm}
                 onChange={(e) => searchBatches(e.target.value)}
-                className="w-full pl-8 sm:pl-10 pr-8 sm:pr-10 py-2 text-sm sm:text-base border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                className="w-full pl-7 pr-6 py-1.5 text-xs sm:text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500"
               />
-              <Icon path="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" className="w-4 h-4 sm:w-5 sm:h-5 absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <Icon path="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" className="w-3.5 h-3.5 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
               {searchTerm && (
                 <button
                   onClick={() => searchBatches('')}
-                  className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  <Icon path="M6 18L18 6M6 6l12 12" className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <Icon path="M6 18L18 6M6 6l12 12" className="w-3 h-3 absolute" />
                 </button>
               )}
             </div>
@@ -967,8 +997,8 @@ export const WeeklySchedule = () => {
                       onMouseEnter={(e) => handleBatchHover(e, batch._id)}
                       onMouseLeave={handleBatchLeave}
                       className={`flex justify-between items-center p-2 sm:p-3 rounded-lg border cursor-grab hover:bg-gray-100 transition-colors text-xs sm:text-sm ${isAssigned
-                          ? 'bg-green-100 border-green-200'
-                          : 'bg-gray-50 border-gray-200'
+                        ? 'bg-green-100 border-green-200'
+                        : 'bg-gray-50 border-gray-200'
                         }`}
                     >
                       <span className={isAssigned ? 'text-green-700' : 'text-gray-700'}>
@@ -990,7 +1020,7 @@ export const WeeklySchedule = () => {
                 <p className="text-xs sm:text-sm text-gray-500">Assign batches to timings</p>
               </div>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2 sm:space-x-2">
-                 <select
+                <select
                   value={selectedBranch}
                   onChange={(e) => setSelectedBranch(e.target.value)}
                   disabled={branchesLoading || isStaffWithoutBranchControl}
@@ -1019,7 +1049,7 @@ export const WeeklySchedule = () => {
                   />
                   {endDate && (
                     <span className="text-sm text-gray-600 font-medium bg-gray-100 px-3 py-2 rounded-lg border border-gray-200">
-                      To: {new Date(endDate).toLocaleDateString()}
+                      To: {formatDate(endDate)}
                     </span>
                   )}
                 </div>
@@ -1055,160 +1085,160 @@ export const WeeklySchedule = () => {
                   {mentors.map((mentor, mentorIndex) => {
                     let mentorTimings = [];
                     if (mentor.time && mentor.time.length > 0) {
-                        mentorTimings = timings.filter(t => 
-                            mentor.time.some(mt => String(mt._id || mt) === String(t._id))
-                        );
+                      mentorTimings = timings.filter(t =>
+                        mentor.time.some(mt => String(mt._id || mt) === String(t._id))
+                      );
                     }
-                    
+
                     if (mentorTimings.length === 0) {
-                        return (
-                            <tr key={mentorIndex}>
-                                <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 border-r border-gray-200 sticky left-0 bg-gray-50 z-10 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px] truncate max-w-[120px] sm:max-w-[150px]" title={mentor.name}>
-                                    {mentor.name}
-                                </td>
-                                <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 italic sticky left-[120px] sm:left-[150px] bg-gray-50 z-10 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                    -
-                                </td>
-                                <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 italic" colSpan={displayedDayCombinations.length * 2}>
-                                    No timings assigned to this mentor
-                                </td>
-                            </tr>
-                        );
+                      return (
+                        <tr key={mentorIndex}>
+                          <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 border-r border-gray-200 sticky left-0 bg-gray-50 z-10 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px] truncate max-w-[120px] sm:max-w-[150px]" title={mentor.name}>
+                            {mentor.name}
+                          </td>
+                          <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 italic sticky left-[120px] sm:left-[150px] bg-gray-50 z-10 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                            -
+                          </td>
+                          <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 italic" colSpan={displayedDayCombinations.length * 2}>
+                            No timings assigned to this mentor
+                          </td>
+                        </tr>
+                      );
                     }
 
                     return (
-                    <React.Fragment key={mentorIndex}>
-                      {mentorTimings.map((timeSlot, slotIndex) => {
-                        return (
-                          <tr key={`${mentorIndex}-${slotIndex}`} data-mentor-slot={`${mentorIndex}-${slotIndex}`}>
-                            {slotIndex === 0 && (
-                              <td rowSpan={mentorTimings.length} className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 border-r border-gray-200 align-top sticky left-0 bg-white z-10 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px] truncate max-w-[120px] sm:max-w-[150px]" title={mentor.name}>
-                                {mentor.name}
+                      <React.Fragment key={mentorIndex}>
+                        {mentorTimings.map((timeSlot, slotIndex) => {
+                          return (
+                            <tr key={`${mentorIndex}-${slotIndex}`} data-mentor-slot={`${mentorIndex}-${slotIndex}`}>
+                              {slotIndex === 0 && (
+                                <td rowSpan={mentorTimings.length} className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 border-r border-gray-200 align-top sticky left-0 bg-white z-10 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px] truncate max-w-[120px] sm:max-w-[150px]" title={mentor.name}>
+                                  {mentor.name}
+                                </td>
+                              )}
+                              <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 sticky left-[120px] sm:left-[150px] bg-white z-10 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                                {timeSlot.timeSlot}
                               </td>
-                            )}
-                            <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 sticky left-[120px] sm:left-[150px] bg-white z-10 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                              {timeSlot.timeSlot}
-                            </td>
 
-                            {displayedDayCombinations.map((dayCombo, dcIndex) => {
-                              const currentSchedule = weeklySchedules.find(ws =>
-                                ws.mentor?._id === mentor._id &&
-                                ws.schedule?.time?._id === timeSlot._id &&
-                                ws.schedule?.sub_details?.day?._id === dayCombo._id &&
-                                (!selectedBranch || ws.schedule?.sub_details?.branch?._id === selectedBranch)
-                              );
+                              {displayedDayCombinations.map((dayCombo, dcIndex) => {
+                                const currentSchedule = weeklySchedules.find(ws =>
+                                  ws.mentor?._id === mentor._id &&
+                                  ws.schedule?.time?._id === timeSlot._id &&
+                                  ws.schedule?.sub_details?.day?._id === dayCombo._id &&
+                                  (!selectedBranch || ws.schedule?.sub_details?.branch?._id === selectedBranch)
+                                );
 
-                              const batches = (currentSchedule?.schedule?.sub_details?.batch || []).filter(b => b.status === 'Active');
-                              const subject = currentSchedule?.schedule?.sub_details?.subject || '';
+                                const batches = (currentSchedule?.schedule?.sub_details?.batch || []).filter(b => b.status === 'Active');
+                                const subject = currentSchedule?.schedule?.sub_details?.subject || '';
 
-                              return (
-                                <React.Fragment key={dayCombo._id}>
-                                  <td
-                                    className="px-2 sm:px-4 py-3 sm:py-4 w-[150px] min-w-[150px] max-w-[150px] text-xs sm:text-sm text-gray-500 relative group drop-zone min-h-[50px] sm:min-h-[60px] border-2 border-dashed border-gray-200 hover:border-orange-300 transition-colors"
-                                    onDrop={handleDrop}
-                                    onDragOver={handleDragOver}
-                                    data-zone-id={`${mentorIndex}-${slotIndex}-${dayCombo._id}`}
-                                  >
-                                    {/* Batches */}
-                                    {batches.length === 0 ? (
-                                      <div className="flex flex-col items-center justify-center space-y-1 py-1">
-                                        <span className="text-[10px] sm:text-xs text-gray-400">No batches assigned</span>
-                                        {!currentSchedule?.schedule?.sub_details?.note && (
+                                return (
+                                  <React.Fragment key={dayCombo._id}>
+                                    <td
+                                      className="px-2 sm:px-4 py-3 sm:py-4 w-[150px] min-w-[150px] max-w-[150px] text-xs sm:text-sm text-gray-500 relative group drop-zone min-h-[50px] sm:min-h-[60px] border-2 border-dashed border-gray-200 hover:border-orange-300 transition-colors"
+                                      onDrop={handleDrop}
+                                      onDragOver={handleDragOver}
+                                      data-zone-id={`${mentorIndex}-${slotIndex}-${dayCombo._id}`}
+                                    >
+                                      {/* Batches */}
+                                      {batches.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center space-y-1 py-1">
+                                          <span className="text-[10px] sm:text-xs text-gray-400">No batches assigned</span>
+                                          {!currentSchedule?.schedule?.sub_details?.note && (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (currentSchedule) {
+                                                  openNoteModal(currentSchedule._id, currentSchedule.schedule?.sub_details?.note || '');
+                                                } else {
+                                                  openNoteModal(null, '', { mentor, timeSlot, dayCombo });
+                                                }
+                                              }}
+                                              className="text-gray-400 hover:text-orange-500 transition-colors duration-200 mt-1 flex items-center space-x-1"
+                                              title="Add Note"
+                                            >
+                                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                              </svg>
+                                              <span className="text-[10px]">Add Note</span>
+                                            </button>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-1">
+                                          {batches.map((batch, index) => (
+                                            <div
+                                              key={batch._id || index}
+                                              onMouseEnter={(e) => handleBatchHover(e, batch._id)}
+                                              onMouseLeave={handleBatchLeave}
+                                              className={`text-white p-1.5 sm:p-2 rounded-md sm:rounded-lg shadow-md transition-all duration-200 text-[10px] sm:text-xs w-full flex items-center justify-between ${dcIndex % 2 === 0 ? 'bg-blue-500' : 'bg-green-500'}`}
+                                            >
+                                              <span className="truncate">{batch.batchName}</span>
+                                              <button
+                                                onClick={() => handleRemoveBatchClick(currentSchedule._id, batch._id, batch.batchName)}
+                                                className="bg-red-600 text-white rounded-full w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center font-bold text-[10px] sm:text-xs leading-none transition-transform duration-200 hover:scale-110 flex-shrink-0 ml-1"
+                                              >
+                                                &times;
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {currentSchedule && (batches.length > 0 || currentSchedule.schedule?.sub_details?.note) && (
+                                        <div className="mt-2 pt-1 border-t border-gray-100 flex items-center justify-between text-[10px] sm:text-xs">
+                                          <div
+                                            className={`text-gray-500 truncate max-w-[80%] ${currentSchedule.schedule?.sub_details?.note ? 'cursor-help font-medium' : ''}`}
+                                            onMouseEnter={(e) => handleNoteHover(e, currentSchedule.schedule?.sub_details?.note)}
+                                            onMouseLeave={handleNoteLeave}
+                                          >
+                                            {currentSchedule.schedule?.sub_details?.note ? (
+                                              <span className="italic font-medium">
+                                                📝 {currentSchedule.schedule.sub_details.note}
+                                              </span>
+                                            ) : (
+                                              <span className="text-gray-300">Add note...</span>
+                                            )}
+                                          </div>
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              if (currentSchedule) {
-                                                openNoteModal(currentSchedule._id, currentSchedule.schedule?.sub_details?.note || '');
-                                              } else {
-                                                openNoteModal(null, '', { mentor, timeSlot, dayCombo });
-                                              }
+                                              openNoteModal(currentSchedule._id, currentSchedule.schedule?.sub_details?.note || '');
                                             }}
-                                            className="text-gray-400 hover:text-orange-500 transition-colors duration-200 mt-1 flex items-center space-x-1"
-                                            title="Add Note"
+                                            className="text-orange-500 hover:text-orange-600 font-medium transition ml-1"
                                           >
-                                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                            <span className="text-[10px]">Add Note</span>
+                                            Edit
                                           </button>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <div className="space-y-1">
-                                        {batches.map((batch, index) => (
-                                          <div
-                                            key={batch._id || index}
-                                            onMouseEnter={(e) => handleBatchHover(e, batch._id)}
-                                            onMouseLeave={handleBatchLeave}
-                                            className={`text-white p-1.5 sm:p-2 rounded-md sm:rounded-lg shadow-md transition-all duration-200 text-[10px] sm:text-xs w-full flex items-center justify-between ${dcIndex % 2 === 0 ? 'bg-blue-500' : 'bg-green-500'}`}
-                                          >
-                                            <span className="truncate">{batch.batchName}</span>
-                                            <button
-                                              onClick={() => handleRemoveBatchClick(currentSchedule._id, batch._id, batch.batchName)}
-                                              className="bg-red-600 text-white rounded-full w-3 h-3 sm:w-4 sm:h-4 flex items-center justify-center font-bold text-[10px] sm:text-xs leading-none transition-transform duration-200 hover:scale-110 flex-shrink-0 ml-1"
-                                            >
-                                              &times;
-                                            </button>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-
-                                    {currentSchedule && (batches.length > 0 || currentSchedule.schedule?.sub_details?.note) && (
-                                      <div className="mt-2 pt-1 border-t border-gray-100 flex items-center justify-between text-[10px] sm:text-xs">
-                                        <div
-                                          className={`text-gray-500 truncate max-w-[80%] ${currentSchedule.schedule?.sub_details?.note ? 'cursor-help font-medium' : ''}`}
-                                          onMouseEnter={(e) => handleNoteHover(e, currentSchedule.schedule?.sub_details?.note)}
-                                          onMouseLeave={handleNoteLeave}
-                                        >
-                                          {currentSchedule.schedule?.sub_details?.note ? (
-                                            <span className="italic font-medium">
-                                              📝 {currentSchedule.schedule.sub_details.note}
-                                            </span>
-                                          ) : (
-                                            <span className="text-gray-300">Add note...</span>
-                                          )}
                                         </div>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            openNoteModal(currentSchedule._id, currentSchedule.schedule?.sub_details?.note || '');
-                                          }}
-                                          className="text-orange-500 hover:text-orange-600 font-medium transition ml-1"
-                                        >
-                                          Edit
-                                        </button>
-                                      </div>
-                                    )}
-                                  </td>
-                                  <td className="px-2 sm:px-4 py-3 sm:py-4 w-[150px] min-w-[150px] whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200">
-                                    {/* Subject */}
-                                    <select
-                                      className="p-1 border border-gray-300 rounded-md shadow-sm text-[10px] sm:text-xs w-full"
-                                      value={typeof subject === 'object' ? subject?._id : subject}
-                                      onChange={(e) => {
-                                        if (currentSchedule) {
-                                          handleSubjectChange(currentSchedule._id, e.target.value)
-                                        } else {
-                                          handleCreateSubjectOnly(mentor, timeSlot, dayCombo.name, e.target.value)
-                                        }
-                                      }}
-                                    >
-                                      <option value="">Choose Subject</option>
-                                      {modules.map(module => (
-                                        <option key={module._id} value={module._id}>
-                                          {module.moduleName}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </td>
-                                </React.Fragment>
-                              );
-                            })}
-                          </tr>
-                        )
-                      })}
-                    </React.Fragment>
+                                      )}
+                                    </td>
+                                    <td className="px-2 sm:px-4 py-3 sm:py-4 w-[150px] min-w-[150px] whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200">
+                                      {/* Subject */}
+                                      <select
+                                        className="p-1 border border-gray-300 rounded-md shadow-sm text-[10px] sm:text-xs w-full"
+                                        value={typeof subject === 'object' ? subject?._id : subject}
+                                        onChange={(e) => {
+                                          if (currentSchedule) {
+                                            handleSubjectChange(currentSchedule._id, e.target.value)
+                                          } else {
+                                            handleCreateSubjectOnly(mentor, timeSlot, dayCombo.name, e.target.value)
+                                          }
+                                        }}
+                                      >
+                                        <option value="">Choose Subject</option>
+                                        {modules.map(module => (
+                                          <option key={module._id} value={module._id}>
+                                            {module.moduleName}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                  </React.Fragment>
+                                );
+                              })}
+                            </tr>
+                          )
+                        })}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
@@ -1299,7 +1329,7 @@ export const WeeklySchedule = () => {
               </div>
               <div className="mt-2 space-y-4">
                 <p className="text-sm text-gray-500">
-                  This will clone the current week's schedule ({new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}) to a target week containing the date you select below.
+                  This will clone the current week's schedule ({formatDate(startDate)} - {formatDate(endDate)}) to a target week containing the date you select below.
                 </p>
                 <div className="space-y-1">
                   <label className="block text-xs font-semibold text-gray-600 uppercase">Select Target Date</label>
@@ -1449,43 +1479,43 @@ export const WeeklySchedule = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
           <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={cancelDelete}></div>
           <div className="relative bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all w-full max-w-lg">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                      Delete Schedule
-                    </h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">
-                        Are you sure you want to delete this schedule document? This action cannot be undone.
-                      </p>
-                    </div>
+            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+              <div className="sm:flex sm:items-start">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                  <svg className="h-6 w-6 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                    Delete Schedule
+                  </h3>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Are you sure you want to delete this schedule document? This action cannot be undone.
+                    </p>
                   </div>
                 </div>
               </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 flex justify-end items-center gap-3">
-                <button
-                  type="button"
-                  className="inline-flex justify-center items-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm h-fit"
-                  onClick={cancelDelete}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm h-fit"
-                  onClick={confirmDeleteSchedule}
-                >
-                  Delete
-                </button>
-              </div>
+            </div>
+            <div className="bg-gray-50 px-4 py-3 sm:px-6 flex justify-end items-center gap-3">
+              <button
+                type="button"
+                className="inline-flex justify-center items-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm h-fit"
+                onClick={cancelDelete}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="inline-flex justify-center items-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:text-sm h-fit"
+                onClick={confirmDeleteSchedule}
+              >
+                Delete
+              </button>
             </div>
           </div>
+        </div>
       )}
     </>
   )

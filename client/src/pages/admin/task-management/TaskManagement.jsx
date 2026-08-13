@@ -510,8 +510,8 @@ export const TaskManagement = () => {
         try {
           setLoading(true);
           const response = await downloadTaskAttachment(editingTask._id);
-          const blob = new Blob([response.data], { 
-            type: response.headers['content-type'] || 'application/pdf' 
+          const blob = new Blob([response.data], {
+            type: response.headers['content-type'] || 'application/pdf'
           });
           const url = URL.createObjectURL(blob);
           window.open(url, '_blank', 'noopener,noreferrer');
@@ -530,8 +530,8 @@ export const TaskManagement = () => {
     try {
       setLoading(true);
       const response = await downloadTaskAttachment(taskOrUrl._id);
-      const blob = new Blob([response.data], { 
-        type: response.headers['content-type'] || 'application/pdf' 
+      const blob = new Blob([response.data], {
+        type: response.headers['content-type'] || 'application/pdf'
       });
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank', 'noopener,noreferrer');

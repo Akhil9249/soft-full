@@ -167,6 +167,40 @@ const toggleBranchStatus = async (req, res) => {
   }
 };
 
+// Update only the days field of a branch
+const updateBranchDays = async (req, res) => {
+  try {
+    const { days } = req.body;
+
+    if (days === undefined) {
+      return res.status(400).json({
+        message: "Days array is required"
+      });
+    }
+
+    const updated = await Branch.findByIdAndUpdate(
+      req.params.id,
+      { days },
+      { new: true, runValidators: true }
+    ).populate({
+      path: "days",
+      populate: { path: "dayCombination" }
+    }).populate("time");
+
+    if (!updated) {
+      return res.status(404).json({ message: "Branch not found" });
+    }
+
+    res.status(200).json({
+      message: "Branch days updated successfully",
+      data: updated
+    });
+  } catch (error) {
+    console.log("Error updating branch days:", error);
+    res.status(400).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createBranch,
   getBranches,
@@ -174,4 +208,5 @@ module.exports = {
   updateBranch,
   deleteBranch,
   toggleBranchStatus,
+  updateBranchDays,
 };

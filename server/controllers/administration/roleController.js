@@ -1,6 +1,6 @@
 // controllers/roleController.js
 const Role = require("../../models/administration/roleModel");
-const { User } = require("../../models/administration/userModel");
+
 
 // Create new role (excluding Super Admin)
 const createRole = async (req, res) => {
@@ -21,7 +21,7 @@ const createRole = async (req, res) => {
     }
 
     // Validate role against enum values (excluding Super Admin from frontend)
-    // const validRoles = ["admin", "mentor", "accountant", "intern", "career advisor", "placement coordinator", "front office staff"];
+    // const validRoles = ["admin", "staff", "accountant", "intern", "career advisor", "placement coordinator", "front office staff"];
     // if (!validRoles.includes(roleLower)) {
     //   return res.status(400).json({ message: "Invalid role. Must be one of: " + validRoles.join(", ") });
     // }
@@ -145,7 +145,7 @@ const updateRole = async (req, res) => {
       // Convert role to lowercase for validation and storage
       const roleLower = role.toLowerCase();
       
-      // const validRoles = ["super admin", "admin", "mentor", "accountant", "intern", "career advisor", "placement coordinator", "front office staff"];
+      // const validRoles = ["super admin", "admin", "staff", "accountant", "intern", "career advisor", "placement coordinator", "front office staff"];
       // if (!validRoles.includes(roleLower)) {
       //   return res.status(400).json({ message: "Invalid role. Must be one of: " + validRoles.join(", ") });
       // }

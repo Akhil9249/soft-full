@@ -844,7 +844,6 @@ export const StudentManagement = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch</th>
@@ -878,9 +877,6 @@ export const StudentManagement = () => {
                           <div className="text-sm text-gray-500">{intern.internPhoneNumber}</div>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{intern.email}</div>
                     </td>
                     <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {intern.course?.courseName || intern.course || 'N/A'}
@@ -948,7 +944,6 @@ export const StudentManagement = () => {
                   <div className="flex-1 min-w-0">
                     <h3 className="text-base font-semibold text-gray-900 truncate">{intern.fullName}</h3>
                     <p className="text-sm text-gray-500">{intern.internPhoneNumber}</p>
-                    <p className="text-xs text-gray-500 truncate">{intern.email}</p>
                   </div>
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${intern.courseStatus === 'Ongoing'
                       ? 'bg-green-100 text-green-800'

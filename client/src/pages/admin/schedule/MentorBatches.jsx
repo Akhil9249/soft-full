@@ -20,8 +20,17 @@ const getDefaultDates = () => {
     const localDate = new Date(date.getTime() - (offset * 60 * 1000));
     return localDate.toISOString().split('T')[0];
   };
-
   return { startDate: getLocalYYYYMMDD(sunday), endDate: getLocalYYYYMMDD(saturday) };
+};
+
+const formatDate = (dateInput) => {
+  if (!dateInput) return 'N/A';
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return 'N/A';
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${month}/${day}/${year}`;
 };
 
 const DAYS_ORDER = {
@@ -314,10 +323,10 @@ export const MentorBatches = () => {
       doc.setFont('helvetica', 'normal');
       doc.text(`Email: ${selectedMentor.email}`, 14, 33);
       doc.text(`Role: ${selectedMentor.role || 'Mentor'}`, 14, 38);
-      const formattedStartDate = startDate ? new Date(startDate).toLocaleDateString('en-GB') : 'N/A';
-      const formattedEndDate = endDate ? new Date(endDate).toLocaleDateString('en-GB') : 'N/A';
+      const formattedStartDate = formatDate(startDate);
+      const formattedEndDate = formatDate(endDate);
       doc.text(`Schedule Week: ${formattedStartDate} to ${formattedEndDate}`, 14, 43);
-      doc.text(`Report Date: ${new Date().toLocaleDateString('en-GB')}`, 14, 48);
+      doc.text(`Report Date: ${formatDate(new Date())}`, 14, 48);
 
       // Section 1: Assigned Batches
       doc.setFontSize(13);
@@ -458,7 +467,7 @@ export const MentorBatches = () => {
               />
               {endDate && (
                 <span className="text-xs text-gray-600 font-bold bg-orange-50/60 text-orange-700 px-3 py-2 rounded-xl border border-orange-100/60 shadow-sm whitespace-nowrap flex-shrink-0">
-                  To: {new Date(endDate).toLocaleDateString('en-GB')}
+                  To: {formatDate(endDate)}
                 </span>
               )}
             </div>

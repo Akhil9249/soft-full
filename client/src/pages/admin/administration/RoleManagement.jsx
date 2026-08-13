@@ -46,7 +46,7 @@ export const RoleManagement = () => {
   // Valid role options from the enum (excluding Super Admin for frontend)
   const roleOptions = [
     'Admin', 
-    'Mentor',
+    'Staff',
     'Accountant',
     'Intern',
     'Career advisor',
@@ -94,12 +94,12 @@ export const RoleManagement = () => {
     },
     {
       key: 'mentorManagement',
-      title: 'Mentor Management',
+      title: 'Staff Management',
       permissions: [
-        { key: 'addMentor', label: 'Add Mentor' },
-        { key: 'viewMentor', label: 'View Mentor' },
-        { key: 'editMentor', label: 'Edit Mentor' },
-        { key: 'deleteMentor', label: 'Delete Mentor' }
+        { key: 'addMentor', label: 'Add Staff' },
+        { key: 'viewMentor', label: 'View Staff' },
+        { key: 'editMentor', label: 'Edit Staff' },
+        { key: 'deleteMentor', label: 'Delete Staff' }
       ]
     },
     {
@@ -192,6 +192,86 @@ export const RoleManagement = () => {
         { key: 'editPage', label: 'Edit Page' },
         { key: 'deletePage', label: 'Delete Page' }
       ]
+    },
+    {
+      key: 'materialManagement',
+      title: 'Material Management',
+      permissions: [
+        { key: 'addMaterial', label: 'Add Material' },
+        { key: 'viewMaterial', label: 'View Material' },
+        { key: 'editMaterial', label: 'Edit Material' },
+        { key: 'deleteMaterial', label: 'Delete Material' }
+      ]
+    },
+    {
+      key: 'batchManagement',
+      title: 'Batch Management',
+      permissions: [
+        { key: 'addBatch', label: 'Add Batch' },
+        { key: 'viewBatch', label: 'View Batch' },
+        { key: 'editBatch', label: 'Edit Batch' },
+        { key: 'deleteBatch', label: 'Delete Batch' }
+      ]
+    },
+    {
+      key: 'roleManagement',
+      title: 'Role Management',
+      permissions: [
+        { key: 'addRole', label: 'Add Role' },
+        { key: 'viewRole', label: 'View Role' },
+        { key: 'editRole', label: 'Edit Role' },
+        { key: 'deleteRole', label: 'Delete Role' }
+      ]
+    },
+    {
+      key: 'notificationManagement',
+      title: 'Notification Management',
+      permissions: [
+        { key: 'addNotification', label: 'Add Notification' },
+        { key: 'viewNotification', label: 'View Notification' },
+        { key: 'editNotification', label: 'Edit Notification' },
+        { key: 'deleteNotification', label: 'Delete Notification' }
+      ]
+    },
+    {
+      key: 'reportManagement',
+      title: 'Report Management',
+      permissions: [
+        { key: 'addReport', label: 'Add Report' },
+        { key: 'viewReport', label: 'View Report' },
+        { key: 'editReport', label: 'Edit Report' },
+        { key: 'deleteReport', label: 'Delete Report' }
+      ]
+    },
+    {
+      key: 'attendanceManagement',
+      title: 'Attendance Management',
+      permissions: [
+        { key: 'addAttendance', label: 'Add Attendance' },
+        { key: 'viewAttendance', label: 'View Attendance' },
+        { key: 'editAttendance', label: 'Edit Attendance' },
+        { key: 'deleteAttendance', label: 'Delete Attendance' }
+      ]
+    },
+    {
+      key: 'leaveRequestManagement',
+      title: 'Leave Request Management',
+      permissions: [
+        { key: 'addLeaveRequest', label: 'Add Leave Request' },
+        { key: 'viewLeaveRequest', label: 'View Leave Request' },
+        { key: 'editLeaveRequest', label: 'Edit Leave Request' },
+        { key: 'deleteLeaveRequest', label: 'Delete Leave Request' }
+      ]
+    },
+    {
+      key: 'branchManagement',
+      title: 'Branch Management',
+      permissions: [
+        { key: 'addBranch', label: 'Add Branch' },
+        { key: 'viewBranch', label: 'View Branch' },
+        { key: 'editBranch', label: 'Edit Branch' },
+        { key: 'deleteBranch', label: 'Delete Branch' }
+      ]
     }
   ];
 
@@ -266,10 +346,10 @@ export const RoleManagement = () => {
         'Student Management - View',
         'Student Management - Edit',
         'Student Management - Delete',
-        'Mentor Management - Add',
-        'Mentor Management - View',
-        'Mentor Management - Edit',
-        'Mentor Management - Delete',
+        'Staff Management - Add',
+        'Staff Management - View',
+        'Staff Management - Edit',
+        'Staff Management - Delete',
         'Mentor Card - Add',
         'Mentor Card - View',
         'Mentor Card - Edit',
