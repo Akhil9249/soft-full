@@ -8,8 +8,8 @@ const createBatch = async (req, res) => {
   try {
     const { batchName, branchName, status, interns } = req.body;
 
-    console.log( batchName, branchName, status, interns);
-    
+    console.log(batchName, branchName, status, interns);
+
 
     if (!batchName || !branchName) {
       return res.status(400).json({ message: "Batch name and branch are required" });
@@ -91,7 +91,7 @@ const getBatches = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
-    
+
     // Filter totalInterns to count only ongoing ones
     const batchesWithCount = batches.map(batch => {
       const batchObj = batch.toObject();
@@ -100,8 +100,8 @@ const getBatches = async (req, res) => {
     });
 
     console.log('Found batches:', batches.length);
-    res.status(200).json({ 
-      message: "Batches retrieved successfully", 
+    res.status(200).json({
+      message: "Batches retrieved successfully",
       data: batchesWithCount,
       pagination: {
         currentPage: page,
@@ -122,9 +122,9 @@ const getBatches = async (req, res) => {
 const getAllBatches = async (req, res) => {
   try {
     console.log('Fetching all batches at once...');
-    
+
     let query = {};
-    
+
     // Role-based branch restriction: only super admin sees all
     if (req.userId) {
       const loggedInStaff = await Staff.findById(req.userId).populate('role');
@@ -156,8 +156,8 @@ const getAllBatches = async (req, res) => {
     });
 
     console.log('Found all batches:', batches.length);
-    res.status(200).json({ 
-      message: "All batches retrieved successfully", 
+    res.status(200).json({
+      message: "All batches retrieved successfully",
       data: batchesWithCount,
       totalCount: batchesWithCount.length
     });
@@ -181,7 +181,7 @@ const getBatchById = async (req, res) => {
           select: "courseName"
         }
       });
-      
+
     if (!batch) return res.status(404).json({ message: "Batch not found" });
 
     // Role-based branch restriction
@@ -194,7 +194,7 @@ const getBatchById = async (req, res) => {
         } else if (batch.branch) {
           branchIdStr = batch.branch.toString();
         }
-        
+
         if (loggedInStaff.branch && branchIdStr !== loggedInStaff.branch.toString()) {
           return res.status(403).json({ message: "Access denied. Batch belongs to a different branch." });
         }
@@ -214,14 +214,14 @@ const getBatchById = async (req, res) => {
 const updateBatch = async (req, res) => {
   try {
     const { batchName, branchName, status, interns } = req.body;
-    
-    const updateData = { 
-      batchName, 
+
+    const updateData = {
+      batchName,
       status,
       totalInterns: interns ? interns.length : 0,
       interns: interns ? interns.map(intern => intern.internId) : []
     };
-    
+
     if (branchName) {
       updateData.branch = branchName;
     }
@@ -230,16 +230,16 @@ const updateBatch = async (req, res) => {
       new: true,
       runValidators: true,
     })
-    .populate("branch", "branchName")
-    .populate({
-      path: "interns",
-      select: "fullName email course courseStatus admissionNumber",
-      match: { courseStatus: "Ongoing" },
-      populate: {
-        path: "course",
-        select: "courseName"
-      }
-    });
+      .populate("branch", "branchName")
+      .populate({
+        path: "interns",
+        select: "fullName email course courseStatus admissionNumber",
+        match: { courseStatus: "Ongoing" },
+        populate: {
+          path: "course",
+          select: "courseName"
+        }
+      });
 
     if (!updated) return res.status(404).json({ message: "Batch not found" });
     const updatedObj = updated.toObject();
@@ -265,7 +265,7 @@ const deleteBatch = async (req, res) => {
 const addIntern = async (req, res) => {
   try {
     console.log("addIntern");
-    
+
     const { id } = req.params; // batch id
     const { internId } = req.body; // Only need internId
 

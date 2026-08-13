@@ -363,11 +363,11 @@ const getAllActiveStaff = async (req, res) => {
       .populate('role', 'role description')
       .select('-password')
       .sort({ createdAt: -1 });
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
       success: true,
-      message: "All active staff fetched successfully", 
-      data: staff 
+      message: "All active staff fetched successfully",
+      data: staff
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error fetching all active staff" });

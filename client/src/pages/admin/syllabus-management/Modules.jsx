@@ -762,7 +762,7 @@ export const Modules = () => {
                               </div>
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">{module.moduleName}</div>
-                                <div className="text-sm text-gray-500">ID: {module._id?.slice(-6) || 'N/A'}</div>
+                                {/* <div className="text-sm text-gray-500">ID: {module._id?.slice(-6) || 'N/A'}</div> */}
                               </div>
                             </div>
                           </td>
@@ -857,7 +857,7 @@ export const Modules = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-base font-semibold text-gray-900 truncate">{module.moduleName}</h3>
-                          <p className="text-xs text-gray-500">ID: {module._id?.slice(-6) || 'N/A'}</p>
+                          {/* <p className="text-xs text-gray-500">ID: {module._id?.slice(-6) || 'N/A'}</p> */}
                         </div>
                       </div>
                       <div className="space-y-2 text-sm text-gray-600 mb-3">

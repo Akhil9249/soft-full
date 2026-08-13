@@ -638,7 +638,7 @@ export const Category = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-base font-semibold text-gray-900 truncate">{category.categoryName}</h3>
-                          <p className="text-xs text-gray-500">ID: {category._id?.slice(-6) || 'N/A'}</p>
+                          {/* <p className="text-xs text-gray-500">ID: {category._id?.slice(-6) || 'N/A'}</p> */}
                         </div>
                       </div>
                       <div className="space-y-2 text-sm text-gray-600 mb-3">

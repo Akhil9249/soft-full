@@ -12,10 +12,10 @@ const deleteFromCloudinary = async (url) => {
   try {
     const parts = url.split('/upload/');
     if (parts.length < 2) return;
-    
+
     let pathPart = parts[1].replace(/^v\d+\//, ''); // Remove version
     const isRaw = url.includes('/raw/upload/');
-    
+
     let publicId = pathPart;
     if (!isRaw) {
       // Remove extension for images
@@ -24,7 +24,7 @@ const deleteFromCloudinary = async (url) => {
         publicId = pathPart.substring(0, lastDotIndex);
       }
     }
-    
+
     await cloudinary.uploader.destroy(publicId, { resource_type: isRaw ? 'raw' : 'image' });
     console.log(`Deleted from cloudinary: ${publicId}`);
   } catch (err) {
@@ -99,13 +99,13 @@ const addIntern = async (req, res) => {
     // Handle uploaded files
     let photoUrl = photo || null;
     let resumeUrl = resume || null;
-    
+
     if (req.files) {
       // Handle photo upload
       if (req.files.photo && req.files.photo[0]) {
         photoUrl = req.files.photo[0].path; // Cloudinary URL
       }
-      
+
       // Handle resume upload
       if (req.files.resume && req.files.resume[0]) {
         resumeUrl = req.files.resume[0].path; // Cloudinary URL
@@ -159,9 +159,9 @@ const addIntern = async (req, res) => {
       .populate('careerAdvisor', 'fullName email')
       .select('-password');
 
-    res.status(201).json({ 
-      message: "Intern created successfully", 
-      data: populatedIntern 
+    res.status(201).json({
+      message: "Intern created successfully",
+      data: populatedIntern
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Internal Server Error" });
@@ -239,10 +239,10 @@ const getInterns = async (req, res) => {
 
     console.log("interns", interns.length);
 
-    if(!interns) return res.status(404).json({ message: "No interns found" });
+    if (!interns) return res.status(404).json({ message: "No interns found" });
 
-    res.status(200).json({ 
-      message: "Interns fetched successfully", 
+    res.status(200).json({
+      message: "Interns fetched successfully",
       data: interns,
       pagination: {
         currentPage: page,
@@ -268,9 +268,9 @@ const getInternById = async (req, res) => {
       .populate('careerAdvisor', 'fullName email')
       .select('-password');
     if (!intern) return res.status(404).json({ message: "Intern not found" });
-    res.status(200).json({ 
-      message: "Intern fetched successfully", 
-      data: intern 
+    res.status(200).json({
+      message: "Intern fetched successfully",
+      data: intern
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error fetching intern" });
@@ -286,9 +286,9 @@ const getInternDetails = async (req, res) => {
       .populate('careerAdvisor', 'fullName email')
       .select('-password -_id');
     if (!intern) return res.status(404).json({ message: "Intern not found" });
-    res.status(200).json({ 
-      message: "Intern fetched successfully", 
-      data: intern 
+    res.status(200).json({
+      message: "Intern fetched successfully",
+      data: intern
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error fetching intern" });
@@ -380,17 +380,17 @@ const updateIntern = async (req, res) => {
     const existingIntern = await Intern.findById(req.params.id);
     let photoUrl = existingIntern ? existingIntern.photo : undefined;
     let resumeUrl = existingIntern ? existingIntern.resume : undefined;
-    
+
     // If photo is provided in body (existing URL as string), use it
     if (photo && typeof photo === 'string' && photo.trim() !== '') {
       photoUrl = photo;
     }
-    
+
     // If resume is provided in body (existing URL as string), use it
     if (resume && typeof resume === 'string' && resume.trim() !== '') {
       resumeUrl = resume;
     }
-    
+
     // Override with new files if uploaded
     if (req.files) {
       // Handle photo upload
@@ -400,7 +400,7 @@ const updateIntern = async (req, res) => {
         }
         photoUrl = req.files.photo[0].path; // Cloudinary URL
       }
-      
+
       // Handle resume upload
       if (req.files.resume && req.files.resume[0]) {
         if (existingIntern && existingIntern.resume && existingIntern.resume !== req.files.resume[0].path) {
@@ -474,9 +474,9 @@ const updateIntern = async (req, res) => {
       .select('-password');
 
     if (!intern) return res.status(404).json({ message: "Intern not found" });
-    res.status(200).json({ 
-      message: "Intern updated successfully", 
-      data: intern 
+    res.status(200).json({
+      message: "Intern updated successfully",
+      data: intern
     });
   } catch (error) {
     res.status(400).json({ message: error.message || "Error updating intern" });
@@ -498,7 +498,7 @@ const deleteIntern = async (req, res) => {
     }
 
     const intern = await Intern.findByIdAndDelete(req.params.id).select('-password');
-    res.status(200).json({ 
+    res.status(200).json({
       message: "Intern deleted successfully",
       data: { deletedIntern: intern }
     });
@@ -511,16 +511,16 @@ const deleteIntern = async (req, res) => {
 const searchInterns = async (req, res) => {
   try {
     const { q, branch } = req.query;
-    
+
     if (!q || q.trim() === '') {
       return res.status(400).json({ message: "Search query is required" });
     }
 
     const searchTerm = q.trim();
-    
+
     // Create search regex for case-insensitive search
     const searchRegex = new RegExp(searchTerm, 'i');
-    
+
     // Search in multiple fields
     let query = {
       $or: [
@@ -556,9 +556,9 @@ const searchInterns = async (req, res) => {
       .select('-password')
       .limit(20); // Limit results to 20 for performance
 
-    res.status(200).json({ 
+    res.status(200).json({
       message: `Found ${interns.length} intern(s) matching "${searchTerm}"`,
-      data: interns 
+      data: interns
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error searching interns" });
@@ -570,9 +570,9 @@ const getInternsByStatus = async (req, res) => {
   try {
     const { status } = req.params; // courseStatus, internSyllabusStatus, or placementStatus
     const { type } = req.query; // 'course', 'syllabus', or 'placement'
-    
+
     let query = {};
-    
+
     switch (type) {
       case 'course':
         query.courseStatus = status;
@@ -586,7 +586,7 @@ const getInternsByStatus = async (req, res) => {
       default:
         return res.status(400).json({ message: "Invalid type parameter. Use 'course', 'syllabus', or 'placement'" });
     }
-    
+
     // Role-based branch restriction: only super admin sees all
     if (req.userId) {
       const loggedInStaff = await Staff.findById(req.userId).populate('role');
@@ -603,10 +603,10 @@ const getInternsByStatus = async (req, res) => {
       .populate('careerAdvisor', 'fullName email')
       .select('-password')
       .sort({ createdAt: -1 });
-    
-    res.status(200).json({ 
-      message: `Interns with ${type} status '${status}' fetched successfully`, 
-      data: interns 
+
+    res.status(200).json({
+      message: `Interns with ${type} status '${status}' fetched successfully`,
+      data: interns
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error fetching interns by status" });
@@ -628,17 +628,17 @@ const getInternsByBranch = async (req, res) => {
         }
       }
     }
-    
+
     const interns = await Intern.find(query)
       .populate('course', 'courseName')
       .populate('branch', 'branchName')
       .populate('careerAdvisor', 'fullName email')
       .select('-password')
       .sort({ createdAt: -1 });
-    
-    res.status(200).json({ 
-      message: "Interns by branch fetched successfully", 
-      data: interns 
+
+    res.status(200).json({
+      message: "Interns by branch fetched successfully",
+      data: interns
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error fetching interns by branch" });
@@ -650,19 +650,19 @@ const toggleInternStatus = async (req, res) => {
   try {
     const intern = await Intern.findById(req.params.id);
     if (!intern) return res.status(404).json({ message: "Intern not found" });
-    
+
     intern.isActive = !intern.isActive;
     await intern.save();
-    
+
     const updatedIntern = await Intern.findById(intern._id)
       .populate('course', 'courseName')
       .populate('branch', 'branchName')
       .populate('careerAdvisor', 'fullName email')
       .select('-password');
-    
-    res.status(200).json({ 
-      message: `Intern ${updatedIntern.isActive ? 'activated' : 'deactivated'} successfully`, 
-      data: updatedIntern 
+
+    res.status(200).json({
+      message: `Intern ${updatedIntern.isActive ? 'activated' : 'deactivated'} successfully`,
+      data: updatedIntern
     });
   } catch (error) {
     res.status(500).json({ message: error.message || "Error toggling intern status" });
@@ -787,10 +787,10 @@ const updateInternProfileLinks = async (req, res) => {
       { $set: updateData },
       { new: true }
     )
-    .populate('course', 'courseName')
-    .populate('branch', 'branchName')
-    .populate('careerAdvisor', 'fullName email')
-    .select('-password');
+      .populate('course', 'courseName')
+      .populate('branch', 'branchName')
+      .populate('careerAdvisor', 'fullName email')
+      .select('-password');
 
     res.status(200).json({
       message: "Profile links and resume updated successfully",

@@ -32,9 +32,9 @@ const deleteFromCloudinary = async (url) => {
 // Create new course
 const createCourse = async (req, res) => {
   try {
-    const { courseName, duration, category, courseType, courseFee, modules } = req.body;
+    const { courseName, duration, category, courseType, courseFee, description, modules } = req.body;
 
-    if (!courseName || !duration || !category || !courseType || !courseFee) {
+    if (!courseName || !duration || !category || !courseType || !courseFee || !description) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -64,6 +64,7 @@ const createCourse = async (req, res) => {
       category,
       courseType,
       courseFee,
+      description,
       syllabus: syllabusUrl,
       modules: modules || [],
       totalModules: modules ? modules.length : 0

@@ -21,17 +21,17 @@ const getAllusers = async (res) => {
   try {
     const adminRole = await Role.findOne({ role: { $regex: /^(admin|branch admin)$/i } });
     const superAdminRole = await Role.findOne({ role: { $regex: /^super admin$/i } });
-    
+
     const excludeRoles = [];
     if (adminRole) excludeRoles.push(adminRole._id);
     if (superAdminRole) excludeRoles.push(superAdminRole._id);
 
-    const users = await User.find({ 
+    const users = await User.find({
       role: { $nin: excludeRoles },
       isActive: true,
       isDeleted: { $ne: true }
     }).populate('role', 'role');
-    
+
     return users;
   } catch (error) {
     console.error("Error in getAllusers helper:", error);
@@ -58,7 +58,7 @@ const getUser = async (req, res) => {
     if (userRole.toLowerCase() === "super admin") {
       // Super admin sees all users except super admins
       const excludeRoles = superAdminRole ? [superAdminRole._id] : [];
-      users = await User.find({ 
+      users = await User.find({
         role: { $nin: excludeRoles },
         isDeleted: { $ne: true }
       }).populate('role', 'role');
@@ -67,8 +67,8 @@ const getUser = async (req, res) => {
       const excludeRoles = [];
       if (superAdminRole) excludeRoles.push(superAdminRole._id);
       if (adminRole) excludeRoles.push(adminRole._id);
-      
-      users = await User.find({ 
+
+      users = await User.find({
         role: { $nin: excludeRoles },
         isDeleted: { $ne: true }
       }).populate('role', 'role');

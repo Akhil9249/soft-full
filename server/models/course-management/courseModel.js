@@ -10,6 +10,7 @@ const courseSchema = new mongoose.Schema({
   totalModules: { type: Number, default: 0 },
   modules: [{ type: mongoose.Schema.Types.ObjectId, ref: "Module" }],
   syllabus: { type: String, default: null },
+  description: { type: String, required: true },
   isActive: { 
     type: Boolean, 
     default: true 

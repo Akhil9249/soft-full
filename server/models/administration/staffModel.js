@@ -12,6 +12,8 @@ const staffSchema = new mongoose.Schema({
   district: { type: String },
   state: { type: String },
   photo: { type: String }, // store photo URL or file path
+  // isMultipleBranch: { type: Boolean, default: false },
+  // multipleBranches: [{ type: mongoose.Schema.Types.ObjectId, ref: "Branch" }],
 
   // Professional Details
   department: { type: String, required: true },

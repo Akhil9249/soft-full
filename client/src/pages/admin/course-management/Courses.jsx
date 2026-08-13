@@ -41,7 +41,6 @@ export const Courses = () => {
   const syllabusStatus = ['Choose Syllabus Status', 'Pending', 'In Progress', 'Completed'];
   const placementStatus = ['Choose Placement Status', 'Placed', 'Not Placed'];
   const roles = ['Choose Role', 'super admin', 'admin', 'mentor', 'intern'];
-  const durations = ['3 Months', '4 Months', '5 Months', '6 Months', '1 Year'];
   const courseTypes = ['Regular', 'Offer', 'Online'];
   const [categories, setCategories] = useState([]);
   const [courseList, setCourseList] = useState([]);
@@ -52,6 +51,13 @@ export const Courses = () => {
   const [editingCourse, setEditingCourse] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
+    courseName: "",
+    durationValue: "",
+    durationUnit: "Months",
+    category: "",
+    courseType: "",
+    courseFee: "",
+    description: "",
     syllabusFile: null
   });
   const [syllabusPreview, setSyllabusPreview] = useState(null);
@@ -298,14 +304,28 @@ export const Courses = () => {
   // No client-side filtering needed - server handles it
 
   const handleEditCourse = (course) => {
+    const parseDuration = (durationStr) => {
+      if (!durationStr) return { value: "", unit: "Months" };
+      const match = String(durationStr).trim().match(/^(\d+)\s*(Month|Months|Year|Years)$/i);
+      if (match) {
+        const num = match[1];
+        const unit = match[2].toLowerCase().startsWith("month") ? "Months" : "Years";
+        return { value: num, unit };
+      }
+      return { value: durationStr, unit: "Months" };
+    };
+    const parsed = parseDuration(course.duration);
+
     setEditingCourse(course);
     setIsEditMode(true);
     setFormData({
       courseName: course.courseName || "",
-      duration: course.duration || "",
+      durationValue: parsed.value || "",
+      durationUnit: parsed.unit || "Months",
       category: typeof course.category === 'object' ? course.category._id : course.category || "",
       courseType: course.courseType || "",
       courseFee: course.courseFee || "",
+      description: course.description || "",
       syllabusFile: course.syllabus || null, // Align with backend schema key "syllabus"
     });
     setSyllabusPreview(course.syllabus || null);
@@ -316,6 +336,13 @@ export const Courses = () => {
     setEditingCourse(null);
     setIsEditMode(false);
     setFormData({
+      courseName: "",
+      durationValue: "",
+      durationUnit: "Months",
+      category: "",
+      courseType: "",
+      courseFee: "",
+      description: "",
       syllabusFile: null
     });
     setSyllabusPreview(null);
@@ -509,13 +536,12 @@ export const Courses = () => {
         c.duration || 'N/A',
         (typeof c.category === 'object' && c.category ? c.category.categoryName : c.category) || 'N/A',
         c.courseType || 'N/A',
-        formatFee(c.courseFee),
-        c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-GB') : 'N/A'
+        formatFee(c.courseFee)
       ]);
 
       autoTable(doc, {
         startY: 45,
-        head: [['Course Name', 'Duration', 'Category', 'Type', 'Fee', 'Created']],
+        head: [['Course Name', 'Duration', 'Category', 'Type', 'Fee']],
         body: tableData,
         theme: 'striped',
         headStyles: { fillColor: [247, 147, 30], textColor: 255, fontStyle: 'bold', fontSize: 9 },
@@ -525,7 +551,6 @@ export const Courses = () => {
           2: { cellWidth: 'auto', halign: 'left', fontSize: 8 },
           3: { cellWidth: 'auto', halign: 'left', fontSize: 8 },
           4: { cellWidth: 'auto', halign: 'left', fontSize: 8 },
-          5: { cellWidth: 'auto', halign: 'center', fontSize: 8 },
         },
         styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak', lineWidth: 0.1 },
         margin: { left: 10, right: 10 },
@@ -989,7 +1014,6 @@ export const Courses = () => {
                   <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                   <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Fee</th>
                   <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Syllabus</th>
-                  <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
                   <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -1059,9 +1083,6 @@ export const Courses = () => {
                           No Syllabus
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                      {course.createdAt ? new Date(course.createdAt).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex justify-center space-x-2">
@@ -1156,7 +1177,6 @@ export const Courses = () => {
                       </span>
                     )}
                   </div>
-                  <div><span className="font-medium">Created:</span> {course.createdAt ? new Date(course.createdAt).toLocaleDateString() : 'N/A'}</div>
                 </div>
                 <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-200">
                   <button 
@@ -1244,13 +1264,16 @@ export const Courses = () => {
       setError('');
       
       const courseName = formData.courseName;
-      const duration = formData.duration;
+      const duration = formData.durationValue 
+        ? `${formData.durationValue} ${Number(formData.durationValue) === 1 ? (formData.durationUnit === "Months" ? "Month" : "Year") : (formData.durationUnit || "Months")}`
+        : "";
       const category = formData.category;
       const courseType = formData.courseType;
       const courseFee = formData.courseFee;
+      const description = formData.description;
 
       // Validate required fields
-      if (!courseName || !duration || !category || !courseType || !courseFee) {
+      if (!courseName || !duration || !category || !courseType || !courseFee || !description) {
         showNotification('error', 'Validation Error', 'All fields are required');
         return;
       }
@@ -1262,6 +1285,7 @@ export const Courses = () => {
       payload.append('category', category);
       payload.append('courseType', courseType);
       payload.append('courseFee', Number(courseFee));
+      payload.append('description', String(description).trim());
 
       if (formData.syllabusFile instanceof File) {
         payload.append('syllabus', formData.syllabusFile);
@@ -1287,6 +1311,13 @@ export const Courses = () => {
         setEditingCourse(null);
         setIsEditMode(false);
         setFormData({
+          courseName: "",
+          durationValue: "",
+          durationUnit: "Months",
+          category: "",
+          courseType: "",
+          courseFee: "",
+          description: "",
           syllabusFile: null
         });
         setSyllabusPreview(null);
@@ -1315,16 +1346,26 @@ export const Courses = () => {
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-2">Duration</label>
-          <select 
-            name="duration" 
-            value={formData.duration || ''}
-            onChange={(e) => setFormData(prev => ({...prev, duration: e.target.value}))}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-            required
-          >
-            <option value="">Choose Duration</option>
-            {durations.map(duration => <option key={duration} value={duration}>{duration}</option>)}
-          </select>
+          <div className="flex gap-2">
+            <input 
+              type="number"
+              min="1"
+              placeholder="e.g. 3"
+              value={formData.durationValue || ''}
+              onChange={(e) => setFormData(prev => ({...prev, durationValue: e.target.value}))}
+              className="w-2/3 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+              required
+            />
+            <select 
+              value={formData.durationUnit || 'Months'}
+              onChange={(e) => setFormData(prev => ({...prev, durationUnit: e.target.value}))}
+              className="w-1/3 px-2 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              required
+            >
+              <option value="Months">Months</option>
+              <option value="Years">Years</option>
+            </select>
+          </div>
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-2">Category Name</label>
@@ -1361,6 +1402,18 @@ export const Courses = () => {
             value={formData.courseFee || ''}
             onChange={(e) => setFormData(prev => ({...prev, courseFee: e.target.value}))}
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+            required 
+          />
+        </div>
+        <div className="lg:col-span-3">
+          <label className="block text-gray-700 font-medium mb-2">Description</label>
+          <textarea 
+            name="description" 
+            placeholder="Enter Course Description" 
+            value={formData.description || ''}
+            onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+            rows="3"
             required 
           />
         </div>
@@ -1736,6 +1789,7 @@ export const Courses = () => {
                 <p className="leading-6"><span className="font-semibold text-gray-900">Fee:</span> <span className="text-gray-600">{viewingCourse.courseFee ? `₹${Number(viewingCourse.courseFee).toLocaleString()}` : 'N/A'}</span></p>
                 <p className="leading-6"><span className="font-semibold text-gray-900">Created:</span> <span className="text-gray-600">{viewingCourse.createdAt ? new Date(viewingCourse.createdAt).toLocaleDateString('en-GB') : 'N/A'}</span></p>
                 <p className="leading-6"><span className="font-semibold text-gray-900">ID:</span> <span className="text-gray-600">{viewingCourse._id?.slice(-6) || 'N/A'}</span></p>
+                <p className="leading-6 sm:col-span-2"><span className="font-semibold text-gray-900">Description:</span> <span className="text-gray-600 block sm:inline mt-1 sm:mt-0">{viewingCourse.description || 'N/A'}</span></p>
               </div>
 
               {/* Syllabus */}
