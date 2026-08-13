@@ -47,6 +47,7 @@ export const WeeklySchedule = () => {
 
   const [showCloneModal, setShowCloneModal] = useState(false);
   const [cloneTargetDate, setCloneTargetDate] = useState('');
+  const [cloneError, setCloneError] = useState('');
   const [cloningSchedules, setCloningSchedules] = useState(false);
 
   const [showRemoveBatchModal, setShowRemoveBatchModal] = useState(false);
@@ -119,7 +120,22 @@ export const WeeklySchedule = () => {
       const today = new Date();
       setCloneTargetDate(today.toISOString().split('T')[0]);
     }
+    setCloneError('');
     setShowCloneModal(true);
+  };
+
+  const handleTargetDateChange = (val) => {
+    setCloneTargetDate(val);
+    if (val && startDate) {
+      const { startDate: targetStart } = getWeekRange(val);
+      if (targetStart === startDate) {
+        setCloneError('Target date cannot be within the current week!');
+      } else {
+        setCloneError('');
+      }
+    } else {
+      setCloneError('');
+    }
   };
 
   const handleCloneSchedule = async () => {
@@ -128,12 +144,17 @@ export const WeeklySchedule = () => {
       return;
     }
 
+    const { startDate: targetStart, endDate: targetEnd } = getWeekRange(cloneTargetDate);
+
+    if (targetStart === startDate) {
+      showModalMessage('Target week cannot be the current week! Please select a date in a different week.', 'warning');
+      return;
+    }
+
     if (weeklySchedules.length === 0) {
       showModalMessage('The current week has no schedule blocks to clone!', 'warning');
       return;
     }
-
-    const { startDate: targetStart, endDate: targetEnd } = getWeekRange(cloneTargetDate);
 
     try {
       setCloningSchedules(true);
@@ -357,7 +378,7 @@ export const WeeklySchedule = () => {
 
   const fetchModules = async () => {
     try {
-      const res = await getModulesData();
+      const res = await getModulesData('page=1&limit=10000');
       setModules(res.data || []);
     } catch (err) {
       console.error('Failed to load modules:', err);
@@ -1253,24 +1274,39 @@ export const WeeklySchedule = () => {
         {/* Hover Batch Modal */}
         {hoveredBatchInfo && (
           <div
-            className="fixed z-[100] bg-white border border-gray-200 rounded-lg shadow-xl p-4 w-56 text-gray-800 pointer-events-none transform -translate-x-1/2 -translate-y-full"
+            className="fixed z-[100] bg-white border border-orange-100 rounded-xl shadow-2xl p-4 w-72 text-gray-800 pointer-events-none transform -translate-x-1/2 -translate-y-full transition-all duration-200 ease-out"
             style={{
-              top: `${hoveredBatchInfo.y - 10}px`,
+              top: `${hoveredBatchInfo.y - 12}px`,
               left: `${hoveredBatchInfo.x}px`,
             }}
           >
-            <h4 className="font-bold border-b pb-2 mb-2 text-sm text-orange-600">{hoveredBatchInfo.batch.batchName} Interns</h4>
-            <div className="max-h-48 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <div className="flex items-center justify-between border-b border-gray-100 pb-2 mb-3">
+              <h4 className="font-bold text-sm text-gray-900 flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse"></span>
+                {hoveredBatchInfo.batch.batchName} Interns
+              </h4>
+              <span className="text-[10px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-semibold">
+                {hoveredBatchInfo.batch.interns?.length || 0} Total
+              </span>
+            </div>
+            <div className="max-h-56 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin' }}>
               {hoveredBatchInfo.batch.interns?.length > 0 ? (
-                <ul className="space-y-1">
+                <ul className="space-y-2">
                   {hoveredBatchInfo.batch.interns.map((intern, idx) => (
-                    <li key={intern._id || idx} className="text-xs py-1 border-b border-gray-100 last:border-0">
-                      <span className="font-medium text-gray-700">{intern.fullName}</span>
+                    <li key={intern._id || idx} className="text-xs py-1.5 px-2 rounded-lg bg-gray-50/50 border border-gray-100/50 flex flex-col gap-0.5">
+                      <span className="font-semibold text-gray-800">{intern.fullName}</span>
+                      {intern.course?.courseName ? (
+                        <span className="text-[10px] text-orange-500 font-medium truncate">
+                          📚 {intern.course.courseName}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-400 italic">No Course Assigned</span>
+                      )}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-gray-500 italic">No interns in this batch.</p>
+                <p className="text-xs text-gray-500 italic text-center py-4">No interns in this batch.</p>
               )}
             </div>
           </div>
@@ -1336,10 +1372,17 @@ export const WeeklySchedule = () => {
                   <input
                     type="date"
                     disabled={cloningSchedules}
-                    className="w-full p-2.5 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+                    className={`w-full p-2.5 text-sm border rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition ${
+                      cloneError ? 'border-red-300 bg-red-50/30' : 'border-gray-300'
+                    }`}
                     value={cloneTargetDate}
-                    onChange={(e) => setCloneTargetDate(e.target.value)}
+                    onChange={(e) => handleTargetDateChange(e.target.value)}
                   />
+                  {cloneError && (
+                    <p className="text-xs text-red-500 font-medium mt-1">
+                      ⚠️ {cloneError}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1354,7 +1397,7 @@ export const WeeklySchedule = () => {
               </button>
               <button
                 type="button"
-                disabled={cloningSchedules || !cloneTargetDate}
+                disabled={cloningSchedules || !cloneTargetDate || !!cloneError}
                 className="inline-flex justify-center items-center rounded-lg border border-transparent px-4 py-2 bg-orange-500 text-sm font-medium text-white hover:bg-orange-600 focus:outline-none transition disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={handleCloneSchedule}
               >

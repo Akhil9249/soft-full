@@ -92,7 +92,7 @@ export const MentorBatches = () => {
   const [exporting, setExporting] = useState(false);
 
   const [branches, setBranches] = useState([]);
-  const [selectedBranch, setSelectedBranch] = useState(auth?.branch || '');
+  const [selectedBranch, setSelectedBranch] = useState('');
 
   const { getAllMentorsWithBatches, getBranchesData } = AdminService();
   const navigate = useNavigate();
@@ -114,9 +114,23 @@ export const MentorBatches = () => {
         const branchesList = Array.isArray(branchesData) ? branchesData : [];
         setBranches(branchesList);
         
-        // Default to logged-in user's branch, or first branch if not set
+        // Default to calicut branch if super admin, or logged-in user's branch, or first branch if not set
         if (!selectedBranch && branchesList.length > 0) {
-          setSelectedBranch(auth?.branch || branchesList[0]._id);
+          const isSuperAdmin = userRole?.toLowerCase() === 'super admin';
+          let defaultBranchId = '';
+          if (isSuperAdmin) {
+            const calicutBranch = branchesList.find(b => b.branchName?.toLowerCase().includes('calicut'));
+            if (calicutBranch) {
+              defaultBranchId = calicutBranch._id;
+            }
+          } else {
+            defaultBranchId = auth?.branch || localStorage.getItem("branch") || '';
+          }
+          
+          if (!defaultBranchId || !branchesList.some(b => b._id === defaultBranchId)) {
+            defaultBranchId = branchesList[0]._id;
+          }
+          setSelectedBranch(defaultBranchId);
         }
       } catch (err) {
         console.error('Error fetching branches:', err);

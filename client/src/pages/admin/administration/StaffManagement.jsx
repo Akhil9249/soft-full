@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import useAuth from '../../../hooks/useAuth';
 // import api from "../../../axios";
 import Tabs from "../../../components/button/Tabs";
@@ -40,6 +41,9 @@ export const StaffManagement = () => {
         title: '',
         message: ''
     });
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Pagination state
     const [pagination, setPagination] = useState({
@@ -165,9 +169,19 @@ export const StaffManagement = () => {
             const res = await getBranchesData();
             // Handle different response structures
             const branchesData = (res.data?.data || res.data || []).filter(b => b.isActive !== false);
-            setBranches(Array.isArray(branchesData) ? branchesData : []);
+            const branchesList = Array.isArray(branchesData) ? branchesData : [];
+            setBranches(branchesList);
 
-            fetchStaff(1, searchTerm, filters.department, filters.employmentStatus, '');
+            let initialBranchId = '';
+            if (auth?.role?.toLowerCase() === 'super admin') {
+                const calicutBranch = branchesList.find(b => b.branchName?.toLowerCase().includes('calicut'));
+                if (calicutBranch) {
+                    initialBranchId = calicutBranch._id;
+                    setFilters(prev => ({ ...prev, branch: initialBranchId }));
+                }
+            }
+
+            fetchStaff(1, searchTerm, filters.department, filters.employmentStatus, initialBranchId);
         } catch (err) {
             console.error('Failed to load branches:', err);
             setBranches([]);
@@ -404,6 +418,8 @@ export const StaffManagement = () => {
         });
         setPhotoPreview(null);
         setResumePreview(null);
+        setShowPassword(false);
+        setShowConfirmPassword(false);
         setActiveTab('staffList');
     };
 
@@ -676,6 +692,8 @@ export const StaffManagement = () => {
             });
             setPhotoPreview(null);
             setResumePreview(null);
+            setShowPassword(false);
+            setShowConfirmPassword(false);
         } catch (err) {
             console.error('Staff operation error:', err);
             console.error('Error response:', err?.response?.data);
@@ -776,7 +794,6 @@ export const StaffManagement = () => {
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
-                                    <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Batches</th>
                                     <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider flex justify-center">Actions</th>
                                 </tr>
@@ -813,26 +830,20 @@ export const StaffManagement = () => {
                                         </td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{staffMember.role?.role || 'N/A'}</td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{staffMember.branch?.branchName || 'N/A'}</td>
-                                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${staffMember.employmentStatus === 'Active'
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-red-100 text-red-800'
-                                                }`}>
-                                                {staffMember.employmentStatus}
-                                            </span>
-                                        </td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            {staffMember.isMentor ? (
-                                                <button
-                                                    onClick={() => navigate('/mentor-batches', { state: { searchMentor: staffMember.fullName } })}
-                                                    className="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-md text-xs font-medium transition-colors"
-                                                    title="View Mentor Batches"
-                                                >
-                                                    View Batches
-                                                </button>
-                                            ) : (
-                                                <span className="text-gray-400 text-xs italic">No Batches</span>
-                                            )}
+                                            {staffMember.role?.role?.toLowerCase() === 'mentor' ? (
+                                                staffMember.isMentor ? (
+                                                    <button
+                                                        onClick={() => navigate('/mentor-batches', { state: { searchMentor: staffMember.fullName } })}
+                                                        className="inline-flex items-center px-3 py-1 bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 rounded-md text-xs font-medium transition-colors"
+                                                        title="View Mentor Batches"
+                                                    >
+                                                        View Batches
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-gray-400 text-xs italic">No Batches</span>
+                                                )
+                                            ) : null}
                                         </td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm font-medium flex justify-center">
                                             <div className="flex space-x-2">
@@ -890,12 +901,6 @@ export const StaffManagement = () => {
                                         <p className="text-sm text-gray-500">{staffMember.staffPhoneNumber}</p>
                                         <p className="text-xs text-gray-500 truncate">{staffMember.email}</p>
                                     </div>
-                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full flex-shrink-0 ${staffMember.employmentStatus === 'Active'
-                                        ? 'bg-green-100 text-green-800'
-                                        : 'bg-red-100 text-red-800'
-                                        }`}>
-                                        {staffMember.employmentStatus}
-                                    </span>
                                 </div>
                                 <div className="space-y-2 text-sm text-gray-600 mb-3">
                                     <div><span className="font-medium">Department:</span> {staffMember.department || 'N/A'}</div>
@@ -921,7 +926,7 @@ export const StaffManagement = () => {
                                     >
                                         Delete
                                     </button>
-                                    {staffMember.isMentor && (
+                                    {staffMember.role?.role?.toLowerCase() === 'mentor' && staffMember.isMentor && (
                                         <button
                                             onClick={() => navigate('/mentor-batches', { state: { searchMentor: staffMember.fullName } })}
                                             className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-[#f7931e] bg-orange-50 rounded-md hover:bg-orange-100 transition-colors"
@@ -1342,28 +1347,54 @@ export const StaffManagement = () => {
                         {isEditMode ? 'Update Password' : 'Create Password'}
                         {isEditMode && <span className="text-red-400 text-[12px] ml-1">(Leave blank to keep current password)</span>}
                     </label>
-                    <input
-                        name="password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        type="password"
-                        placeholder={isEditMode ? "Enter new password (optional)" : "Create A Password"}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    />
+                    <div className="relative">
+                        <input
+                            name="password"
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            type={showPassword ? "text" : "password"}
+                            placeholder={isEditMode ? "Enter new password (optional)" : "Create A Password"}
+                            className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-orange-500 focus:outline-none"
+                        >
+                            {showPassword ? (
+                                <IoEyeOffOutline className="h-5 w-5" />
+                            ) : (
+                                <IoEyeOutline className="h-5 w-5" />
+                            )}
+                        </button>
+                    </div>
                 </div>
                 <div>
                     <label className="block text-gray-700 font-medium mb-2">
                         {isEditMode ? 'Confirm New Password' : 'Confirm Password'}
                         {isEditMode && <span className="text-red-400 text-[12px] ml-1">(Only if updating password)</span>}
                     </label>
-                    <input
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleInputChange}
-                        type="password"
-                        placeholder={isEditMode ? "Re-enter new password (optional)" : "Re-Enter The Password"}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    />
+                    <div className="relative">
+                        <input
+                            name="confirmPassword"
+                            value={formData.confirmPassword}
+                            onChange={handleInputChange}
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder={isEditMode ? "Re-enter new password (optional)" : "Re-Enter The Password"}
+                            className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-orange-500 focus:outline-none"
+                        >
+                            {showConfirmPassword ? (
+                                <IoEyeOffOutline className="h-5 w-5" />
+                            ) : (
+                                <IoEyeOutline className="h-5 w-5" />
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
             <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6 sm:mt-8">

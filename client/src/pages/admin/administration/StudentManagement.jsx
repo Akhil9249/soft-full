@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
+import { IoEyeOutline, IoEyeOffOutline } from 'react-icons/io5'
 import useAuth from '../../../hooks/useAuth';
 import Tabs from '../../../components/button/Tabs';
 import { Navbar } from '../../../components/admin/AdminNavBar';
@@ -60,6 +61,8 @@ export const StudentManagement = () => {
     title: '',
     message: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [openSections, setOpenSections] = useState({
     administration: true,
     course: false,
@@ -148,9 +151,19 @@ export const StudentManagement = () => {
       // const res = await axiosPrivate.get('http://localhost:3000/api/branches');
       const res = await getBranchesData();
       const branchesData = (res?.data || []).filter(b => b.isActive !== false);
-      setBranches(branchesData);
+      const branchesList = Array.isArray(branchesData) ? branchesData : [];
+      setBranches(branchesList);
       
-      fetchInterns(1, searchTerm, filters.courseStatus, filters.course, '', filters.batch);
+      let initialBranchId = '';
+      if (auth?.role?.toLowerCase() === 'super admin') {
+        const calicutBranch = branchesList.find(b => b.branchName?.toLowerCase().includes('calicut'));
+        if (calicutBranch) {
+          initialBranchId = calicutBranch._id;
+          setFilters(prev => ({ ...prev, branch: initialBranchId }));
+        }
+      }
+
+      fetchInterns(1, searchTerm, filters.courseStatus, filters.course, initialBranchId, filters.batch);
     } catch (err) {
       console.error('Failed to load branches:', err);
       // Set default branches if API fails
@@ -407,6 +420,8 @@ export const StudentManagement = () => {
     setFormData({});
     setPhotoPreview(null);
     setResumePreview(null);
+    setShowPassword(false);
+    setShowConfirmPassword(false);
     setActiveTab('studentsList');
   };
 
@@ -560,6 +575,11 @@ export const StudentManagement = () => {
     e.preventDefault();
     setError('');
 
+    if (formData.password && formData.password.trim() !== '' && formData.password !== formData.confirmPassword) {
+      showNotification('error', 'Validation Error', 'Passwords do not match.');
+      return;
+    }
+
     // Build FormData for file uploads
     const payload = new FormData();
 
@@ -634,6 +654,8 @@ export const StudentManagement = () => {
       setFormData({});
       setPhotoPreview(null);
       setResumePreview(null);
+      setShowPassword(false);
+      setShowConfirmPassword(false);
       // e.currentTarget.reset();
     } catch (err) {
       showNotification('error', 'Error', err?.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} student`);
@@ -1571,18 +1593,51 @@ export const StudentManagement = () => {
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-2">Create Password</label>
-          <input
-            name="password"
-            type="password"
-            placeholder="Create A Password"
-            value={formData.password || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-          />
+          <div className="relative">
+            <input
+              name="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Create A Password"
+              value={formData.password || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+              className="w-full pl-4 pr-10 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-orange-500 focus:outline-none"
+            >
+              {showPassword ? (
+                <IoEyeOffOutline className="h-5 w-5" />
+              ) : (
+                <IoEyeOutline className="h-5 w-5" />
+              )}
+            </button>
+          </div>
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-2">Confirm Password</label>
-          <input type="password" placeholder="Re-Enter The Password" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+          <div className="relative">
+            <input
+              name="confirmPassword"
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="Re-Enter The Password"
+              value={formData.confirmPassword || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+              className="w-full pl-4 pr-10 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-orange-500 focus:outline-none"
+            >
+              {showConfirmPassword ? (
+                <IoEyeOffOutline className="h-5 w-5" />
+              ) : (
+                <IoEyeOutline className="h-5 w-5" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
       <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6 sm:mt-8">

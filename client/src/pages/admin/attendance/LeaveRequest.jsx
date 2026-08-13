@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navbar } from '../../../components/admin/AdminNavBar';
 import AdminService from '../../../services/admin-api-service/AdminService';
-import { ChevronDown, Check, X, Eye, FileText, Upload } from 'lucide-react';
-import Tabs from "../../../components/button/Tabs";
+import { Check, X, Eye } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -104,20 +103,7 @@ const LeaveRequest = () => {
     setShowActionModal(true);
   };
 
-  // Form state
-  const [formData, setFormData] = useState({
-    leaveDurationType: 'SINGLE',
-    leaveType: '',
-    date: '',
-    startDate: '',
-    endDate: '',
-    reason: '',
-  });
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
 
   // AdminService for fetching data
   const {
@@ -128,7 +114,6 @@ const LeaveRequest = () => {
     getAllBatchesData,
     getAllLeaveRequests,
     updateLeaveRequestStatus,
-    postLeaveRequest,
     getUserProfile
   } = AdminService();
 
@@ -341,45 +326,7 @@ const LeaveRequest = () => {
     }
   };
 
-  const handleApplyLeave = async (e) => {
-    e.preventDefault();
-    const isSingle = formData.leaveDurationType === 'SINGLE';
-    if (!formData.leaveType || !formData.reason || (isSingle ? !formData.date : (!formData.startDate || !formData.endDate))) {
-      showNotification('error', 'Validation Error', 'Please fill in all required fields');
-      return;
-    }
 
-    try {
-      setLoading(true);
-      const payload = {
-        leaveDurationType: formData.leaveDurationType,
-        leaveType: formData.leaveType,
-        reason: formData.reason,
-        attachments: []
-      };
-
-      if (isSingle) {
-        payload.date = formData.date;
-      } else {
-        payload.startDate = formData.startDate;
-        payload.endDate = formData.endDate;
-      }
-
-      const res = await postLeaveRequest(payload);
-
-      if (res?.success) {
-        showNotification('success', 'Success', 'Leave request submitted successfully.');
-        fetchLeaveRequests(1, searchTerm, selectedBranch, selectedMonth, selectedYear, selectedDate);
-        setActiveTab('leaveList');
-        setFormData({ leaveDurationType: 'SINGLE', leaveType: '', date: '', startDate: '', endDate: '', reason: '' });
-      }
-    } catch (err) {
-      console.error('Failed to submit leave request:', err);
-      showNotification('error', 'Submission Failed', err.response?.data?.message || 'Failed to submit leave request.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Handler for view action
   const handleView = (request) => {
@@ -497,8 +444,7 @@ const LeaveRequest = () => {
   const headData = "Leave Requests";
 
   const tabOptions = [
-    { value: "leaveList", label: "Leave Requests" },
-    { value: "applyLeave", label: "Apply Leave" }
+    { value: "leaveList", label: "Leave Requests" }
   ];
 
   const renderLeaveList = () => (
@@ -803,135 +749,7 @@ const LeaveRequest = () => {
     </div>
   );
 
-  const renderNewLeaveForm = () => (
-    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex-grow">
-      
-      <form onSubmit={handleApplyLeave} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Duration Type */}
-          <div className="md:col-span-2">
-            <label className="block text-gray-700 font-medium mb-2">Duration Type <span className="text-red-500">*</span></label>
-            <div className="flex gap-6">
-              <label className="inline-flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  name="leaveDurationType"
-                  value="SINGLE"
-                  checked={formData.leaveDurationType === 'SINGLE'}
-                  onChange={handleInputChange}
-                  className="form-radio text-orange-500 focus:ring-orange-500 h-4 w-4"
-                />
-                <span className="ml-2 text-sm text-gray-700">Single Day</span>
-              </label>
-              <label className="inline-flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  name="leaveDurationType"
-                  value="MULTIPLE"
-                  checked={formData.leaveDurationType === 'MULTIPLE'}
-                  onChange={handleInputChange}
-                  className="form-radio text-orange-500 focus:ring-orange-500 h-4 w-4"
-                />
-                <span className="ml-2 text-sm text-gray-700">Multiple Days</span>
-              </label>
-            </div>
-          </div>
 
-          {/* Leave Type Dropdown */}
-          <div className="md:col-span-2">
-            <label className="block text-gray-700 font-medium mb-2">Leave Type <span className="text-red-500">*</span></label>
-            <select 
-              name="leaveType" 
-              value={formData.leaveType} 
-              onChange={handleInputChange} 
-              className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            >
-              <option value="">Choose Leave Type</option>
-              <option value="SICK">Sick Leave</option>
-              <option value="PERSONAL">Personal Leave</option>
-              <option value="MEDICAL">Medical Leave</option>
-              <option value="FAMILY">Family Leave</option>
-              <option value="EXAM">Exam Leave</option>
-              <option value="EVENT">Event Leave</option>
-              <option value="OTHER">Other</option>
-            </select>
-          </div>
-
-          {formData.leaveDurationType === 'SINGLE' ? (
-            <div className="md:col-span-2">
-              <label className="block text-gray-700 font-medium mb-2">Date <span className="text-red-500">*</span></label>
-              <input 
-                name="date" 
-                value={formData.date} 
-                onChange={handleInputChange} 
-                type="date" 
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-              />
-            </div>
-          ) : (
-            <>
-              {/* Start Date */}
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">Start Date <span className="text-red-500">*</span></label>
-                <input 
-                  name="startDate" 
-                  value={formData.startDate} 
-                  onChange={handleInputChange} 
-                  type="date" 
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-                />
-              </div>
-
-              {/* End Date */}
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">End Date <span className="text-red-500">*</span></label>
-                <input 
-                  name="endDate" 
-                  value={formData.endDate} 
-                  onChange={handleInputChange} 
-                  type="date" 
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-                />
-              </div>
-            </>
-          )}
-
-          {/* Reason */}
-          <div className="md:col-span-2">
-            <label className="block text-gray-700 font-medium mb-2">Reason <span className="text-red-500">*</span></label>
-            <textarea 
-              name="reason" 
-              value={formData.reason} 
-              onChange={handleInputChange} 
-              placeholder="Enter details about your leave..."
-              rows="4" 
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-4 justify-end pt-4 border-t border-gray-200">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('leaveList');
-              setFormData({ leaveDurationType: 'SINGLE', leaveType: '', date: '', startDate: '', endDate: '', reason: '' });
-            }}
-            className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2.5 text-sm font-medium text-white bg-[#f7931e] rounded-md hover:bg-[#e67c00] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Submitting...' : 'Apply Leave'}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
 
   const NotificationModal = () => {
     if (!notification.show) return null;
@@ -1010,12 +828,9 @@ const LeaveRequest = () => {
       `}</style>
       <Navbar headData={headData} activeTab={activeTab} />
 
-      <div className="mb-6">
-        <Tabs tabs={tabOptions} activeTab={activeTab} setActiveTab={setActiveTab} />
+      <div className="mt-4">
+        {renderLeaveList()}
       </div>
-
-      {/* Conditional Rendering */}
-      {activeTab === 'leaveList' ? renderLeaveList() : renderNewLeaveForm()}
 
       {/* Notification Modal */}
       <NotificationModal />

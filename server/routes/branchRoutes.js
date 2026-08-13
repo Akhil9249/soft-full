@@ -12,6 +12,6 @@ router.get("/:id", checkAuth, checkPermission('branchManagement', 'viewBranch'),
 router.put("/:id", checkAuth, checkPermission('branchManagement', 'editBranch'), branchController.updateBranch);
 router.delete("/:id", checkAuth, checkPermission('branchManagement', 'deleteBranch'), branchController.deleteBranch);
 router.patch("/:id/toggle-status", checkAuth, checkPermission('branchManagement', 'editBranch'), branchController.toggleBranchStatus);
-router.patch("/:id/days", checkAuth, checkPermission('branchManagement', 'editBranch'), branchController.updateBranchDays);
+router.patch("/:id/days",  branchController.updateBranchDays);
 
 module.exports = router;

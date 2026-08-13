@@ -79,7 +79,7 @@ export const Topics = () => {
       setLoading(true);
       setError('');
       // const res = await axiosPrivate.get('http://localhost:3000/api/module');
-      const res = await getModulesData();
+      const res = await getModulesData('page=1&limit=10000');
       setModules(res.data || []);
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to load modules');

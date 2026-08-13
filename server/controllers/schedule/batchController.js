@@ -82,7 +82,11 @@ const getBatches = async (req, res) => {
       .populate({
         path: "interns",
         select: "fullName email course courseStatus admissionNumber",
-        match: { courseStatus: "Ongoing" }
+        match: { courseStatus: "Ongoing" },
+        populate: {
+          path: "course",
+          select: "courseName"
+        }
       })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -137,7 +141,11 @@ const getAllBatches = async (req, res) => {
       .populate({
         path: "interns",
         select: "fullName email course courseStatus admissionNumber",
-        match: { courseStatus: "Ongoing" }
+        match: { courseStatus: "Ongoing" },
+        populate: {
+          path: "course",
+          select: "courseName"
+        }
       })
       .sort({ createdAt: -1 });
 
@@ -167,7 +175,11 @@ const getBatchById = async (req, res) => {
       .populate({
         path: "interns",
         select: "fullName email course courseStatus admissionNumber",
-        match: { courseStatus: "Ongoing" }
+        match: { courseStatus: "Ongoing" },
+        populate: {
+          path: "course",
+          select: "courseName"
+        }
       });
       
     if (!batch) return res.status(404).json({ message: "Batch not found" });
@@ -222,7 +234,11 @@ const updateBatch = async (req, res) => {
     .populate({
       path: "interns",
       select: "fullName email course courseStatus admissionNumber",
-      match: { courseStatus: "Ongoing" }
+      match: { courseStatus: "Ongoing" },
+      populate: {
+        path: "course",
+        select: "courseName"
+      }
     });
 
     if (!updated) return res.status(404).json({ message: "Batch not found" });
@@ -272,7 +288,11 @@ const addIntern = async (req, res) => {
       .populate({
         path: "interns",
         select: "fullName email course courseStatus admissionNumber",
-        match: { courseStatus: "Ongoing" }
+        match: { courseStatus: "Ongoing" },
+        populate: {
+          path: "course",
+          select: "courseName"
+        }
       });
 
     const populatedBatchObj = populatedBatch.toObject();
