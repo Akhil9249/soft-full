@@ -7,20 +7,36 @@ let firebaseApp = null;
 let messaging = null;
 
 try {
-  // Determine path to service account json
-  const defaultPath = path.join(__dirname, "firebase-service-account.json");
-  const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || defaultPath;
+  let credential = null;
 
-  if (fs.existsSync(serviceAccountPath)) {
-    const serviceAccount = require(serviceAccountPath);
+  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n');
+    credential = admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: privateKey
+    });
+    console.log("🔒 Loaded Firebase credentials from Environment Variables.");
+  } else {
+    const defaultPath = path.join(__dirname, "firebase-service-account.json");
+    const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH || defaultPath;
+
+    if (fs.existsSync(serviceAccountPath)) {
+      const serviceAccount = require(serviceAccountPath);
+      credential = admin.credential.cert(serviceAccount);
+      console.log(`🔒 Loaded Firebase credentials from file: ${serviceAccountPath}`);
+    }
+  }
+
+  if (credential) {
     firebaseApp = admin.initializeApp({
-      credential: admin.cert(serviceAccount)
+      credential
     });
     messaging = getMessaging(firebaseApp);
     console.log("🔥 Firebase Admin SDK initialized successfully.");
   } else {
     console.warn(
-      `⚠️  Firebase service account file not found at ${serviceAccountPath}. Push notifications will be logged but not sent.`
+      "⚠️  Firebase configuration (env variables or JSON file) not found. Push notifications will be logged but not sent."
     );
   }
 } catch (error) {

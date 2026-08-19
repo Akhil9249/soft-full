@@ -54,7 +54,7 @@ Thumbs.db
 *.sln
 *.sw?
 
-# ----------------------
-# Local credentials / secrets
-# ----------------------
-server/config/firebase-service-account.json
+
+
+
+
