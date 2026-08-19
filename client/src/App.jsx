@@ -39,6 +39,7 @@ import AttendanceDashboard from "./pages/user/attendance/AttendanceDashboard";
 import StudentLeaveRequest from "./pages/user/attendance/LeaveRequest";
 import InternsMenorCard from "./pages/user/task-management/InternsMenorCard";
 import UserWeeklySchedule from "./pages/user/attendance/WeeklySchedule";
+import { Notification as UserNotification } from "./pages/user/notification/Notification";
 
 
 
@@ -89,6 +90,7 @@ function App() {
         <Route path="/student/leave-request" element={<StudentLeaveRequest />} />
         <Route path="/student/weekly-schedule" element={<UserWeeklySchedule />} />
         <Route path="/student/menor-card" element={<InternsMenorCard />} />
+        <Route path="/student/notification" element={<UserNotification />} />
       </Route>
     </Routes>
 

@@ -717,9 +717,12 @@ export const WeeklySchedule = () => {
         const mentor = mentors[mentorIndex];
         let mentorTimings = [];
         if (mentor.time && mentor.time.length > 0) {
-          mentorTimings = timings.filter(t =>
-            mentor.time.some(mt => String(mt._id || mt) === String(t._id))
-          );
+          mentorTimings = mentor.time
+            .map(mt => {
+              const id = typeof mt === 'object' && mt !== null ? mt._id : mt;
+              return timings.find(t => String(t._id) === String(id));
+            })
+            .filter(Boolean);
         }
         const timeSlot = mentorTimings[slotIndex];
         const targetDaysName = dayCombo.name;
@@ -1106,9 +1109,12 @@ export const WeeklySchedule = () => {
                   {mentors.map((mentor, mentorIndex) => {
                     let mentorTimings = [];
                     if (mentor.time && mentor.time.length > 0) {
-                      mentorTimings = timings.filter(t =>
-                        mentor.time.some(mt => String(mt._id || mt) === String(t._id))
-                      );
+                      mentorTimings = mentor.time
+                        .map(mt => {
+                          const id = typeof mt === 'object' && mt !== null ? mt._id : mt;
+                          return timings.find(t => String(t._id) === String(id));
+                        })
+                        .filter(Boolean);
                     }
 
                     if (mentorTimings.length === 0) {

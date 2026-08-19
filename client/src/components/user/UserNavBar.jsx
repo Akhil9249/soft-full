@@ -4,6 +4,7 @@ import { RxPerson } from "react-icons/rx";
 import useAuth from "../../hooks/useAuth";
 import { useAppDispatch } from "../../redux/hooks";
 import { logoutUser, clearCredentials } from "../../redux/slices/authSlice";
+import UserService from "../../services/user-api-service/UserService";
 
 import {
   BellRing,
@@ -39,6 +40,41 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
   // console.log("Auth object:", auth);
   // console.log("User role:", auth?.role);
   const dispatch = useAppDispatch();
+  const userService = UserService();
+
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await userService.getUnreadNotificationsCount();
+      if (res && typeof res.count === "number") {
+        setUnreadCount(res.count);
+      }
+    } catch (err) {
+      console.error("Failed to fetch unread notifications count:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (auth?.accessToken) {
+      fetchUnreadCount();
+
+      const handleNotificationUpdate = () => {
+        fetchUnreadCount();
+      };
+
+      window.addEventListener("new-fcm-notification", handleNotificationUpdate);
+      window.addEventListener("notification-marked-read", handleNotificationUpdate);
+
+      const intervalId = setInterval(fetchUnreadCount, 30000);
+
+      return () => {
+        window.removeEventListener("new-fcm-notification", handleNotificationUpdate);
+        window.removeEventListener("notification-marked-read", handleNotificationUpdate);
+        clearInterval(intervalId);
+      };
+    }
+  }, [auth?.accessToken]);
 
   console.log("Auth object:", auth);
 
@@ -195,6 +231,26 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
             >
               <FileText className="w-5 h-5 mr-3" />
               My Card
+            </Link>
+
+            {/* Notifications */}
+            <Link
+              to="/student/notification"
+              onClick={() => handleNavItemClick('/student/notification')}
+              className={`flex items-center justify-between font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/notification'
+                  ? 'bg-orange-100 text-orange-600 font-semibold'
+                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+                }`}
+            >
+              <div className="flex items-center">
+                <BellRing className="w-5 h-5 mr-3" />
+                <span>Notifications</span>
+              </div>
+              {unreadCount > 0 && (
+                <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-extrabold text-white bg-red-500 rounded-full animate-pulse shadow-sm">
+                  {unreadCount}
+                </span>
+              )}
             </Link>
           </nav>
         </div>

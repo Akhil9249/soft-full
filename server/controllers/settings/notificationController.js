@@ -1,5 +1,11 @@
 // controllers/notificationController.js
 const Notification = require("../../models/settings/notificationModel");
+const FCMToken = require("../../models/settings/fcmTokenModel");
+const internModel = require("../../models/administration/internModel");
+const { User } = require("../../models/administration/userModel");
+const { Staff } = require("../../models/administration/staffModel");
+const Batch = require("../../models/schedule/batchModel");
+const { sendMulticastNotification } = require("../../config/firebase");
 
 // Create Notification
 const createNotification = async (req, res) => {
@@ -44,7 +50,7 @@ const createNotification = async (req, res) => {
       courses: courses || [],
       interns: interns || [],
       individualInterns: individualInterns || [],
-      pushNotification: pushNotification || false,
+      pushNotification: pushNotification !== undefined ? pushNotification : true,
     });
 
     // Populate the response with referenced data
@@ -55,9 +61,47 @@ const createNotification = async (req, res) => {
       .populate('interns', 'fullName email')
       .populate('individualInterns', 'fullName email');
 
-    // if pushNotification is true, you can integrate Firebase/OneSignal here
-    if (newNotification.pushNotification) {
-      console.log("📢 Push notification triggered!");
+    // Send push notification unconditionally for every notification
+    console.log("📢 Push notification triggered!");
+    try {
+      let userIds = [];
+      const targetQuery = { isActive: true };
+      if (branch) targetQuery.branch = branch;
+
+      if (audience === "All interns") {
+        const targetInterns = await internModel.find(targetQuery).select('_id');
+        userIds = targetInterns.map(i => i._id);
+      } else if (audience === "By batches" && batches && batches.length > 0) {
+        const batchDocs = await Batch.find({ _id: { $in: batches } }).select('batchName');
+        const batchNames = batchDocs.map(b => b.batchName);
+        targetQuery.batch = { $in: batchNames };
+        const targetInterns = await internModel.find(targetQuery).select('_id');
+        userIds = targetInterns.map(i => i._id);
+      } else if (audience === "By courses" && courses && courses.length > 0) {
+        targetQuery.course = { $in: courses };
+        const targetInterns = await internModel.find(targetQuery).select('_id');
+        userIds = targetInterns.map(i => i._id);
+      } else if (audience === "Individual interns" && individualInterns && individualInterns.length > 0) {
+        userIds = individualInterns;
+      }
+
+      if (userIds.length > 0) {
+        const fcmDocs = await FCMToken.find({ userId: { $in: userIds } }).select('token');
+        const tokens = fcmDocs.map(d => d.token);
+        if (tokens.length > 0) {
+          await sendMulticastNotification(tokens, title, content, {
+            notificationId: newNotification._id.toString(),
+            type: type
+          });
+          console.log(`Successfully dispatched FCM notifications to ${tokens.length} tokens.`);
+        } else {
+          console.log("No registered FCM tokens found for targeted audience.");
+        }
+      } else {
+        console.log("No targeted interns resolved for push notification.");
+      }
+    } catch (pushErr) {
+      console.error("Failed to process push notifications:", pushErr);
     }
 
     res.status(201).json({ 
@@ -219,7 +263,7 @@ const updateNotification = async (req, res) => {
         courses: courses || [],
         interns: interns || [],
         individualInterns: individualInterns || [],
-        pushNotification: pushNotification || false,
+        pushNotification: pushNotification !== undefined ? pushNotification : true,
       },
       {
         new: true,
@@ -257,10 +301,203 @@ const deleteNotification = async (req, res) => {
   }
 };
 
+// Register FCM Token
+const registerFCMToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) {
+      return res.status(400).json({ message: "Token is required" });
+    }
+
+    const userId = req.userId;
+
+    // Detect user type
+    let userModel = "";
+    const isStaff = await Staff.exists({ _id: userId });
+    if (isStaff) {
+      userModel = "Staff";
+    } else {
+      const isIntern = await internModel.exists({ _id: userId });
+      if (isIntern) {
+        userModel = "Intern";
+      } else {
+        const isUser = await User.exists({ _id: userId });
+        if (isUser) {
+          userModel = "User";
+        }
+      }
+    }
+
+    if (!userModel) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Upsert token
+    await FCMToken.findOneAndUpdate(
+      { token },
+      { userId, userModel, token },
+      { upsert: true, new: true }
+    );
+
+    res.status(200).json({ message: "FCM token registered successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get Intern Notifications (retrieves notifications targeted to the logged-in intern)
+const getInternNotifications = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const internId = req.userId;
+    // Find the intern
+    const intern = await internModel.findById(internId);
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found" });
+    }
+
+    // Find the batch document corresponding to the intern's batch name string
+    let batchId = null;
+    if (intern.batch) {
+      const batchDoc = await Batch.findOne({ batchName: intern.batch });
+      if (batchDoc) {
+        batchId = batchDoc._id;
+      }
+    }
+
+    // Build the query targeted to the intern
+    const query = {
+      isActive: true,
+      isDeleted: false,
+      $and: [
+        { $or: [ { branch: null }, { branch: intern.branch } ] },
+        {
+          $or: [
+            { audience: "All interns" },
+            ...(batchId ? [{ audience: "By batches", batches: batchId }] : []),
+            ...(intern.course ? [{ audience: "By courses", courses: intern.course }] : []),
+            { audience: "Individual interns", individualInterns: internId }
+          ]
+        }
+      ]
+    };
+
+    const totalCount = await Notification.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+    const startIndex = skip + 1;
+    const endIndex = Math.min(skip + limit, totalCount);
+
+    const notifications = await Notification.find(query)
+      .populate('branch', 'branchName')
+      .populate('batches', 'batchName')
+      .populate('courses', 'courseName')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const modifiedNotifications = notifications.map(notification => {
+      const doc = notification.toObject();
+      doc.isRead = notification.readBy ? notification.readBy.some(id => id.toString() === internId.toString()) : false;
+      delete doc.readBy;
+      return doc;
+    });
+
+    res.status(200).json({
+      message: "Notifications retrieved successfully",
+      data: modifiedNotifications,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        limit,
+        skip,
+        hasNextPage,
+        hasPrevPage,
+        startIndex,
+        endIndex
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Mark notification as read
+const markNotificationAsRead = async (req, res) => {
+  try {
+    const internId = req.userId;
+    const notificationId = req.params.id;
+
+    const notification = await Notification.findByIdAndUpdate(
+      notificationId,
+      { $addToSet: { readBy: internId } },
+      { new: true }
+    );
+
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+
+    res.status(200).json({ message: "Notification marked as read successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get unread notifications count for intern
+const getUnreadCount = async (req, res) => {
+  try {
+    const internId = req.userId;
+    const intern = await internModel.findById(internId);
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found" });
+    }
+
+    let batchId = null;
+    if (intern.batch) {
+      const batchDoc = await Batch.findOne({ batchName: intern.batch });
+      if (batchDoc) {
+        batchId = batchDoc._id;
+      }
+    }
+
+    const query = {
+      isActive: true,
+      isDeleted: false,
+      readBy: { $ne: internId },
+      $and: [
+        { $or: [ { branch: null }, { branch: intern.branch } ] },
+        {
+          $or: [
+            { audience: "All interns" },
+            ...(batchId ? [{ audience: "By batches", batches: batchId }] : []),
+            ...(intern.course ? [{ audience: "By courses", courses: intern.course }] : []),
+            { audience: "Individual interns", individualInterns: internId }
+          ]
+        }
+      ]
+    };
+
+    const count = await Notification.countDocuments(query);
+    res.status(200).json({ count });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createNotification,
   getNotifications,
   getNotificationById,
   updateNotification,
   deleteNotification,
+  registerFCMToken,
+  getInternNotifications,
+  markNotificationAsRead,
+  getUnreadCount,
 };

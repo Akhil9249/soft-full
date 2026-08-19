@@ -5,7 +5,11 @@ const {
   getNotifications,
   getNotificationById,
   updateNotification,
-  deleteNotification
+  deleteNotification,
+  registerFCMToken,
+  getInternNotifications,
+  markNotificationAsRead,
+  getUnreadCount
 } = require('../controllers/settings/notificationController');
 const { checkAuth } = require('../middlewares/checkAuth');
 const { checkPermission } = require('../middlewares/checkPermission');
@@ -14,6 +18,18 @@ const { checkPermission } = require('../middlewares/checkPermission');
 const asyncHandler = (fn) => (req, res, next) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
+
+// Register FCM token
+router.post("/register-token", checkAuth, asyncHandler(registerFCMToken));
+
+// Get unread notifications count
+router.get("/intern/unread-count", checkAuth, asyncHandler(getUnreadCount));
+
+// Mark notification as read
+router.post("/intern/:id/read", checkAuth, asyncHandler(markNotificationAsRead));
+
+// Get intern notifications
+router.get("/intern", checkAuth, asyncHandler(getInternNotifications));
 
 // Create notification
 router.post("/", checkAuth, checkPermission('notificationManagement', 'addNotification'), asyncHandler(createNotification));

@@ -277,6 +277,29 @@ export const MentorBatches = () => {
 
   const scheduleDetails = getGroupedAndSortedSchedule();
 
+  const todayDayName = React.useMemo(() => {
+    return new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+  }, []);
+
+  const todayBatchIds = React.useMemo(() => {
+    const ids = new Set();
+    scheduleDetails.forEach(timeSlot => {
+      (timeSlot.subDetails || []).forEach(subDetail => {
+        if (subDetail.day?.name?.toLowerCase() === todayDayName) {
+          (subDetail.batches || []).forEach(b => {
+            if (b?._id) ids.add(b._id.toString());
+          });
+        }
+      });
+    });
+    return ids;
+  }, [scheduleDetails, todayDayName]);
+
+  const isBatchScheduledToday = (batch) => {
+    if (!batch?._id) return false;
+    return todayBatchIds.has(batch._id.toString());
+  };
+
 
   const handleBatchHover = (e, batch) => {
     if (hoverTimeoutRef.current) {
@@ -609,39 +632,53 @@ export const MentorBatches = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {batches.map((batch) => (
-                      <div
-                        key={batch?._id}
-                        className="group bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-200/80 transition-all relative cursor-help"
-                        onMouseEnter={(e) => handleBatchHover(e, batch)}
-                        onMouseLeave={handleBatchLeave}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <h5 className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{batch?.batchName}</h5>
-                          {batch?.dayCombination && batch?.dayCombination !== 'N/A' && (
-                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded-full font-bold border border-blue-100">
-                              {batch?.dayCombination}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2 text-[11px] text-slate-600 font-medium">
-                          <span className="truncate max-w-[150px]">{batch?.courseName}</span>
-                          <span>•</span>
-                          <span className="truncate">{batch?.branchName}</span>
-                        </div>
+                    {batches.map((batch) => {
+                      const scheduledToday = isBatchScheduledToday(batch);
+                      return (
+                        <div
+                          key={batch?._id}
+                          className={`group bg-white border rounded-xl p-4 shadow-sm hover:shadow-md transition-all relative cursor-help ${
+                            scheduledToday
+                              ? 'border-orange-300 ring-1 ring-orange-200 bg-orange-50/10 hover:border-orange-400'
+                              : 'border-slate-200/80 hover:border-blue-200/80'
+                          }`}
+                          onMouseEnter={(e) => handleBatchHover(e, batch)}
+                          onMouseLeave={handleBatchLeave}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{batch?.batchName}</h5>
+                            <div className="flex items-center gap-1.5">
+                              {scheduledToday && (
+                                <span className="px-2 py-0.5 bg-orange-500 text-white text-[9px] rounded-full font-bold animate-pulse">
+                                  Today
+                                </span>
+                              )}
+                              {batch?.dayCombination && batch?.dayCombination !== 'N/A' && (
+                                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded-full font-bold border border-blue-100">
+                                  {batch?.dayCombination}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 text-[11px] text-slate-600 font-medium">
+                            <span className="truncate max-w-[150px]">{batch?.courseName}</span>
+                            <span>•</span>
+                            <span className="truncate">{batch?.branchName}</span>
+                          </div>
 
-                        {/* Hover hint */}
-                        <div className="absolute right-3.5 bottom-3.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="text-[9px] text-slate-500 flex items-center gap-1 font-bold">
-                            <svg className="w-3.5 h-3.5 text-blue-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            Hover to view interns
-                          </span>
+                          {/* Hover hint */}
+                          <div className="absolute right-3.5 bottom-3.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-[9px] text-slate-500 flex items-center gap-1 font-bold">
+                              <svg className="w-3.5 h-3.5 text-blue-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              Hover to view interns
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -683,51 +720,72 @@ export const MentorBatches = () => {
                         </div>
 
                         <div className="space-y-3.5">
-                          {(timeSlot?.subDetails || []).map((subDetail, subIndex) => (
-                            <div key={subIndex} className="bg-slate-50/50 rounded-xl p-3.5 border border-slate-100">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="inline-flex items-center px-2 py-0.5 bg-slate-200 text-slate-800 text-[10px] font-bold rounded-md uppercase tracking-wider">
-                                  {subDetail?.day?.name || 'N/A'}
-                                </span>
-                                <span className={`text-[11px] font-bold ${subDetail?.batches?.length > 0 ? 'text-blue-600' : 'text-slate-500'}`}>
-                                  {subDetail?.batches?.length > 0 ? `${subDetail.batches.length} Batch(es) Active` : 'No Batches'}
-                                </span>
-                              </div>
-
-                              {subDetail?.batches?.length > 0 ? (
-                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                  {subDetail.batches.map((b, bIdx) => (
-                                    <span
-                                      key={b?._id || bIdx}
-                                      className="px-2.5 py-1 bg-blue-50/50 border border-blue-100/70 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100/80 transition-colors"
-                                    >
-                                      {b?.batchName || 'N/A'}
+                          {(timeSlot?.subDetails || []).map((subDetail, subIndex) => {
+                            const isToday = subDetail?.day?.name?.toLowerCase() === todayDayName;
+                            return (
+                              <div
+                                key={subIndex}
+                                className={`rounded-xl p-3.5 border transition-all ${
+                                  isToday 
+                                    ? 'bg-orange-50/30 border-orange-300 shadow-sm ring-1 ring-orange-200/50' 
+                                    : 'bg-slate-50/50 border-slate-100'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="inline-flex items-center px-2 py-0.5 bg-slate-200 text-slate-800 text-[10px] font-bold rounded-md uppercase tracking-wider">
+                                      {subDetail?.day?.name || 'N/A'}
                                     </span>
-                                  ))}
+                                    {isToday && (
+                                      <span className="inline-flex items-center px-2 py-0.5 bg-orange-500 text-white text-[10px] font-bold rounded-md uppercase tracking-wider animate-pulse">
+                                        Today
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className={`text-[11px] font-bold ${subDetail?.batches?.length > 0 ? (isToday ? 'text-orange-600' : 'text-blue-600') : 'text-slate-500'}`}>
+                                    {subDetail?.batches?.length > 0 ? `${subDetail.batches.length} Batch(es) Active` : 'No Batches'}
+                                  </span>
                                 </div>
-                              ) : (
-                                <p className="text-xs text-slate-500 italic font-medium">No active batches assigned to this slot</p>
-                              )}
 
-                              {/* Subject */}
-                              {subDetail?.subject && subDetail.subject !== 'N/A' && (
-                                <div className="mt-2.5 flex items-center text-[11px] text-orange-700 font-semibold bg-orange-50/50 px-2.5 py-1.5 rounded-lg border border-orange-100/60 w-fit">
-                                  <svg className="w-3.5 h-3.5 mr-1.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.433 9.496 5 8 5c-4 0-8 3-8 8s4 8 8 8c.94 0 1.841-.213 2.684-.606m3.56-5.894C15.687 7.159 15.589 8 15 8s-1.5-.5-1.5-.5V5a2 2 0 00-2-2h-2c-1.5 0-2 1-2 2v2.5" />
-                                  </svg>
-                                  <span>Subject: {subDetail.subject}</span>
-                                </div>
-                              )}
+                                {subDetail?.batches?.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {subDetail.batches.map((b, bIdx) => (
+                                      <span
+                                        key={b?._id || bIdx}
+                                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors border ${
+                                          isToday
+                                            ? 'bg-orange-500 text-white border-orange-600 shadow-sm'
+                                            : 'bg-blue-50/50 border-blue-100/70 text-blue-700 hover:bg-blue-100/80'
+                                        }`}
+                                      >
+                                        {b?.batchName || 'N/A'}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-slate-500 italic font-medium">No active batches assigned to this slot</p>
+                                )}
 
-                              {/* Note */}
-                              {subDetail?.note && (
-                                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-start gap-1.5 text-[11px] text-slate-700 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
-                                  <span className="text-orange-500 flex-shrink-0 mt-0.5">📝</span>
-                                  <span className="italic leading-relaxed whitespace-pre-wrap break-words">{subDetail.note}</span>
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                                {/* Subject */}
+                                {subDetail?.subject && subDetail.subject !== 'N/A' && (
+                                  <div className="mt-2.5 flex items-center text-[11px] text-orange-700 font-semibold bg-orange-50/50 px-2.5 py-1.5 rounded-lg border border-orange-100/60 w-fit">
+                                    <svg className="w-3.5 h-3.5 mr-1.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6.253v13m0-13C10.832 5.433 9.496 5 8 5c-4 0-8 3-8 8s4 8 8 8c.94 0 1.841-.213 2.684-.606m3.56-5.894C15.687 7.159 15.589 8 15 8s-1.5-.5-1.5-.5V5a2 2 0 00-2-2h-2c-1.5 0-2 1-2 2v2.5" />
+                                    </svg>
+                                    <span>Subject: {subDetail.subject}</span>
+                                  </div>
+                                )}
+
+                                {/* Note */}
+                                {subDetail?.note && (
+                                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-start gap-1.5 text-[11px] text-slate-700 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                                    <span className="text-orange-500 flex-shrink-0 mt-0.5">📝</span>
+                                    <span className="italic leading-relaxed whitespace-pre-wrap break-words">{subDetail.note}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 

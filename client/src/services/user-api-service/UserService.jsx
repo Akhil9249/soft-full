@@ -62,6 +62,22 @@ const UserService = () => {
         return response.data;
     };
 
+    // ======================================== notification management ========================================
+    const getMyNotificationsData = async (page = 1, limit = 10) => {
+        const response = await axiosPrivate.get(`/api/notifications/intern?page=${page}&limit=${limit}`);
+        return response.data;
+    };
+
+    const markNotificationAsRead = async (id) => {
+        const response = await axiosPrivate.post(`/api/notifications/intern/${id}/read`);
+        return response.data;
+    };
+
+    const getUnreadNotificationsCount = async () => {
+        const response = await axiosPrivate.get("/api/notifications/intern/unread-count");
+        return response.data;
+    };
+
     return { 
         getMyAttendanceData,
         postTaskSubmissionData,
@@ -71,7 +87,10 @@ const UserService = () => {
         getMyMaterialsData,
         downloadMaterialAttachment,
         getMyLeaveRequests,
-        postLeaveRequest
+        postLeaveRequest,
+        getMyNotificationsData,
+        markNotificationAsRead,
+        getUnreadNotificationsCount
     };
 };
 

@@ -32,7 +32,12 @@ const notificationSchema = new mongoose.Schema({
     ref: "Intern",
     default: []
   },  
-  pushNotification: { type: Boolean, default: false },
+  readBy: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Intern",
+    default: []
+  },
+  pushNotification: { type: Boolean, default: true },
   isActive: { type: Boolean, default: true },
     isDeleted: {
     type: Boolean,

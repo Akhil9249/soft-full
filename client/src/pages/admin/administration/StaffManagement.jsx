@@ -99,6 +99,34 @@ export const StaffManagement = () => {
         settings: false,
     });
 
+    const [draggedIndex, setDraggedIndex] = useState(null);
+
+    const handleDragStart = (e, index) => {
+        setDraggedIndex(index);
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", index);
+    };
+
+    const handleDragOver = (e, index) => {
+        e.preventDefault();
+        if (draggedIndex === null || draggedIndex === index) return;
+
+        const list = [...formData.time];
+        const draggedItem = list[draggedIndex];
+        list.splice(draggedIndex, 1);
+        list.splice(index, 0, draggedItem);
+
+        setDraggedIndex(index);
+        setFormData(prev => ({
+            ...prev,
+            time: list
+        }));
+    };
+
+    const handleDragEnd = () => {
+        setDraggedIndex(null);
+    };
+
     const toggleSection = (section) => {
         setOpenSections(prevState => ({
             ...prevState,
@@ -1306,10 +1334,21 @@ export const StaffManagement = () => {
                                     {formData.time.length === 0 ? (
                                         <p className="text-sm text-gray-500 italic mt-2">No timings selected yet.</p>
                                     ) : (
-                                        formData.time.map(id => {
+                                        formData.time.map((id, index) => {
                                             const timingObj = timings.find(t => t._id === id);
+                                            const isDragging = draggedIndex === index;
                                             return (
-                                                <div key={id} className="flex items-center bg-orange-100 text-orange-800 px-3 py-1.5 rounded-full text-sm font-medium border border-orange-200">
+                                                <div
+                                                    key={id}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, index)}
+                                                    onDragOver={(e) => handleDragOver(e, index)}
+                                                    onDragEnd={handleDragEnd}
+                                                    className={`flex items-center bg-orange-100 text-orange-800 px-3 py-1.5 rounded-full text-sm font-medium border border-orange-200 transition-all select-none cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-50 border-dashed border-orange-400 bg-orange-50 scale-95' : 'hover:scale-105 hover:bg-orange-200'}`}
+                                                >
+                                                    <svg className="w-4 h-4 mr-1.5 text-orange-400 cursor-grab active:cursor-grabbing flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                                                        <path d="M8.5 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm7-12a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm0 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/>
+                                                    </svg>
                                                     <span>{timingObj ? timingObj.timeSlot : "Unknown Timing"}</span>
                                                     <button
                                                         type="button"
@@ -1319,7 +1358,7 @@ export const StaffManagement = () => {
                                                                 time: prev.time.filter(tId => tId !== id)
                                                             }));
                                                         }}
-                                                        className="ml-2 text-orange-500 hover:text-orange-900 focus:outline-none flex-shrink-0"
+                                                        className="ml-2 text-orange-500 hover:text-orange-950 focus:outline-none flex-shrink-0"
                                                     >
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
