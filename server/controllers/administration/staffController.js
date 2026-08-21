@@ -244,7 +244,7 @@ const getStaff = async (req, res) => {
     let branch = req.query.branch || '';
 
     // Build query object
-    let query = {};
+    let query = { isDeleted: { $ne: true } };
 
     // Restrict branch and exclude own details for admin
     if (req.userId) {
@@ -315,7 +315,7 @@ const getStaff = async (req, res) => {
 // -------------------- GET ALL STAFF (NO PAGINATION) --------------------
 const getAllStaff = async (req, res) => {
   try {
-    let query = {};
+    let query = { isDeleted: { $ne: true } };
     if (req.userId) {
       const loggedInUser = await Staff.findById(req.userId).populate('role');
       if (loggedInUser && loggedInUser.role && (loggedInUser.role.role.toLowerCase() === 'admin' || loggedInUser.role.role.toLowerCase() === 'branch admin')) {
@@ -343,7 +343,7 @@ const getAllStaff = async (req, res) => {
 // -------------------- GET ALL ACTIVE STAFF (NO PAGINATION) --------------------
 const getAllActiveStaff = async (req, res) => {
   try {
-    let query = { isActive: true };
+    let query = { isActive: true, isDeleted: { $ne: true } };
     if (req.userId) {
       let loggedInUser = await Staff.findById(req.userId).populate('role');
       if (!loggedInUser) {
@@ -377,7 +377,7 @@ const getAllActiveStaff = async (req, res) => {
 // -------------------- READ Single Staff --------------------
 const getStaffById = async (req, res) => {
   try {
-    const staff = await Staff.findById(req.params.id)
+    const staff = await Staff.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
       .populate('branch', 'branchName')
       .populate('role', 'role description')
       .select('-password');
@@ -579,15 +579,13 @@ const deleteStaff = async (req, res) => {
       return res.status(404).json({ message: "Staff not found" });
     }
 
-    // Delete photo and resume from Cloudinary
-    if (staffToDelete.photo) {
-      await deleteFromCloudinary(staffToDelete.photo);
-    }
-    if (staffToDelete.resume) {
-      await deleteFromCloudinary(staffToDelete.resume);
-    }
+    // Soft delete: set isDeleted to true, deletedAt to current date, and isActive to false
+    const staff = await Staff.findByIdAndUpdate(
+      req.params.id,
+      { isDeleted: true, deletedAt: new Date(), isActive: false },
+      { new: true }
+    ).select('-password');
 
-    const staff = await Staff.findByIdAndDelete(req.params.id).select('-password');
     res.status(200).json({
       message: "Staff deleted successfully",
       data: { deletedStaff: staff }
@@ -612,6 +610,7 @@ const searchStaff = async (req, res) => {
     const searchRegex = new RegExp(searchTerm, 'i');
 
     let query = {
+      isDeleted: { $ne: true },
       $or: [
         { fullName: { $regex: searchRegex } },
         { email: { $regex: searchRegex } },
@@ -655,7 +654,7 @@ const getStaffByStatus = async (req, res) => {
       return res.status(400).json({ message: "Status must be Active or Inactive" });
     }
 
-    const staff = await Staff.find({ employmentStatus: status })
+    const staff = await Staff.find({ employmentStatus: status, isDeleted: { $ne: true } })
       .populate('branch', 'branchName')
       .populate('role', 'role description')
       .select('-password')
@@ -675,7 +674,7 @@ const getStaffByBranch = async (req, res) => {
   try {
     const { branchId } = req.params;
 
-    const staff = await Staff.find({ branch: branchId })
+    const staff = await Staff.find({ branch: branchId, isDeleted: { $ne: true } })
       .populate('branch', 'branchName')
       .populate('role', 'role description')
       .select('-password')
@@ -695,7 +694,7 @@ const getStaffByDepartment = async (req, res) => {
   try {
     const { department } = req.params;
 
-    const staff = await Staff.find({ department })
+    const staff = await Staff.find({ department, isDeleted: { $ne: true } })
       .populate('branch', 'branchName')
       .populate('role', 'role description')
       .select('-password')
@@ -742,7 +741,7 @@ const getStaffByRole = async (req, res) => {
       return res.status(400).json({ message: "Invalid role ID format" });
     }
 
-    const staff = await Staff.find({ role: roleId })
+    const staff = await Staff.find({ role: roleId, isDeleted: { $ne: true } })
       .populate('branch', 'branchName')
       .populate('role', 'role description')
       .select('-password')

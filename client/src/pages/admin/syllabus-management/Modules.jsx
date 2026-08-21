@@ -35,6 +35,7 @@ export const Modules = () => {
     title: '',
     message: ''
   });
+  const [errors, setErrors] = useState({});
   
   // View modal state
   const [showViewModal, setShowViewModal] = useState(false);
@@ -403,6 +404,7 @@ export const Modules = () => {
   // No client-side filtering needed - server handles it
 
   const handleEditModule = (module) => {
+    setErrors({});
     setEditingModule(module);
     setIsEditMode(true);
     setFormData({
@@ -419,6 +421,7 @@ export const Modules = () => {
   };
 
   const handleCancelEdit = () => {
+    setErrors({});
     setEditingModule(null);
     setIsEditMode(false);
     setFormData({});
@@ -428,6 +431,7 @@ export const Modules = () => {
   };
 
   const handleTabChange = (tabName) => {
+    setErrors({});
     if (tabName === 'modules-list') {
       handleCancelEdit();
     } else {
@@ -479,16 +483,37 @@ export const Modules = () => {
     setDeletingModule(null);
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.moduleName || !formData.moduleName.trim()) {
+      newErrors.moduleName = "Module name is required";
+    }
+
+    const hasCourse = Array.isArray(formData.course) ? formData.course.length > 0 : !!formData.course;
+    if (!hasCourse) {
+      newErrors.course = "At least one course selection is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCreateModule = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    const hasCourse = Array.isArray(formData.course) ? formData.course.length > 0 : !!formData.course;
-
-    // Validate required fields
-    if (!formData.moduleName || !hasCourse) {
-      showNotification('error', 'Validation Error', 'Module name and course are required');
+    if (!validateForm()) {
+      showNotification('error', 'Validation Error', 'Please fill all required fields correctly.');
       return;
     }
 
@@ -998,16 +1023,16 @@ export const Modules = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Module Name</label>
+                  <label className="block text-sm font-medium text-gray-700">Module Name <span className="text-red-500">*</span></label>
                   <input 
                     name="moduleName" 
                     type="text" 
                     placeholder="Enter Module Name" 
                     value={formData.moduleName || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, moduleName: e.target.value}))}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500" 
-                    required 
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.moduleName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
                   />
+                  {errors.moduleName && <p className="text-red-500 text-xs mt-1">{errors.moduleName}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Total Topics</label>
@@ -1021,7 +1046,7 @@ export const Modules = () => {
                 </div>
                 {/* Select Courses */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Courses</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Select Courses <span className="text-red-500">*</span></label>
                   <select 
                     name="courseSelect" 
                     onChange={(e) => {
@@ -1034,10 +1059,13 @@ export const Modules = () => {
                           }
                           return prev;
                         });
+                        if (errors.course) {
+                          setErrors(prev => ({ ...prev, course: "" }));
+                        }
                         e.target.value = ""; // Reset dropdown selection
                       }
                     }}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 bg-white" 
+                    className={`mt-1 block w-full p-2 border rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.course ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
                   >
                     <option value="">-- Add a Course --</option>
                     {courses.filter(c => {
@@ -1051,8 +1079,8 @@ export const Modules = () => {
 
                 {/* Selected Courses Tags */}
                 <div className="md:col-span-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Selected Courses</label>
-                  <div className="mt-1 flex flex-wrap gap-2 p-2 border border-dashed border-gray-300 rounded-md min-h-[42px] bg-gray-50 items-center">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Selected Courses <span className="text-red-500">*</span></label>
+                  <div className={`mt-1 flex flex-wrap gap-2 p-2 border border-dashed rounded-md min-h-[42px] bg-gray-50 items-center ${errors.course ? 'border-red-500' : 'border-gray-300'}`}>
                     {(!formData.course || (Array.isArray(formData.course) && formData.course.length === 0)) ? (
                       <p className="text-sm text-gray-400 italic">No courses selected yet.</p>
                     ) : (
@@ -1081,6 +1109,7 @@ export const Modules = () => {
                       })
                     )}
                   </div>
+                  {errors.course && <p className="text-red-500 text-xs mt-1">{errors.course}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">

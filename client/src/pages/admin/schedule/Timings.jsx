@@ -19,6 +19,8 @@ export const Timings = () => {
   const [editingTiming, setEditingTiming] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({ start: '', end: '', branch: '' });
+  const [newForm, setNewForm] = useState({ start: '', end: '', branch: '' });
+  const [errors, setErrors] = useState({});
   
   const { getBranchesData, getTimingsData, postTimingsData, deleteTimingsData, putTimingsData } = AdminService();
   const headData = "Settings"
@@ -72,6 +74,13 @@ export const Timings = () => {
     fetchBranches();
     fetchTimings();
   }, []);
+
+  // Clear messages and errors when switching tabs
+  useEffect(() => {
+    setError('');
+    setSuccess('');
+    setErrors({});
+  }, [activeTab]);
 
   // Filter timings based on selected branch
   const filteredTimings = selectedBranch 
@@ -142,9 +151,18 @@ export const Timings = () => {
     setShowEditModal(true);
   };
 
+  const validateEditForm = () => {
+    const newErrors = {};
+    if (!editForm.start) newErrors.start = "Start Time is required";
+    if (!editForm.end) newErrors.end = "End Time is required";
+    if (!editForm.branch) newErrors.branch = "Branch is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleUpdateTiming = async () => {
-    if (!editForm.start || !editForm.end || !editForm.branch) {
-      setError('Please provide start time, end time, and select a branch');
+    if (!validateEditForm()) {
+      setError('Please fill all required fields correctly.');
       return;
     }
     const updatedTimeSlot = `${formatTime(editForm.start)} - ${formatTime(editForm.end)}`;
@@ -157,6 +175,7 @@ export const Timings = () => {
       setSuccess('Timing updated successfully!');
       setShowEditModal(false);
       setEditingTiming(null);
+      setErrors({});
       await fetchTimings();
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to update timing');
@@ -168,6 +187,7 @@ export const Timings = () => {
   const closeEditModal = () => {
     setShowEditModal(false);
     setEditingTiming(null);
+    setErrors({});
     setEditForm({ start: '', end: '', branch: '' });
   };
 
@@ -237,37 +257,36 @@ export const Timings = () => {
   };
 
   
+  const validateNewForm = () => {
+    const newErrors = {};
+    if (!newForm.start) newErrors.start = "Start Time is required";
+    if (!newForm.end) newErrors.end = "End Time is required";
+    if (!newForm.branch) newErrors.branch = "Branch is required";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCreateTiming = async () => {
     setError('');
     setSuccess('');
 
-    // Get form data
-    const startTimeInput = document.getElementById('start-time');
-    const endTimeInput = document.getElementById('end-time');
-    const branchNameSelect = document.getElementById('branch-name');
-    
-    const startTime = startTimeInput?.value;
-    const endTime = endTimeInput?.value;
-    const branchId = branchNameSelect?.value;
-
-    if (!startTime || !endTime || !branchId) {
-      setError('Please provide start time, end time, and select a branch');
+    if (!validateNewForm()) {
+      setError('Please fill all required fields correctly.');
       return;
     }
 
-    const timeSlot = `${formatTime(startTime)} - ${formatTime(endTime)}`;
+    const timeSlot = `${formatTime(newForm.start)} - ${formatTime(newForm.end)}`;
 
     try {
       setLoading(true);
       const response = await postTimingsData({
-        branch: branchId,
+        branch: newForm.branch,
         timeSlot: timeSlot
       });
       setSuccess('Timing created successfully!');
       // Reset form
-      if (startTimeInput) startTimeInput.value = '';
-      if (endTimeInput) endTimeInput.value = '';
-      if (branchNameSelect) branchNameSelect.value = '';
+      setNewForm({ start: '', end: '', branch: '' });
+      setErrors({});
       // Refresh timings list
       await fetchTimings();
       setActiveTab('timings'); // Switch to timings tab
@@ -282,6 +301,8 @@ export const Timings = () => {
     const handleCancel = () => {
       setError('');
       setSuccess('');
+      setErrors({});
+      setNewForm({ start: '', end: '', branch: '' });
       setActiveTab('timings');
     };
 
@@ -322,31 +343,48 @@ export const Timings = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
           <div className="flex flex-col">
             <label htmlFor="start-time" className="text-xs sm:text-sm text-gray-600 mb-2">
-              Start Time
+              Start Time <span className="text-red-500">*</span>
             </label>
             <input
               type="time"
               id="start-time"
-              className="p-2 sm:p-3 bg-gray-100 text-gray-800 rounded-lg sm:rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none text-sm sm:text-base"
+              value={newForm.start || ''}
+              onChange={(e) => {
+                setNewForm(prev => ({ ...prev, start: e.target.value }));
+                if (errors.start) setErrors(prev => ({ ...prev, start: '' }));
+              }}
+              className={`p-2 sm:p-3 bg-gray-100 text-gray-800 rounded-lg sm:rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none text-sm sm:text-base ${errors.start ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
             />
+            {errors.start && <p className="text-red-500 text-xs mt-1">{errors.start}</p>}
           </div>
           <div className="flex flex-col">
             <label htmlFor="end-time" className="text-xs sm:text-sm text-gray-600 mb-2">
-              End Time
+              End Time <span className="text-red-500">*</span>
             </label>
             <input
               type="time"
               id="end-time"
-              className="p-2 sm:p-3 bg-gray-100 text-gray-800 rounded-lg sm:rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none text-sm sm:text-base"
+              value={newForm.end || ''}
+              onChange={(e) => {
+                setNewForm(prev => ({ ...prev, end: e.target.value }));
+                if (errors.end) setErrors(prev => ({ ...prev, end: '' }));
+              }}
+              className={`p-2 sm:p-3 bg-gray-100 text-gray-800 rounded-lg sm:rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none text-sm sm:text-base ${errors.end ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
             />
+            {errors.end && <p className="text-red-500 text-xs mt-1">{errors.end}</p>}
           </div>
            <div className="flex flex-col">
              <label htmlFor="branch-name" className="text-xs sm:text-sm text-gray-600 mb-2">
-               Branch Name
+               Branch Name <span className="text-red-500">*</span>
              </label>
                <select
                  id="branch-name"
-                 className="p-2 sm:p-3 bg-gray-100 text-gray-800 rounded-lg sm:rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none text-sm sm:text-base"
+                 value={newForm.branch || ''}
+                 onChange={(e) => {
+                   setNewForm(prev => ({ ...prev, branch: e.target.value }));
+                   if (errors.branch) setErrors(prev => ({ ...prev, branch: '' }));
+                 }}
+                 className={`p-2 sm:p-3 bg-gray-100 text-gray-800 rounded-lg sm:rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none text-sm sm:text-base ${errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                >
                  <option value="">Choose Branch</option>
                  {loading ? (
@@ -361,6 +399,7 @@ export const Timings = () => {
                    ))
                  )}
                </select>
+               {errors.branch && <p className="text-red-500 text-xs mt-1">{errors.branch}</p>}
            </div>
         </div>
       </div>
@@ -440,29 +479,40 @@ export const Timings = () => {
             
             <div className="space-y-4">
               <div className="flex flex-col">
-                <label className="text-sm text-gray-600 mb-1">Start Time</label>
+                <label className="text-sm text-gray-600 mb-1">Start Time <span className="text-red-500">*</span></label>
                 <input
                   type="time"
                   value={editForm.start}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, start: e.target.value }))}
-                  className="p-2 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  onChange={(e) => {
+                    setEditForm(prev => ({ ...prev, start: e.target.value }));
+                    if (errors.start) setErrors(prev => ({ ...prev, start: '' }));
+                  }}
+                  className={`p-2 bg-gray-100 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#F9A825] ${errors.start ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                 />
+                {errors.start && <p className="text-red-500 text-xs mt-1">{errors.start}</p>}
               </div>
               <div className="flex flex-col">
-                <label className="text-sm text-gray-600 mb-1">End Time</label>
+                <label className="text-sm text-gray-600 mb-1">End Time <span className="text-red-500">*</span></label>
                 <input
                   type="time"
                   value={editForm.end}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, end: e.target.value }))}
-                  className="p-2 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  onChange={(e) => {
+                    setEditForm(prev => ({ ...prev, end: e.target.value }));
+                    if (errors.end) setErrors(prev => ({ ...prev, end: '' }));
+                  }}
+                  className={`p-2 bg-gray-100 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#F9A825] ${errors.end ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                 />
+                {errors.end && <p className="text-red-500 text-xs mt-1">{errors.end}</p>}
               </div>
               <div className="flex flex-col">
-                <label className="text-sm text-gray-600 mb-1">Branch Name</label>
+                <label className="text-sm text-gray-600 mb-1">Branch Name <span className="text-red-500">*</span></label>
                 <select
                   value={editForm.branch}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, branch: e.target.value }))}
-                  className="p-2 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                  onChange={(e) => {
+                    setEditForm(prev => ({ ...prev, branch: e.target.value }));
+                    if (errors.branch) setErrors(prev => ({ ...prev, branch: '' }));
+                  }}
+                  className={`p-2 bg-gray-100 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#F9A825] ${errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                 >
                   <option value="">Choose Branch</option>
                   {branches.map((branch) => (
@@ -471,6 +521,7 @@ export const Timings = () => {
                     </option>
                   ))}
                 </select>
+                {errors.branch && <p className="text-red-500 text-xs mt-1">{errors.branch}</p>}
               </div>
             </div>
 

@@ -17,15 +17,13 @@ const staffSchema = new mongoose.Schema({
 
   // Professional Details
   department: { type: String, required: true },
-  branch: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
-  // assignedBatches: [{ type: mongoose.Schema.Types.ObjectId, ref: "Batch" }], // For staff - batches they are assigned to
+  branch: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" , required: true},
   yearsOfExperience: { type: Number, min: 0 },
   dateOfJoining: { type: Date, required: true },
   employmentStatus: { type: String, enum: ["Active","Pause","Inactive"], required: true },
   resignationDate: { type: Date }, // only if inactive
   resume: { type: String }, // store resume file URL or path
   remarks: { type: String },
-  // role: { type: String, enum: ["Super Admin", "Admin", "Staff", "Accountant"], default: "Staff" },
   role: { type: mongoose.Schema.Types.ObjectId, ref: "Role", required: true },
 
   isMentor: { type: Boolean, default: false },

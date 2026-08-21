@@ -44,6 +44,7 @@ export const StaffManagement = () => {
 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [errors, setErrors] = useState({});
 
     // Pagination state
     const [pagination, setPagination] = useState({
@@ -366,6 +367,9 @@ export const StaffManagement = () => {
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: "" }));
+        }
     };
 
     const resetMessages = () => {
@@ -382,6 +386,7 @@ export const StaffManagement = () => {
     };
 
     const handleEditStaff = (staffMember) => {
+        setErrors({});
         setEditingStaff(staffMember);
         setIsEditMode(true);
         setFormData({
@@ -416,6 +421,7 @@ export const StaffManagement = () => {
     };
 
     const handleCancelEdit = () => {
+        setErrors({});
         setEditingStaff(null);
         setIsEditMode(false);
         setFormData({
@@ -452,6 +458,7 @@ export const StaffManagement = () => {
     };
 
     const handleTabChange = (tabName) => {
+        setErrors({});
         if (tabName === 'staffList') {
             handleCancelEdit();
         } else {
@@ -596,32 +603,95 @@ export const StaffManagement = () => {
         setDeletingStaff(null);
     };
 
+    const validateEmail = (email) => {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(String(email).toLowerCase());
+    };
+
+    const validatePhone = (phone) => {
+        const digits = String(phone).replace(/\D/g, '');
+        return digits.length >= 7 && digits.length <= 15;
+    };
+
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!formData.fullName || !formData.fullName.trim()) {
+            newErrors.fullName = "Full name is required";
+        }
+
+        if (!formData.dateOfBirth) {
+            newErrors.dateOfBirth = "Date of birth is required";
+        }
+
+        if (!formData.gender) {
+            newErrors.gender = "Gender is required";
+        }
+
+        if (!formData.email || !formData.email.trim()) {
+            newErrors.email = "Email address is required";
+        } else if (!validateEmail(formData.email)) {
+            newErrors.email = "Please enter a valid email address";
+        }
+
+        if (!formData.staffPhoneNumber || !formData.staffPhoneNumber.trim()) {
+            newErrors.staffPhoneNumber = "Staff phone number is required";
+        } else if (!validatePhone(formData.staffPhoneNumber)) {
+            newErrors.staffPhoneNumber = "Please enter a valid phone number (7-15 digits)";
+        }
+
+        if (!formData.department) {
+            newErrors.department = "Department is required";
+        }
+
+        if (!formData.role) {
+            newErrors.role = "Role/Employee type is required";
+        }
+
+        if (!formData.branch) {
+            newErrors.branch = "Branch is required";
+        }
+
+        if (!formData.dateOfJoining) {
+            newErrors.dateOfJoining = "Date of joining is required";
+        }
+
+        if (!formData.employmentStatus) {
+            newErrors.employmentStatus = "Employment status is required";
+        }
+
+        if (!formData.officialEmail || !formData.officialEmail.trim()) {
+            newErrors.officialEmail = "Official email address is required";
+        } else if (!validateEmail(formData.officialEmail)) {
+            newErrors.officialEmail = "Please enter a valid official email address";
+        }
+
+        if (!isEditMode) {
+            if (!formData.password) {
+                newErrors.password = "Password is required";
+            } else if (formData.password.length < 6) {
+                newErrors.password = "Password must be at least 6 characters";
+            }
+        }
+
+        if (formData.password) {
+            if (!formData.confirmPassword) {
+                newErrors.confirmPassword = "Confirm password is required";
+            } else if (formData.password !== formData.confirmPassword) {
+                newErrors.confirmPassword = "Passwords do not match";
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     const handleCreateStaff = async (e) => {
         e.preventDefault();
         resetMessages();
 
-        // Basic validation - only check password matching if password is provided
-        if (formData.password && formData.password.trim() !== '' && formData.password !== formData.confirmPassword) {
-            showNotification('error', 'Validation Error', 'Passwords do not match.');
-            return;
-        }
-
-        // Different validation for create vs edit
-        const requiredFields = isEditMode
-            ? [
-                'fullName', 'dateOfBirth', 'gender', 'email', 'staffPhoneNumber',
-                'department', 'branch', 'dateOfJoining', 'employmentStatus',
-                'officialEmail'
-            ]
-            : [
-                'fullName', 'dateOfBirth', 'gender', 'email', 'staffPhoneNumber',
-                'department', 'branch', 'dateOfJoining', 'employmentStatus',
-                'officialEmail', 'password'
-            ];
-
-        const missing = requiredFields.filter((f) => !String(formData[f] || '').trim());
-        if (missing.length) {
-            showNotification('error', 'Validation Error', `Please fill required fields: ${missing.join(', ')}`);
+        if (!validateForm()) {
+            showNotification('error', 'Validation Error', 'Please fill all required fields correctly.');
             return;
         }
 
@@ -1029,29 +1099,34 @@ export const StaffManagement = () => {
             <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Basic Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <div>
-                    <label className="block text-gray-700 font-medium mb-2">Full Name</label>
-                    <input name="fullName" value={formData.fullName} onChange={handleInputChange} type="text" placeholder="Enter full name" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+                    <label className="block text-gray-700 font-medium mb-2">Full Name <span className="text-red-500">*</span></label>
+                    <input name="fullName" value={formData.fullName} onChange={handleInputChange} type="text" placeholder="Enter full name" className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.fullName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} />
+                    {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
                 </div>
                 <div>
-                    <label className="block text-gray-700 font-medium mb-2">Date of Birth</label>
-                    <input name="dateOfBirth" value={formData.dateOfBirth} onChange={handleInputChange} type="date" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+                    <label className="block text-gray-700 font-medium mb-2">Date of Birth <span className="text-red-500">*</span></label>
+                    <input name="dateOfBirth" value={formData.dateOfBirth} onChange={handleInputChange} type="date" className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.dateOfBirth ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} />
+                    {errors.dateOfBirth && <p className="text-red-500 text-xs mt-1">{errors.dateOfBirth}</p>}
                 </div>
                 <div>
-                    <label className="block text-gray-700 font-medium mb-2">Gender</label>
-                    <select name="gender" value={formData.gender} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    <label className="block text-gray-700 font-medium mb-2">Gender <span className="text-red-500">*</span></label>
+                    <select name="gender" value={formData.gender} onChange={handleInputChange} className={`w-full px-4 py-2 border rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.gender ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}>
                         <option value="">Choose Gender</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
                         <option value="Other">Other</option>
                     </select>
+                    {errors.gender && <p className="text-red-500 text-xs mt-1">{errors.gender}</p>}
                 </div>
                 <div>
-                    <label className="block text-gray-700 font-medium mb-2">Email Address</label>
-                    <input name="email" value={formData.email} onChange={handleInputChange} type="email" placeholder="Enter Email Address" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+                    <label className="block text-gray-700 font-medium mb-2">Email Address <span className="text-red-500">*</span></label>
+                    <input name="email" value={formData.email} onChange={handleInputChange} type="email" placeholder="Enter Email Address" className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} />
+                    {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                 </div>
                 <div>
-                    <label className="block text-gray-700 font-medium mb-2">Staff Phone Number</label>
-                    <input name="staffPhoneNumber" value={formData.staffPhoneNumber} onChange={handleInputChange} type="tel" placeholder="Enter Staff Phone Number" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+                    <label className="block text-gray-700 font-medium mb-2">Staff Phone Number <span className="text-red-500">*</span></label>
+                    <input name="staffPhoneNumber" value={formData.staffPhoneNumber} onChange={handleInputChange} type="tel" placeholder="Enter Staff Phone Number" className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.staffPhoneNumber ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} />
+                    {errors.staffPhoneNumber && <p className="text-red-500 text-xs mt-1">{errors.staffPhoneNumber}</p>}
                 </div>
                 <div>
                     <label className="block text-gray-700 font-medium mb-2">Staff WhatsApp Number</label>
@@ -1134,14 +1209,15 @@ export const StaffManagement = () => {
             <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Professional Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <div>
-                    <label className="block text-gray-700 font-medium mb-2">Department</label>
-                    <select name="department" value={formData.department} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    <label className="block text-gray-700 font-medium mb-2">Department <span className="text-red-500">*</span></label>
+                    <select name="department" value={formData.department} onChange={handleInputChange} className={`w-full px-4 py-2 border rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.department ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}>
                         {departments.map((dept) => <option key={dept} value={dept === 'Choose Department' ? '' : dept}>{dept}</option>)}
                     </select>
+                    {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department}</p>}
                 </div>
                 <div>
-                    <label className="block text-gray-700 font-medium mb-2">Type of Employee</label>
-                    <select name="role" value={formData.role} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" disabled={rolesLoading}>
+                    <label className="block text-gray-700 font-medium mb-2">Type of Employee <span className="text-red-500">*</span></label>
+                    <select name="role" value={formData.role} onChange={handleInputChange} className={`w-full px-4 py-2 border rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.role ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} disabled={rolesLoading}>
                         <option value="">Choose Role</option>
                         {rolesLoading ? (
                             <option>Loading roles...</option>
@@ -1153,10 +1229,11 @@ export const StaffManagement = () => {
                             ))
                         )}
                     </select>
+                    {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role}</p>}
                 </div>
                 <div>
-                    <label className="block text-gray-700 font-medium mb-2">Branch</label>
-                    <select name="branch" value={formData.branch} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    <label className="block text-gray-700 font-medium mb-2">Branch <span className="text-red-500">*</span></label>
+                    <select name="branch" value={formData.branch} onChange={handleInputChange} className={`w-full px-4 py-2 border rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}>
                         <option value="">Choose Branch</option>
                         {branches.map((branch) => (
                             <option key={branch._id} value={branch._id}>
@@ -1164,20 +1241,23 @@ export const StaffManagement = () => {
                             </option>
                         ))}
                     </select>
+                    {errors.branch && <p className="text-red-500 text-xs mt-1">{errors.branch}</p>}
                 </div>
                 <div>
                     <label className="block text-gray-700 font-medium mb-2">Years of Experience</label>
                     <input name="yearsOfExperience" value={formData.yearsOfExperience} onChange={handleInputChange} type="number" min="0" placeholder="Enter years of experience" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
                 </div>
                 <div>
-                    <label className="block text-gray-700 font-medium mb-2">Date of Joining</label>
-                    <input name="dateOfJoining" value={formData.dateOfJoining} onChange={handleInputChange} type="date" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+                    <label className="block text-gray-700 font-medium mb-2">Date of Joining <span className="text-red-500">*</span></label>
+                    <input name="dateOfJoining" value={formData.dateOfJoining} onChange={handleInputChange} type="date" className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.dateOfJoining ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} />
+                    {errors.dateOfJoining && <p className="text-red-500 text-xs mt-1">{errors.dateOfJoining}</p>}
                 </div>
                 <div>
-                    <label className="block text-gray-700 font-medium mb-2">Employment Status</label>
-                    <select name="employmentStatus" value={formData.employmentStatus} onChange={handleInputChange} className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    <label className="block text-gray-700 font-medium mb-2">Employment Status <span className="text-red-500">*</span></label>
+                    <select name="employmentStatus" value={formData.employmentStatus} onChange={handleInputChange} className={`w-full px-4 py-2 border rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.employmentStatus ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}>
                         {employmentStatus.map((status) => <option key={status} value={status === 'Choose Employment Status' ? '' : status}>{status}</option>)}
                     </select>
+                    {errors.employmentStatus && <p className="text-red-500 text-xs mt-1">{errors.employmentStatus}</p>}
                 </div>
                 <div>
                     <label className="block text-gray-700 font-medium mb-2">Resignation Date <span className="text-gray-400">(Only If Inactive)</span></label>
@@ -1378,12 +1458,13 @@ export const StaffManagement = () => {
             <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Login & Access</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <div>
-                    <label className="block text-gray-700 font-medium mb-2">Staff's Official Email Address</label>
-                    <input name="officialEmail" value={formData.officialEmail} onChange={handleInputChange} type="email" placeholder="Enter Staff's Official Email Address" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
+                    <label className="block text-gray-700 font-medium mb-2">Staff's Official Email Address <span className="text-red-500">*</span></label>
+                    <input name="officialEmail" value={formData.officialEmail} onChange={handleInputChange} type="email" placeholder="Enter Staff's Official Email Address" className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.officialEmail ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} />
+                    {errors.officialEmail && <p className="text-red-500 text-xs mt-1">{errors.officialEmail}</p>}
                 </div>
                 <div>
                     <label className="block text-gray-700 font-medium mb-2">
-                        {isEditMode ? 'Update Password' : 'Create Password'}
+                        {isEditMode ? 'Update Password' : 'Create Password'} {(!isEditMode || formData.password || formData.confirmPassword) && <span className="text-red-500">*</span>}
                         {isEditMode && <span className="text-red-400 text-[12px] ml-1">(Leave blank to keep current password)</span>}
                     </label>
                     <div className="relative">
@@ -1393,7 +1474,7 @@ export const StaffManagement = () => {
                             onChange={handleInputChange}
                             type={showPassword ? "text" : "password"}
                             placeholder={isEditMode ? "Enter new password (optional)" : "Create A Password"}
-                            className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            className={`w-full pl-4 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                         />
                         <button
                             type="button"
@@ -1407,10 +1488,11 @@ export const StaffManagement = () => {
                             )}
                         </button>
                     </div>
+                    {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
                 </div>
                 <div>
                     <label className="block text-gray-700 font-medium mb-2">
-                        {isEditMode ? 'Confirm New Password' : 'Confirm Password'}
+                        {isEditMode ? 'Confirm New Password' : 'Confirm Password'} {(!isEditMode || formData.password || formData.confirmPassword) && <span className="text-red-500">*</span>}
                         {isEditMode && <span className="text-red-400 text-[12px] ml-1">(Only if updating password)</span>}
                     </label>
                     <div className="relative">
@@ -1420,7 +1502,7 @@ export const StaffManagement = () => {
                             onChange={handleInputChange}
                             type={showConfirmPassword ? "text" : "password"}
                             placeholder={isEditMode ? "Re-enter new password (optional)" : "Re-Enter The Password"}
-                            className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            className={`w-full pl-4 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                         />
                         <button
                             type="button"
@@ -1434,6 +1516,7 @@ export const StaffManagement = () => {
                             )}
                         </button>
                     </div>
+                    {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
                 </div>
             </div>
             <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6 sm:mt-8">

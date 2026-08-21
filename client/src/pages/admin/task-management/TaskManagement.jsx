@@ -48,6 +48,7 @@ export const TaskManagement = () => {
     title: '',
     message: ''
   });
+  const [errors, setErrors] = useState({});
 
   // View modal state
   const [showViewModal, setShowViewModal] = useState(false);
@@ -713,6 +714,7 @@ export const TaskManagement = () => {
   // No client-side filtering needed - server handles it
 
   const handleEditTask = (task) => {
+    setErrors({});
     setEditingTask(task);
     setIsEditMode(true);
 
@@ -796,6 +798,7 @@ export const TaskManagement = () => {
   };
 
   const handleCancelEdit = () => {
+    setErrors({});
     setEditingTask(null);
     setIsEditMode(false);
     setFormData({});
@@ -813,6 +816,7 @@ export const TaskManagement = () => {
   };
 
   const handleTabChange = (tabName) => {
+    setErrors({});
     if (tabName === 'tasks-list') {
       handleCancelEdit();
     } else {
@@ -875,10 +879,15 @@ export const TaskManagement = () => {
 
   const handleInternSelect = (intern) => {
     const isSelected = selectedInterns.find(selected => selected._id === intern._id);
+    let newInterns;
     if (isSelected) {
-      setSelectedInterns(selectedInterns.filter(selected => selected._id !== intern._id));
+      newInterns = selectedInterns.filter(selected => selected._id !== intern._id);
     } else {
-      setSelectedInterns([...selectedInterns, intern]);
+      newInterns = [...selectedInterns, intern];
+    }
+    setSelectedInterns(newInterns);
+    if (errors.audienceData && newInterns.length > 0) {
+      setErrors(prev => ({ ...prev, audienceData: "" }));
     }
   };
 
@@ -888,10 +897,15 @@ export const TaskManagement = () => {
 
   const handleBatchSelect = (batch) => {
     const isSelected = selectedBatches.find(selected => selected._id === batch._id);
+    let newBatches;
     if (isSelected) {
-      setSelectedBatches(selectedBatches.filter(selected => selected._id !== batch._id));
+      newBatches = selectedBatches.filter(selected => selected._id !== batch._id);
     } else {
-      setSelectedBatches([...selectedBatches, batch]);
+      newBatches = [...selectedBatches, batch];
+    }
+    setSelectedBatches(newBatches);
+    if (errors.audienceData && newBatches.length > 0) {
+      setErrors(prev => ({ ...prev, audienceData: "" }));
     }
   };
 
@@ -901,10 +915,15 @@ export const TaskManagement = () => {
 
   const handleCategorySelect = (category) => {
     const isSelected = selectedCategories.find(selected => selected._id === category._id);
+    let newCategories;
     if (isSelected) {
-      setSelectedCategories(selectedCategories.filter(selected => selected._id !== category._id));
+      newCategories = selectedCategories.filter(selected => selected._id !== category._id);
     } else {
-      setSelectedCategories([...selectedCategories, category]);
+      newCategories = [...selectedCategories, category];
+    }
+    setSelectedCategories(newCategories);
+    if (errors.audienceData && newCategories.length > 0) {
+      setErrors(prev => ({ ...prev, audienceData: "" }));
     }
   };
 
@@ -967,10 +986,80 @@ export const TaskManagement = () => {
   });
 
   // Handle form submission
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.title || !formData.title.trim()) {
+      newErrors.title = "Title is required";
+    }
+
+    if (!formData.taskType) {
+      newErrors.taskType = "Task type is required";
+    }
+
+    if (!formData.module) {
+      newErrors.module = "Module is required";
+    }
+
+    if (!formData.assignedMentor) {
+      newErrors.assignedMentor = "Assigned mentor is required";
+    }
+
+    if (!formData.startDate) {
+      newErrors.startDate = "Start date is required";
+    }
+
+    if (!formData.dueDate) {
+      newErrors.dueDate = "Due date is required";
+    }
+
+    if (formData.startDate && formData.dueDate) {
+      const start = new Date(formData.startDate);
+      const due = new Date(formData.dueDate);
+      if (start >= due) {
+        newErrors.dueDate = "Due date must be after start date";
+      }
+    }
+
+    if (!formData.description || !formData.description.trim()) {
+      newErrors.description = "Description is required";
+    }
+
+    if (selectedBranches.length === 0) {
+      newErrors.branch = "At least one branch must be selected";
+    }
+
+    if (formData.audience) {
+      if (formData.audience === "By batches" && selectedBatches.length === 0) {
+        newErrors.audienceData = "At least one batch must be selected";
+      } else if (formData.audience === "By category" && selectedCategories.length === 0) {
+        newErrors.audienceData = "At least one category must be selected";
+      } else if (formData.audience === "Individual interns" && selectedInterns.length === 0) {
+        newErrors.audienceData = "At least one intern must be selected";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCreateTask = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    if (!validateForm()) {
+      showNotification('error', 'Validation Error', 'Please fill all required fields correctly.');
+      return;
+    }
 
     console.log('Form submission started');
     console.log('Is edit mode:', isEditMode);
@@ -1540,25 +1629,24 @@ export const TaskManagement = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Title</label>
+                  <label className="block text-sm font-medium text-gray-700">Title <span className="text-red-500">*</span></label>
                   <input
                     name="title"
                     type="text"
                     placeholder="Enter Task Title"
                     value={formData.title || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                    required
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.title ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                   />
+                  {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Task Type</label>
+                  <label className="block text-sm font-medium text-gray-700">Task Type <span className="text-red-500">*</span></label>
                   <select
                     name="taskType"
                     value={formData.taskType || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, taskType: e.target.value }))}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                    required
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.taskType ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                   >
                     <option value="">Choose Task Type</option>
                     <option value="Weekly Task">Weekly Task</option>
@@ -1566,13 +1654,14 @@ export const TaskManagement = () => {
                     <option value="Monthly Task">Monthly Task</option>
                     <option value="Other">Other</option>
                   </select>
+                  {errors.taskType && <p className="text-red-500 text-xs mt-1">{errors.taskType}</p>}
                 </div>
                 <div className="relative module-dropdown-container">
-                  <label className="block text-sm font-medium text-gray-700">Module</label>
+                  <label className="block text-sm font-medium text-gray-700">Module <span className="text-red-500">*</span></label>
                   <button
                     type="button"
                     onClick={() => setIsModuleDropdownOpen(prev => !prev)}
-                    className="mt-1 flex justify-between items-center w-full p-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm text-left focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500"
+                    className={`mt-1 flex justify-between items-center w-full p-2 border rounded-md shadow-sm bg-white text-sm text-left focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.module ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                     disabled={modulesLoading}
                   >
                     <span className={formData.module ? 'text-gray-900' : 'text-gray-500'}>
@@ -1596,6 +1685,9 @@ export const TaskManagement = () => {
                             onClick={() => {
                               setFormData(prev => ({ ...prev, module: module.moduleName }));
                               setIsModuleDropdownOpen(false);
+                              if (errors.module) {
+                                setErrors(prev => ({ ...prev, module: "" }));
+                              }
                             }}
                             className={`p-2 hover:bg-orange-500 hover:text-white cursor-pointer text-sm transition-colors ${formData.module === module.moduleName ? 'bg-orange-50 text-orange-700 font-semibold' : 'text-gray-700'
                               }`}
@@ -1610,21 +1702,20 @@ export const TaskManagement = () => {
                     type="hidden"
                     name="module"
                     value={formData.module || ''}
-                    required
                   />
+                  {errors.module && <p className="text-red-500 text-xs mt-1">{errors.module}</p>}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Assigned Mentor</label>
+                  <label className="block text-sm font-medium text-gray-700">Assigned Mentor <span className="text-red-500">*</span></label>
                   <select
                     name="assignedMentor"
                     value={formData.assignedMentor || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, assignedMentor: e.target.value }))}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.assignedMentor ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                     disabled={mentorsLoading}
-                    required
                   >
                     <option value="">Choose Mentor</option>
                     {mentorsLoading ? (
@@ -1637,38 +1728,39 @@ export const TaskManagement = () => {
                       ))
                     )}
                   </select>
+                  {errors.assignedMentor && <p className="text-red-500 text-xs mt-1">{errors.assignedMentor}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Start Date</label>
+                  <label className="block text-sm font-medium text-gray-700">Start Date <span className="text-red-500">*</span></label>
                   <div className="relative mt-1">
                     <input
                       name="startDate"
                       type="date"
                       value={formData.startDate || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                      className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                      required
+                      onChange={handleInputChange}
+                      className={`block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.startDate ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                     />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <div className="absolute inset-y-0 right-0 pr-10 flex items-center pointer-events-none">
                       <CalendarIcon />
                     </div>
                   </div>
+                  {errors.startDate && <p className="text-red-500 text-xs mt-1">{errors.startDate}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Due Date</label>
+                  <label className="block text-sm font-medium text-gray-700">Due Date <span className="text-red-500">*</span></label>
                   <div className="relative mt-1">
                     <input
                       name="dueDate"
                       type="date"
                       value={formData.dueDate || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-                      className="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                      required
+                      onChange={handleInputChange}
+                      className={`block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.dueDate ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                     />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <div className="absolute inset-y-0 right-0 pr-10 flex items-center pointer-events-none">
                       <CalendarIcon />
                     </div>
                   </div>
+                  {errors.dueDate && <p className="text-red-500 text-xs mt-1">{errors.dueDate}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Total Marks</label>
@@ -1677,23 +1769,23 @@ export const TaskManagement = () => {
                     type="number"
                     placeholder="Enter Total Marks"
                     value={formData.totalMarks || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, totalMarks: e.target.value }))}
+                    onChange={handleInputChange}
                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <label className="block text-sm font-medium text-gray-700">Description <span className="text-red-500">*</span></label>
                 <textarea
                   name="description"
                   placeholder="Enter Task Description"
                   rows="3"
                   value={formData.description || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                  required
+                  onChange={handleInputChange}
+                  className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.description ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                 ></textarea>
+                {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
@@ -1842,9 +1934,8 @@ export const TaskManagement = () => {
                   <select
                     name="status"
                     value={formData.status || ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                    onChange={handleInputChange}
                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500"
-                    required
                   >
                     <option value="">Choose Status</option>
                     <option value="Pending">Pending</option>
@@ -1855,11 +1946,11 @@ export const TaskManagement = () => {
                 </div>
 
                 <div className="branch-dropdown-container relative">
-                  <label className="block text-sm font-medium text-gray-700">Branches</label>
+                  <label className="block text-sm font-medium text-gray-700">Branches <span className="text-red-500">*</span></label>
                   <button
                     type="button"
                     onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
-                    className="w-full flex justify-between items-center p-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-left min-h-[38px] mt-1"
+                    className={`w-full flex justify-between items-center p-2 border rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-transparent text-left min-h-[38px] mt-1 ${errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                   >
                     <span className="text-gray-700 text-sm block truncate">
                       {selectedBranches.length > 0
@@ -1870,6 +1961,7 @@ export const TaskManagement = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                   </button>
+                  {errors.branch && <p className="text-red-500 text-xs mt-1">{errors.branch}</p>}
 
                   {isBranchDropdownOpen && (
                     <div className="absolute left-0 mt-1 w-full bg-white rounded-md shadow-lg z-50 border border-gray-200 max-h-60 overflow-y-auto p-2 space-y-1">
@@ -1889,10 +1981,15 @@ export const TaskManagement = () => {
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => {
+                                  let newBranches;
                                   if (isSelected) {
-                                    setSelectedBranches(selectedBranches.filter(b => b._id !== branch._id));
+                                    newBranches = selectedBranches.filter(b => b._id !== branch._id);
                                   } else {
-                                    setSelectedBranches([...selectedBranches, branch]);
+                                    newBranches = [...selectedBranches, branch];
+                                  }
+                                  setSelectedBranches(newBranches);
+                                  if (errors.branch && newBranches.length > 0) {
+                                    setErrors(prev => ({ ...prev, branch: "" }));
                                   }
                                 }}
                                 className="h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
@@ -1938,22 +2035,28 @@ export const TaskManagement = () => {
                         const newAudience = e.target.value;
                         setFormData(prev => ({ ...prev, audience: newAudience }));
 
+                        if (errors.audience) {
+                          setErrors(prev => ({ ...prev, audience: "" }));
+                        }
+
                         // Clear non-applicable selection states on the frontend
                         if (newAudience === 'By batches') {
+                          setSelectedBatches([]);
                           setSelectedCategories([]);
                           setSelectedInterns([]);
                         } else if (newAudience === 'By category') {
                           setSelectedBatches([]);
+                          setSelectedCategories([]);
                           setSelectedInterns([]);
                           fetchCategories();
                         } else if (newAudience === 'Individual interns') {
                           setSelectedBatches([]);
                           setSelectedCategories([]);
+                          setSelectedInterns([]);
                           fetchInterns();
                         }
                       }}
-                      className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                      required
+                      className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed ${errors.audience || errors.audienceData ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                       disabled={selectedBranches.length === 0}
                     >
                       {selectedBranches.length === 0 ? (
@@ -1967,6 +2070,8 @@ export const TaskManagement = () => {
                         </>
                       )}
                     </select>
+                    {errors.audience && <p className="text-red-500 text-xs mt-1">{errors.audience}</p>}
+                    {errors.audienceData && <p className="text-red-500 text-xs mt-1">{errors.audienceData}</p>}
                   </div>
                 </div>
 

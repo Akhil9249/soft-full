@@ -31,6 +31,7 @@ export const Category = () => {
     title: '',
     message: ''
   });
+  const [errors, setErrors] = useState({});
   
   // Add view modal state
   const [showViewModal, setShowViewModal] = useState(false);
@@ -287,6 +288,7 @@ export const Category = () => {
   };
 
   const handleEditCategory = (category) => {
+    setErrors({});
     setEditingCategory(category);
     setIsEditMode(true);
     setFormData({
@@ -300,6 +302,7 @@ export const Category = () => {
   };
 
   const handleCancelEdit = () => {
+    setErrors({});
     setEditingCategory(null);
     setIsEditMode(false);
     setFormData({ categoryName: '', branch: [] });
@@ -308,6 +311,7 @@ export const Category = () => {
   };
 
   const handleTabChange = (tabName) => {
+    setErrors({});
     if (tabName === 'category-list') {
       handleCancelEdit();
     } else {
@@ -353,9 +357,33 @@ export const Category = () => {
     setDeletingCategory(null);
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.categoryName || !formData.categoryName.trim()) {
+      newErrors.categoryName = "Category name is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!validateForm()) {
+      showNotification('error', 'Validation Error', 'Please fill all required fields correctly.');
+      return;
+    }
 
     const payload = {
       categoryName: formData.categoryName || undefined,
@@ -749,16 +777,16 @@ export const Category = () => {
               <h3 className="text-base sm:text-lg font-medium text-gray-900">Category Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Category Name</label>
+                  <label className="block text-sm font-medium text-gray-700">Category Name <span className="text-red-500">*</span></label>
                   <input 
                     name="categoryName" 
                     type="text" 
                     placeholder="Enter Category Name" 
                     value={formData.categoryName || ''}
-                    onChange={(e) => setFormData(prev => ({...prev, categoryName: e.target.value}))}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500" 
-                    required 
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.categoryName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
                   />
+                  {errors.categoryName && <p className="text-red-500 text-xs mt-1">{errors.categoryName}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Total Courses</label>

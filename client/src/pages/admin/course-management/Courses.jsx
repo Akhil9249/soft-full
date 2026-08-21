@@ -63,6 +63,7 @@ export const Courses = () => {
   const [syllabusPreview, setSyllabusPreview] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingCourse, setDeletingCourse] = useState(null);
+  const [errors, setErrors] = useState({});
   const [notification, setNotification] = useState({
     show: false,
     type: 'success', // 'success', 'error', 'info'
@@ -316,6 +317,7 @@ export const Courses = () => {
     };
     const parsed = parseDuration(course.duration);
 
+    setErrors({});
     setEditingCourse(course);
     setIsEditMode(true);
     setFormData({
@@ -333,6 +335,7 @@ export const Courses = () => {
   };
 
   const handleCancelEdit = () => {
+    setErrors({});
     setEditingCourse(null);
     setIsEditMode(false);
     setFormData({
@@ -350,6 +353,7 @@ export const Courses = () => {
   };
 
   const handleTabChange = (tabName) => {
+    setErrors({});
     if (tabName === 'courses') {
       handleCancelEdit();
     } else {
@@ -1258,6 +1262,49 @@ export const Courses = () => {
     </div>
   );
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.courseName || !formData.courseName.trim()) {
+      newErrors.courseName = "Course name is required";
+    }
+
+    if (!formData.durationValue || String(formData.durationValue).trim() === "") {
+      newErrors.durationValue = "Duration is required";
+    } else if (Number(formData.durationValue) <= 0) {
+      newErrors.durationValue = "Duration must be greater than 0";
+    }
+
+    if (!formData.category) {
+      newErrors.category = "Category is required";
+    }
+
+    if (!formData.courseType) {
+      newErrors.courseType = "Course type is required";
+    }
+
+    if (!formData.courseFee || String(formData.courseFee).trim() === "") {
+      newErrors.courseFee = "Course fee is required";
+    } else if (Number(formData.courseFee) < 0) {
+      newErrors.courseFee = "Course fee cannot be negative";
+    }
+
+    if (!formData.description || !formData.description.trim()) {
+      newErrors.description = "Description is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const renderNewCourseForm = () => (
     <form onSubmit={async (e) => {
       e.preventDefault();
@@ -1273,8 +1320,8 @@ export const Courses = () => {
       const description = formData.description;
 
       // Validate required fields
-      if (!courseName || !duration || !category || !courseType || !courseFee || !description) {
-        showNotification('error', 'Validation Error', 'All fields are required');
+      if (!validateForm()) {
+        showNotification('error', 'Validation Error', 'Please fill all required fields correctly.');
         return;
       }
 
@@ -1333,89 +1380,90 @@ export const Courses = () => {
       <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Course Details</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Course Name</label>
+          <label className="block text-gray-700 font-medium mb-2">Course Name <span className="text-red-500">*</span></label>
           <input 
             name="courseName" 
             type="text" 
             placeholder="Enter Course Name" 
             value={formData.courseName || ''}
-            onChange={(e) => setFormData(prev => ({...prev, courseName: e.target.value}))}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-            required 
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.courseName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
           />
+          {errors.courseName && <p className="text-red-500 text-xs mt-1">{errors.courseName}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Duration</label>
+          <label className="block text-gray-700 font-medium mb-2">Duration <span className="text-red-500">*</span></label>
           <div className="flex gap-2">
             <input 
+              name="durationValue"
               type="number"
               min="1"
               placeholder="e.g. 3"
               value={formData.durationValue || ''}
-              onChange={(e) => setFormData(prev => ({...prev, durationValue: e.target.value}))}
-              className="w-2/3 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-              required
+              onChange={handleInputChange}
+              className={`w-2/3 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.durationValue ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
             />
             <select 
+              name="durationUnit"
               value={formData.durationUnit || 'Months'}
-              onChange={(e) => setFormData(prev => ({...prev, durationUnit: e.target.value}))}
+              onChange={handleInputChange}
               className="w-1/3 px-2 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              required
             >
               <option value="Months">Months</option>
               <option value="Years">Years</option>
             </select>
           </div>
+          {errors.durationValue && <p className="text-red-500 text-xs mt-1">{errors.durationValue}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Category Name</label>
+          <label className="block text-gray-700 font-medium mb-2">Category Name <span className="text-red-500">*</span></label>
           <select 
             name="category" 
             value={formData.category || ''}
-            onChange={(e) => setFormData(prev => ({...prev, category: e.target.value}))}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-            required
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 border rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.category ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
           >
             <option value="">Choose Category</option>
             {categories.map(c => <option key={c._id} value={c._id}>{c.categoryName}</option>)}
           </select>
+          {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Course Type</label>
+          <label className="block text-gray-700 font-medium mb-2">Course Type <span className="text-red-500">*</span></label>
           <select 
             name="courseType" 
             value={formData.courseType || ''}
-            onChange={(e) => setFormData(prev => ({...prev, courseType: e.target.value}))}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-            required
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 border rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.courseType ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
           >
             <option value="">Choose Course Type</option>
             {courseTypes.map(type => <option key={type} value={type}>{type}</option>)}
           </select>
+          {errors.courseType && <p className="text-red-500 text-xs mt-1">{errors.courseType}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Course Fee</label>
+          <label className="block text-gray-700 font-medium mb-2">Course Fee <span className="text-red-500">*</span></label>
           <input 
             name="courseFee" 
             type="number" 
             placeholder="Enter Course Fee" 
             value={formData.courseFee || ''}
-            onChange={(e) => setFormData(prev => ({...prev, courseFee: e.target.value}))}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
-            required 
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.courseFee ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
           />
+          {errors.courseFee && <p className="text-red-500 text-xs mt-1">{errors.courseFee}</p>}
         </div>
         <div className="lg:col-span-3">
-          <label className="block text-gray-700 font-medium mb-2">Description</label>
+          <label className="block text-gray-700 font-medium mb-2">Description <span className="text-red-500">*</span></label>
           <textarea 
             name="description" 
             placeholder="Enter Course Description" 
             value={formData.description || ''}
-            onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.description ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
             rows="3"
-            required 
           />
+          {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-2">Course Syllabus <span className="text-gray-400">(PDF only, Max 10MB)</span></label>

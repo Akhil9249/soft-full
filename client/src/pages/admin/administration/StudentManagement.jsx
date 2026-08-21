@@ -39,6 +39,7 @@ export const StudentManagement = () => {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [resumePreview, setResumePreview] = useState(null);
   const [formData, setFormData] = useState({});
+  const [errors, setErrors] = useState({});
 
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -353,11 +354,7 @@ export const StudentManagement = () => {
   };
 
   const handleEditStudent = (student) => {
-    // console.log('Editing student:', student);
-    // console.log('Date of Birth:', student.dateOfBirth);
-    // console.log('Course Started Date:', student.courseStartedDate);
-    // console.log('Completion Date:', student.completionDate);
-
+    setErrors({});
     setEditingStudent(student);
     setIsEditMode(true);
 
@@ -415,6 +412,7 @@ export const StudentManagement = () => {
   };
 
   const handleCancelEdit = () => {
+    setErrors({});
     setEditingStudent(null);
     setIsEditMode(false);
     setFormData({});
@@ -426,6 +424,7 @@ export const StudentManagement = () => {
   };
 
   const handleTabChange = (tabName) => {
+    setErrors({});
     if (tabName === 'studentsList') {
       handleCancelEdit();
     } else {
@@ -571,12 +570,99 @@ export const StudentManagement = () => {
     setDeletingStudent(null);
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(String(email).toLowerCase());
+  };
+
+  const validatePhone = (phone) => {
+    const digits = String(phone).replace(/\D/g, '');
+    return digits.length >= 7 && digits.length <= 15;
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.fullName || !formData.fullName.trim()) {
+      newErrors.fullName = "Full name is required";
+    }
+
+    if (!formData.dateOfBirth) {
+      newErrors.dateOfBirth = "Date of birth is required";
+    }
+
+    if (!formData.gender) {
+      newErrors.gender = "Gender is required";
+    }
+
+    if (!formData.email || !formData.email.trim()) {
+      newErrors.email = "Email address is required";
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    if (!formData.internPhoneNumber || !formData.internPhoneNumber.trim()) {
+      newErrors.internPhoneNumber = "Phone number is required";
+    } else if (!validatePhone(formData.internPhoneNumber)) {
+      newErrors.internPhoneNumber = "Please enter a valid phone number (7-15 digits)";
+    }
+
+    if (!formData.course) {
+      newErrors.course = "Course is required";
+    }
+
+    if (!formData.branch) {
+      newErrors.branch = "Branch is required";
+    }
+
+    if (!formData.courseStartedDate) {
+      newErrors.courseStartedDate = "Course started date is required";
+    }
+
+    if (!formData.batch) {
+      newErrors.batch = "Batch is required";
+    }
+
+    if (!formData.officialEmail || !formData.officialEmail.trim()) {
+      newErrors.officialEmail = "Official email address is required";
+    } else if (!validateEmail(formData.officialEmail)) {
+      newErrors.officialEmail = "Please enter a valid official email address";
+    }
+
+    if (!isEditMode) {
+      if (!formData.password) {
+        newErrors.password = "Password is required";
+      } else if (formData.password.length < 6) {
+        newErrors.password = "Password must be at least 6 characters";
+      }
+    }
+
+    if (formData.password) {
+      if (!formData.confirmPassword) {
+        newErrors.confirmPassword = "Confirm password is required";
+      } else if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = "Passwords do not match";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCreateStudent = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (formData.password && formData.password.trim() !== '' && formData.password !== formData.confirmPassword) {
-      showNotification('error', 'Validation Error', 'Passwords do not match.');
+    if (!validateForm()) {
+      showNotification('error', 'Validation Error', 'Please fill all required fields correctly.');
       return;
     }
 
@@ -1081,61 +1167,66 @@ export const StudentManagement = () => {
       <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Basic Details</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Full Name</label>
+          <label className="block text-gray-700 font-medium mb-2">Full Name <span className="text-red-500">*</span></label>
           <input
             name="fullName"
             type="text"
             placeholder="Enter full name"
             value={formData.fullName || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.fullName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
           />
+          {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Date of Birth</label>
+          <label className="block text-gray-700 font-medium mb-2">Date of Birth <span className="text-red-500">*</span></label>
           <input
             name="dateOfBirth"
             type="date"
             value={formData.dateOfBirth || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, dateOfBirth: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.dateOfBirth ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
           />
+          {errors.dateOfBirth && <p className="text-red-500 text-xs mt-1">{errors.dateOfBirth}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Gender</label>
+          <label className="block text-gray-700 font-medium mb-2">Gender <span className="text-red-500">*</span></label>
           <select
             name="gender"
             value={formData.gender || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 text-black border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.gender ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
           >
             <option value="">Choose Gender</option>
             <option value="Male">Male</option>
             <option value="Female">Female</option>
             <option value="Other">Other</option>
           </select>
+          {errors.gender && <p className="text-red-500 text-xs mt-1">{errors.gender}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Email Address</label>
+          <label className="block text-gray-700 font-medium mb-2">Email Address <span className="text-red-500">*</span></label>
           <input
             name="email"
             type="email"
             placeholder="Enter Email Address"
             value={formData.email || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
           />
+          {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Student Phone Number</label>
+          <label className="block text-gray-700 font-medium mb-2">Student Phone Number <span className="text-red-500">*</span></label>
           <input
             name="internPhoneNumber"
             type="tel"
             placeholder="Enter Student Phone Number"
             value={formData.internPhoneNumber || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, internPhoneNumber: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.internPhoneNumber ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
           />
+          {errors.internPhoneNumber && <p className="text-red-500 text-xs mt-1">{errors.internPhoneNumber}</p>}
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-2">Student WhatsApp Number</label>
@@ -1144,7 +1235,7 @@ export const StudentManagement = () => {
             type="tel"
             placeholder="Enter Student WhatsApp Number"
             value={formData.internWhatsAppNumber || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, internWhatsAppNumber: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1155,7 +1246,7 @@ export const StudentManagement = () => {
             type="text"
             placeholder="Enter Student Guardian's Name"
             value={formData.guardianName || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, guardianName: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1166,7 +1257,7 @@ export const StudentManagement = () => {
             type="text"
             placeholder="Enter Student Father's Name"
             value={formData.fatherName || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, fatherName: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1177,7 +1268,7 @@ export const StudentManagement = () => {
             type="text"
             placeholder="Enter Student Permanent Address"
             value={formData.internPermanentAddress || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, internPermanentAddress: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1188,7 +1279,7 @@ export const StudentManagement = () => {
             type="text"
             placeholder="Enter Student Mother's Name"
             value={formData.motherName || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, motherName: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1199,7 +1290,7 @@ export const StudentManagement = () => {
             type="tel"
             placeholder="Enter Guardians/Parent Phone Number"
             value={formData.guardianParentPhone || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, guardianParentPhone: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1210,7 +1301,7 @@ export const StudentManagement = () => {
             type="text"
             placeholder="Enter Student District"
             value={formData.district || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, district: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1221,7 +1312,7 @@ export const StudentManagement = () => {
             type="text"
             placeholder="Enter Student State"
             value={formData.state || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1276,12 +1367,12 @@ export const StudentManagement = () => {
       <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Academic Details</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Course</label>
+          <label className="block text-gray-700 font-medium mb-2">Course <span className="text-red-500">*</span></label>
           <select
             name="course"
             value={formData.course || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, course: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 text-black border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.course ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
             disabled={coursesLoading}
           >
             <option value="">Choose Course</option>
@@ -1295,14 +1386,15 @@ export const StudentManagement = () => {
               ))
             )}
           </select>
+          {errors.course && <p className="text-red-500 text-xs mt-1">{errors.course}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Branch</label>
+          <label className="block text-gray-700 font-medium mb-2">Branch <span className="text-red-500">*</span></label>
           <select
             name="branch"
             value={formData.branch || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, branch: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 text-black border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
             disabled={branchesLoading}
           >
             <option value="">Choose Branch</option>
@@ -1316,16 +1408,18 @@ export const StudentManagement = () => {
               ))
             )}
           </select>
+          {errors.branch && <p className="text-red-500 text-xs mt-1">{errors.branch}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Course Started Date</label>
+          <label className="block text-gray-700 font-medium mb-2">Course Started Date <span className="text-red-500">*</span></label>
           <input
             name="courseStartedDate"
             type="date"
             value={formData.courseStartedDate || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, courseStartedDate: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.courseStartedDate ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
           />
+          {errors.courseStartedDate && <p className="text-red-500 text-xs mt-1">{errors.courseStartedDate}</p>}
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-2">Completion Date</label>
@@ -1333,17 +1427,17 @@ export const StudentManagement = () => {
             name="completionDate"
             type="date"
             value={formData.completionDate || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, completionDate: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Batch</label>
+          <label className="block text-gray-700 font-medium mb-2">Batch <span className="text-red-500">*</span></label>
           <select
             name="batch"
             value={formData.batch || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, batch: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 text-black border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.batch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
             disabled={batchesLoading}
           >
             <option value="">Choose Batch</option>
@@ -1357,13 +1451,14 @@ export const StudentManagement = () => {
               ))
             )}
           </select>
+          {errors.batch && <p className="text-red-500 text-xs mt-1">{errors.batch}</p>}
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-2">Course Status</label>
           <select
             name="courseStatus"
             value={formData.courseStatus || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, courseStatus: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           >
             {courseStatus.map(status => <option key={status} value={status === 'Choose Course Status' ? '' : status}>{status}</option>)}
@@ -1374,7 +1469,7 @@ export const StudentManagement = () => {
           <select
             name="careerAdvisor"
             value={formData.careerAdvisor || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, careerAdvisor: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             disabled={staffLoading}
           >
@@ -1390,31 +1485,27 @@ export const StudentManagement = () => {
             )}
           </select>
         </div>
-        <div className="lg:col-span-2">
+        <div>
+          <label className="block text-gray-700 font-medium mb-2">Student Syllabus Status</label>
+          <select
+            name="internSyllabusStatus"
+            value={formData.internSyllabusStatus || ''}
+            onChange={handleInputChange}
+            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+          >
+            {syllabusStatus.map(status => <option key={status} value={status === 'Choose Syllabus Status' ? '' : status}>{status}</option>)}
+          </select>
+        </div>
+        <div>
           <label className="block text-gray-700 font-medium mb-2">Remarks/Notes <span className="text-gray-400">(Optional)</span></label>
           <input
             name="remarks"
             type="text"
             placeholder="Enter Any Remarks or notes"
             value={formData.remarks || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
-        </div>
-      </div>
-
-      <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Student Syllabus</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div>
-          <label className="block text-gray-700 font-medium mb-2">Student Syllabus Status</label>
-          <select
-            name="internSyllabusStatus"
-            value={formData.internSyllabusStatus || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, internSyllabusStatus: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-          >
-            {syllabusStatus.map(status => <option key={status} value={status === 'Choose Syllabus Status' ? '' : status}>{status}</option>)}
-          </select>
         </div>
       </div>
 
@@ -1425,7 +1516,7 @@ export const StudentManagement = () => {
           <select
             name="placementStatus"
             value={formData.placementStatus || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, placementStatus: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           >
             {placementStatus.map(status => <option key={status} value={status === 'Choose Placement Status' ? '' : status}>{status}</option>)}
@@ -1438,7 +1529,7 @@ export const StudentManagement = () => {
             type="text"
             placeholder="Enter LinkedIn Link"
             value={formData.linkedin || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, linkedin: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1449,7 +1540,7 @@ export const StudentManagement = () => {
             type="text"
             placeholder="Enter Portfolio Link"
             value={formData.portfolio || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, portfolio: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1460,7 +1551,7 @@ export const StudentManagement = () => {
             type="text"
             placeholder="Enter Company Name"
             value={formData.companyName || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1471,7 +1562,7 @@ export const StudentManagement = () => {
             type="text"
             placeholder="Enter Job Role"
             value={formData.jobRole || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, jobRole: e.target.value }))}
+            onChange={handleInputChange}
             className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
@@ -1581,26 +1672,30 @@ export const StudentManagement = () => {
       <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Login & Access</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Student Email Address</label>
+          <label className="block text-gray-700 font-medium mb-2">Student Email Address <span className="text-red-500">*</span></label>
           <input
             name="officialEmail"
             type="email"
             placeholder="Enter Student Email Address"
             value={formData.officialEmail || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, officialEmail: e.target.value }))}
-            className="w-full px-4 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            onChange={handleInputChange}
+            className={`w-full px-4 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.officialEmail ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
           />
+          {errors.officialEmail && <p className="text-red-500 text-xs mt-1">{errors.officialEmail}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Create Password</label>
+          <label className="block text-gray-700 font-medium mb-2">
+            {isEditMode ? 'Update Password' : 'Create Password'} {(!isEditMode || formData.password || formData.confirmPassword) && <span className="text-red-500">*</span>}
+            {isEditMode && <span className="text-red-400 text-[12px] ml-1">(Leave blank to keep current password)</span>}
+          </label>
           <div className="relative">
             <input
               name="password"
               type={showPassword ? "text" : "password"}
-              placeholder="Create A Password"
+              placeholder={isEditMode ? "Enter new password (optional)" : "Create A Password"}
               value={formData.password || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-              className="w-full pl-4 pr-10 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              onChange={handleInputChange}
+              className={`w-full pl-4 pr-10 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
             />
             <button
               type="button"
@@ -1614,17 +1709,21 @@ export const StudentManagement = () => {
               )}
             </button>
           </div>
+          {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
         </div>
         <div>
-          <label className="block text-gray-700 font-medium mb-2">Confirm Password</label>
+          <label className="block text-gray-700 font-medium mb-2">
+            {isEditMode ? 'Confirm New Password' : 'Confirm Password'} {(!isEditMode || formData.password || formData.confirmPassword) && <span className="text-red-500">*</span>}
+            {isEditMode && <span className="text-red-400 text-[12px] ml-1">(Only if updating password)</span>}
+          </label>
           <div className="relative">
             <input
               name="confirmPassword"
               type={showConfirmPassword ? "text" : "password"}
-              placeholder="Re-Enter The Password"
+              placeholder={isEditMode ? "Re-enter new password (optional)" : "Re-Enter The Password"}
               value={formData.confirmPassword || ''}
-              onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-              className="w-full pl-4 pr-10 py-2 text-black border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              onChange={handleInputChange}
+              className={`w-full pl-4 pr-10 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
             />
             <button
               type="button"
@@ -1638,6 +1737,7 @@ export const StudentManagement = () => {
               )}
             </button>
           </div>
+          {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
         </div>
       </div>
       <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6 sm:mt-8">

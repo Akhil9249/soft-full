@@ -28,6 +28,7 @@ export const RoleManagement = () => {
     description: '',
     permissions: {}
   });
+  const [errors, setErrors] = useState({});
   
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -663,6 +664,7 @@ export const RoleManagement = () => {
 
   // Edit role function
   const editRole = (role) => {
+    setErrors({});
     setEditingRole(role);
     setFormData({
       role: role.role,
@@ -674,6 +676,7 @@ export const RoleManagement = () => {
 
   // Cancel edit mode
   const cancelEdit = () => {
+    setErrors({});
     setEditingRole(null);
     setFormData({
       role: '',
@@ -702,6 +705,9 @@ export const RoleManagement = () => {
       ...prev,
       [name]: value
     }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
   };
 
   // Handle permission changes
@@ -734,12 +740,32 @@ export const RoleManagement = () => {
     }
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.role || !formData.role.trim()) {
+      newErrors.role = "Role Name is required";
+    }
+
+    if (!formData.description || !formData.description.trim()) {
+      newErrors.description = "Description is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) {
+      showNotification('error', 'Validation Error', 'Please fill all required fields correctly.');
+      return;
+    }
     try {
       const dataToSubmit = {
-        ...formData,
+        role: formData.role.trim(),
+        description: formData.description.trim(),
         permissions: formData.permissions
       };
       
@@ -757,6 +783,7 @@ export const RoleManagement = () => {
         description: '',
         permissions: initializePermissions()
       });
+      setErrors({});
       setEditingRole(null);
       setActiveTab('roles');
     } catch (error) {
@@ -767,6 +794,7 @@ export const RoleManagement = () => {
 
   // Handle tab change
   const handleTabChange = (tabName) => {
+    setErrors({});
     if (tabName === 'roles') {
       cancelEdit();
     } else {
@@ -801,6 +829,11 @@ export const RoleManagement = () => {
       permissions: initializePermissions()
     }));
   }, []);
+
+  // Clear errors when active tab changes
+  useEffect(() => {
+    setErrors({});
+  }, [activeTab]);
 
   // Close export dropdown when clicking outside
   useEffect(() => {
@@ -1100,7 +1133,7 @@ export const RoleManagement = () => {
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6">
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Role</label>
+            <label className="block text-gray-700 font-medium mb-2">Role <span className="text-red-500">*</span></label>
             <div className="relative">
               <input 
                 type="text"
@@ -1108,25 +1141,26 @@ export const RoleManagement = () => {
                 value={formData.role}
                 onChange={handleInputChange}
                 placeholder="Enter Role Name"
-                className="block w-full px-4 py-2 text-black bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                required
+                className={`block w-full px-4 py-2 text-black bg-white border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.role ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                 disabled={editingRole} // Disable role change when editing
               />
+              {errors.role && <p className="text-red-500 text-xs mt-1">{errors.role}</p>}
               {editingRole && (
                 <p className="text-sm text-gray-500 mt-1">Role cannot be changed when editing</p>
               )}
             </div>
           </div>
           <div>
-            <label className="block text-gray-700 font-medium mb-2">Description</label>
+            <label className="block text-gray-700 font-medium mb-2">Description <span className="text-red-500">*</span></label>
             <input 
               type="text" 
               name="description"
               value={formData.description}
               onChange={handleInputChange}
               placeholder="Enter Description" 
-              className="w-full px-4 py-2 text-black border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" 
+              className={`w-full px-4 py-2 text-black border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.description ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
             />
+            {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
           </div>
         </div>
         <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">All Permissions</h3>

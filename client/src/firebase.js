@@ -47,3 +47,5 @@ export const registerOnMessageListener = (callback) => {
     callback(payload);
   });
 };
+
+

@@ -41,6 +41,7 @@ export const Batches = () => {
     title: '',
     message: ''
   });
+  const [errors, setErrors] = useState({});
   
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -405,6 +406,7 @@ export const Batches = () => {
   };
 
   const handleEditBatch = (batch) => {
+    setErrors({});
     setEditingBatch(batch);
     setIsEditMode(true);
     
@@ -432,6 +434,7 @@ export const Batches = () => {
   };
 
   const handleCancelEdit = () => {
+    setErrors({});
     setEditingBatch(null);
     setIsEditMode(false);
     setFormData({});
@@ -445,6 +448,7 @@ export const Batches = () => {
   };
 
   const handleTabChange = (tabName) => {
+    setErrors({});
     if (tabName === 'batches') {
       handleCancelEdit();
     } else {
@@ -490,27 +494,35 @@ export const Batches = () => {
     setDeletingBatch(null);
   };
 
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.batchName || !formData.batchName.trim()) {
+      newErrors.batchName = "Batch Name is required";
+    }
+
+    if (!formData.branchName) {
+      newErrors.branchName = "Branch is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCreateBatch = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    const formDataObj = new FormData(e.currentTarget);
-
-    const batchName = formDataObj.get('batchName');
-    const branchName = formDataObj.get('branchName');
-    const status = formDataObj.get('status');
-
-    // Validate required fields
-    if (!batchName || !branchName) {
-      showNotification('error', 'Validation Error', 'Batch name and branch are required');
+    if (!validateForm()) {
+      showNotification('error', 'Validation Error', 'Please fill all required fields correctly.');
       return;
     }
 
     const payload = {
-      batchName: batchName.trim(),
-      branchName: branchName,
-      status: status || 'Active',
+      batchName: formData.batchName.trim(),
+      branchName: formData.branchName,
+      status: formData.status || 'Active',
       interns: addedInterns.map(intern => ({
         internId: intern._id
       }))
@@ -999,25 +1011,33 @@ export const Batches = () => {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Batch Name</label>
+                    <label className="block text-sm font-medium text-gray-700">Batch Name <span className="text-red-500">*</span></label>
                     <input 
                       name="batchName" 
                       type="text" 
                       placeholder="Enter Batch Name" 
                       value={formData.batchName || ''}
-                      onChange={(e) => setFormData(prev => ({...prev, batchName: e.target.value}))}
-                      className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500" 
-                      required 
+                      onChange={(e) => {
+                        setFormData(prev => ({...prev, batchName: e.target.value}));
+                        if (errors.batchName) {
+                          setErrors(prev => ({...prev, batchName: ""}));
+                        }
+                      }}
+                      className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.batchName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
                     />
+                    {errors.batchName && <p className="text-red-500 text-xs mt-1">{errors.batchName}</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Branch Name</label>
+                    <label className="block text-sm font-medium text-gray-700">Branch Name <span className="text-red-500">*</span></label>
                     <select 
                       name="branchName" 
                       value={formData.branchName || ''}
                       onChange={(e) => {
                         const newBranch = e.target.value;
                         setFormData(prev => ({...prev, branchName: newBranch}));
+                        if (errors.branchName) {
+                          setErrors(prev => ({...prev, branchName: ""}));
+                        }
                         
                         // Clear intern search and selection states since branch changed
                         setInternSearchTerm('');
@@ -1030,8 +1050,7 @@ export const Batches = () => {
                         // Clear added interns list only if branch changed manually to prevent cross-branch intern assignment
                         setAddedInterns([]);
                       }}
-                      className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500" 
-                      required
+                      className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.branchName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
                     >
                       <option value="">Choose Branch</option>
                       {branches.map(branch => (
@@ -1045,6 +1064,7 @@ export const Batches = () => {
                         </option>
                       )}
                     </select>
+                    {errors.branchName && <p className="text-red-500 text-xs mt-1">{errors.branchName}</p>}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Total Interns</label>

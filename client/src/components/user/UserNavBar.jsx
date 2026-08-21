@@ -5,6 +5,8 @@ import useAuth from "../../hooks/useAuth";
 import { useAppDispatch } from "../../redux/hooks";
 import { logoutUser, clearCredentials } from "../../redux/slices/authSlice";
 import UserService from "../../services/user-api-service/UserService";
+import logo from "../../assets/image/soft-log.png";
+
 
 import {
   BellRing,
@@ -145,15 +147,12 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
       `}>
         <div className="overflow-y-auto flex-1 scrollbar-hide">
           <div className="flex items-center mb-8">
-            <svg
-              className="w-8 h-8 text-orange-500 mr-2"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15L4 12l6-5 6 5-6 5z" />
-            </svg>
-            <span className="text-xl font-bold text-gray-800">Softroniics</span>
-          </div>
+                      <img
+                        src={logo}
+                        alt="Softroniics Logo"
+                        className="h-10 w-auto object-contain"
+                      />
+                    </div>
           <nav className="space-y-4">
             {/* My Attendance */}
             <Link

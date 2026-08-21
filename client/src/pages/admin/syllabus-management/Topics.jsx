@@ -27,6 +27,7 @@ export const Topics = () => {
     title: '',
     message: ''
   });
+  const [errors, setErrors] = useState({});
   
   // View modal state
   const [showViewModal, setShowViewModal] = useState(false);
@@ -248,6 +249,7 @@ export const Topics = () => {
   // No client-side filtering needed - server handles it
 
   const handleEditTopic = (topic) => {
+    setErrors({});
     setEditingTopic(topic);
     setIsEditMode(true);
     setFormData({
@@ -258,6 +260,7 @@ export const Topics = () => {
   };
 
   const handleCancelEdit = () => {
+    setErrors({});
     setEditingTopic(null);
     setIsEditMode(false);
     setFormData({});
@@ -265,6 +268,7 @@ export const Topics = () => {
   };
 
   const handleTabChange = (tabName) => {
+    setErrors({});
     if (tabName === 'topics-list') {
       handleCancelEdit();
     } else {
@@ -310,25 +314,42 @@ export const Topics = () => {
     setDeletingTopic(null);
   };
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.topicName || !formData.topicName.trim()) {
+      newErrors.topicName = "Topic name is required";
+    }
+
+    if (!formData.module) {
+      newErrors.module = "Module is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleCreateTopic = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
-    const formDataObj = new FormData(e.currentTarget);
-
-    const topicName = formDataObj.get('topicName');
-    const module = formDataObj.get('module');
-
-    // Validate required fields
-    if (!topicName || !module) {
-      showNotification('error', 'Validation Error', 'Topic name and module are required');
+    if (!validateForm()) {
+      showNotification('error', 'Validation Error', 'Please fill all required fields correctly.');
       return;
     }
 
     const payload = {
-      topicName: topicName.trim(),
-      module: module,
+      topicName: formData.topicName.trim(),
+      module: formData.module,
     };
 
     try {
@@ -725,31 +746,31 @@ export const Topics = () => {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Topic Name</label>
+                <label className="block text-sm font-medium text-gray-700">Topic Name <span className="text-red-500">*</span></label>
                 <input 
                   name="topicName" 
                   type="text" 
                   placeholder="Enter Topic Name" 
                   value={formData.topicName || ''}
-                  onChange={(e) => setFormData(prev => ({...prev, topicName: e.target.value}))}
-                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500" 
-                  required 
+                  onChange={handleInputChange}
+                  className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.topicName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
                 />
+                {errors.topicName && <p className="text-red-500 text-xs mt-1">{errors.topicName}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Module</label>
+                <label className="block text-sm font-medium text-gray-700">Module <span className="text-red-500">*</span></label>
                 <select 
                   name="module" 
                   value={formData.module || ''}
-                  onChange={(e) => setFormData(prev => ({...prev, module: e.target.value}))}
-                  className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500" 
-                  required
+                  onChange={handleInputChange}
+                  className={`mt-1 block w-full p-2 border rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 ${errors.module ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
                 >
                   <option value="">Choose Module</option>
                   {modules.map(module => (
                     <option key={module._id} value={module._id}>{module.moduleName}</option>
                   ))}
                 </select>
+                {errors.module && <p className="text-red-500 text-xs mt-1">{errors.module}</p>}
               </div>
             </div>
             <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4 mt-6 sm:mt-8">

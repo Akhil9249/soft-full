@@ -51,6 +51,7 @@ const Material = () => {
   });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingMaterial, setDeletingMaterial] = useState(null);
+  const [errors, setErrors] = useState({});
 
   // View modal state
   const [showViewModal, setShowViewModal] = useState(false);
@@ -306,10 +307,17 @@ const Material = () => {
       [name]: value,
     });
 
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+
     // Clear selections when audience changes
     if (name === 'audience') {
       setSelectedBatches([]);
       setSelectedInterns([]);
+      if (errors.audienceData) {
+        setErrors(prev => ({ ...prev, audienceData: "" }));
+      }
     }
   };
 
@@ -336,12 +344,15 @@ const Material = () => {
           e.target.value = ''; // Reset input to allow retry
           return;
         }
-        setSelectedFile(file);
+         setSelectedFile(file);
         setFileName(file.name);
         setFormData({
           ...formData,
           attachments: file // Store File object
         });
+        if (errors.attachments) {
+          setErrors(prev => ({ ...prev, attachments: "" }));
+        }
       }
     } catch (error) {
       console.error('Error handling file upload:', error);
@@ -359,10 +370,15 @@ const Material = () => {
 
   const handleBatchSelect = (batch) => {
     const isSelected = selectedBatches.find(b => b._id === batch._id);
+    let newBatches;
     if (isSelected) {
-      setSelectedBatches(selectedBatches.filter(b => b._id !== batch._id));
+      newBatches = selectedBatches.filter(b => b._id !== batch._id);
     } else {
-      setSelectedBatches([...selectedBatches, batch]);
+      newBatches = [...selectedBatches, batch];
+    }
+    setSelectedBatches(newBatches);
+    if (errors.audienceData && newBatches.length > 0) {
+      setErrors(prev => ({ ...prev, audienceData: "" }));
     }
   };
 
@@ -377,10 +393,15 @@ const Material = () => {
 
   const handleInternSelect = (intern) => {
     const isSelected = selectedInterns.find(i => i._id === intern._id);
+    let newInterns;
     if (isSelected) {
-      setSelectedInterns(selectedInterns.filter(i => i._id !== intern._id));
+      newInterns = selectedInterns.filter(i => i._id !== intern._id);
     } else {
-      setSelectedInterns([...selectedInterns, intern]);
+      newInterns = [...selectedInterns, intern];
+    }
+    setSelectedInterns(newInterns);
+    if (errors.audienceData && newInterns.length > 0) {
+      setErrors(prev => ({ ...prev, audienceData: "" }));
     }
   };
 
@@ -413,12 +434,43 @@ const Material = () => {
   });
 
   // Form submission
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.title || !formData.title.trim()) {
+      newErrors.title = "Title is required";
+    }
+
+    if (!formData.mentor) {
+      newErrors.mentor = "Mentor is required";
+    }
+
+    if (!formData.attachments) {
+      newErrors.attachments = "Attachment file is required";
+    }
+
+    if (selectedBranches.length === 0) {
+      newErrors.branch = "At least one branch must be selected";
+    }
+
+    if (formData.audience) {
+      if (formData.audience === "By batches" && selectedBatches.length === 0) {
+        newErrors.audienceData = "At least one batch must be selected";
+      } else if (formData.audience === "Individual interns" && selectedInterns.length === 0) {
+        newErrors.audienceData = "At least one intern must be selected";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    if (selectedBranches.length === 0) {
-      showNotification('error', 'Validation Error', 'At least one branch must be selected');
+    if (!validateForm()) {
+      showNotification('error', 'Validation Error', 'Please fill all required fields correctly.');
       setLoading(false);
       return;
     }
@@ -475,6 +527,7 @@ const Material = () => {
 
   // Reset form
   const resetForm = () => {
+    setErrors({});
     setFormData({
       title: '',
       mentor: '',
@@ -492,6 +545,7 @@ const Material = () => {
   };
 
   const handleTabChange = (tabName) => {
+    setErrors({});
     if (tabName === 'materialList') {
       resetForm();
       setActiveTab('materialList');
@@ -543,6 +597,7 @@ const Material = () => {
 
   // Edit material
   const handleEdit = (material) => {
+    setErrors({});
     setEditingMaterial(material);
     setFormData({
       title: material.title,
@@ -1492,27 +1547,26 @@ const Material = () => {
  
                  {/* Title Input */}
                  <div>
-                   <label className="block text-sm font-medium text-gray-700">Title</label>
+                   <label className="block text-sm font-medium text-gray-700">Title <span className="text-red-500">*</span></label>
                    <input
                      name="title"
                      type="text"
                      placeholder="Enter Material Title"
                      value={formData.title}
                      onChange={handleInputChange}
-                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 transition-colors text-sm h-[38px]"
-                     required
+                     className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-colors text-sm h-[38px] ${errors.title ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                    />
+                   {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title}</p>}
                  </div>
  
                  {/* Assigned Mentor Dropdown */}
                  <div>
-                   <label className="block text-sm font-medium text-gray-700">Assigned Mentor</label>
+                   <label className="block text-sm font-medium text-gray-700">Assigned Mentor <span className="text-red-500">*</span></label>
                    <select
                      name="mentor"
                      value={formData.mentor}
                      onChange={handleInputChange}
-                     className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white text-sm h-[38px]"
-                     required
+                     className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white text-sm h-[38px] ${errors.mentor ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                    >
                      <option value="">Choose Mentor</option>
                      {mentors.map(mentor => (
@@ -1521,12 +1575,13 @@ const Material = () => {
                        </option>
                      ))}
                    </select>
+                   {errors.mentor && <p className="text-red-500 text-xs mt-1">{errors.mentor}</p>}
                  </div>
  
                  {/* Attachments Upload */}
                  <div>
-                   <label className="block text-sm font-medium text-gray-700">Attachments <span className="text-gray-400">(Optional - JPG/PNG/PDF only)</span></label>
-                   <div className="relative flex items-center w-full px-3 py-1.5 border border-gray-300 rounded-md focus-within:ring-1 focus-within:ring-orange-500 bg-white mt-1 h-[38px]">
+                   <label className="block text-sm font-medium text-gray-700">Attachments <span className="text-red-500">*</span> <span className="text-gray-400">(JPG/PNG/PDF only)</span></label>
+                   <div className={`relative flex items-center w-full px-3 py-1.5 border rounded-md focus-within:ring-1 focus-within:ring-orange-500 bg-white mt-1 h-[38px] ${errors.attachments ? 'border-red-500 focus-within:ring-red-500' : 'border-gray-300'}`}>
                      <span className="text-gray-500 flex-1 truncate pr-2 text-sm">
                        {formData?.attachments instanceof File
                          ? formData.attachments.name
@@ -1549,6 +1604,7 @@ const Material = () => {
                        </svg>
                      </div>
                    </div>
+                   {errors.attachments && <p className="text-red-500 text-xs mt-1">{errors.attachments}</p>}
                  </div>
                </div>
 
@@ -1579,22 +1635,22 @@ const Material = () => {
                     name="audience"
                     value={formData.audience}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white text-sm h-[38px]"
-                    required
+                    className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white text-sm h-[38px] ${errors.audienceData ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                   >
                     {audiences.map(audience => (
                       <option key={audience} value={audience}>{audience}</option>
                     ))}
                   </select>
+                  {errors.audienceData && <p className="text-red-500 text-xs mt-1">{errors.audienceData}</p>}
                 </div>
 
                 {/* Branches Dropdown */}
                 <div className="branch-dropdown-container relative">
-                  <label className="block text-sm font-medium text-gray-700">Branches</label>
+                  <label className="block text-sm font-medium text-gray-700">Branches <span className="text-red-500">*</span></label>
                   <button
                     type="button"
                     onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
-                    className="w-full flex justify-between items-center p-2 border border-gray-300 rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-orange-500 text-left h-[38px] mt-1"
+                    className={`w-full flex justify-between items-center p-2 border rounded-md shadow-sm bg-white focus:outline-none focus:ring-1 focus:ring-orange-500 text-left h-[38px] mt-1 ${errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                   >
                     <span className="text-gray-700 text-sm block truncate">
                       {selectedBranches.length > 0
@@ -1605,6 +1661,7 @@ const Material = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                   </button>
+                  {errors.branch && <p className="text-red-500 text-xs mt-1">{errors.branch}</p>}
 
                   {isBranchDropdownOpen && (
                     <div className="absolute left-0 mt-1 w-full bg-white rounded-md shadow-lg z-50 border border-gray-200 max-h-60 overflow-y-auto p-2 space-y-1">
@@ -1624,10 +1681,15 @@ const Material = () => {
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => {
+                                  let newBranches;
                                   if (isSelected) {
-                                    setSelectedBranches(selectedBranches.filter(b => b._id !== branch._id));
+                                    newBranches = selectedBranches.filter(b => b._id !== branch._id);
                                   } else {
-                                    setSelectedBranches([...selectedBranches, branch]);
+                                    newBranches = [...selectedBranches, branch];
+                                  }
+                                  setSelectedBranches(newBranches);
+                                  if (errors.branch && newBranches.length > 0) {
+                                    setErrors(prev => ({ ...prev, branch: "" }));
                                   }
                                 }}
                                 className="h-4 w-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"

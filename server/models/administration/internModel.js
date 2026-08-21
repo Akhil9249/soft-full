@@ -21,11 +21,11 @@ const internSchema = new mongoose.Schema({
   photo: { type: String }, // file path or cloud URL
 
   // Academic Details
-  course: { type: mongoose.Schema.Types.ObjectId, ref: "Course" },
-  branch: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
+  course: { type: mongoose.Schema.Types.ObjectId, ref: "Course" , required: true},
+  branch: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" , required: true},
   courseStartedDate: { type: Date, required: true },
   completionDate: { type: Date },
-  batch: { type: String },
+  batch: { type: String , required: true},
   courseStatus: { type: String, enum: ["Inactive","Ongoing","Pause", "Dropped", "Completed", "Long leave"], default: "Ongoing" },
   careerAdvisor: { type: mongoose.Schema.Types.ObjectId, ref: "Staff" },
   remarks: { type: String },

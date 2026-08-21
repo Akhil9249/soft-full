@@ -116,7 +116,7 @@ const login = async (req, res, next) => {
         role: user.role?.role || 'Admin',
       };
     } else {
-      user = await Staff.findOne({ email, isActive: true }).populate('role', 'role');
+      user = await Staff.findOne({ email, isActive: true, isDeleted: { $ne: true } }).populate('role', 'role');
       if (user) {
         if (user.employmentStatus !== 'Active') {
           const error = {

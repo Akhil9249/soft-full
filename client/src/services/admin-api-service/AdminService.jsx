@@ -18,6 +18,21 @@ const AdminService = () => {
         return response;
     };
 
+    const postForgotPassword = async (data) => {
+        const response = await axiosPrivate.post("/api/forgot-password", data);
+        return response;
+    };
+
+    const postVerifyOtp = async (data) => {
+        const response = await axiosPrivate.post("/api/verify-otp", data);
+        return response;
+    };
+
+    const postResetPassword = async (data) => {
+        const response = await axiosPrivate.post("/api/reset-password", data);
+        return response;
+    };
+
     // ======================================== staff management ========================================
 
     const getStaffData = async (queryParams = '') => {
@@ -664,6 +679,9 @@ const AdminService = () => {
         // ======== register and login
         postRegister,
         postLogin,
+        postForgotPassword,
+        postVerifyOtp,
+        postResetPassword,
         // =========== staff
         getStaffData,
         getAllStaffData,

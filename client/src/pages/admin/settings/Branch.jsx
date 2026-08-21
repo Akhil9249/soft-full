@@ -21,6 +21,7 @@ export const Branch = () => {
         location: '',
         isActive: true
     });
+    const [errors, setErrors] = useState({});
     
     // View modal state
     const [showViewModal, setShowViewModal] = useState(false);
@@ -56,14 +57,29 @@ export const Branch = () => {
         }
     };
 
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!formData.branchName || !formData.branchName.trim()) {
+            newErrors.branchName = "Branch Name is required";
+        }
+
+        if (!formData.location || !formData.location.trim()) {
+            newErrors.location = "Location is required";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
     // Create or update branch
     const handleSubmitBranch = async (e) => {
         e.preventDefault();
         setError('');
         setSuccess('');
 
-        if (!formData.branchName.trim() || !formData.location.trim()) {
-            setError('Branch name and location are required');
+        if (!validateForm()) {
+            setError('Please fill all required fields correctly');
             return;
         }
 
@@ -97,6 +113,9 @@ export const Branch = () => {
             ...prev,
             [name]: value
         }));
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: "" }));
+        }
     };
 
     // Handle cancel button
@@ -104,6 +123,7 @@ export const Branch = () => {
         setFormData({ branchName: '', location: '', isActive: true });
         setError('');
         setSuccess('');
+        setErrors({});
         setIsEditMode(false);
         setEditingBranch(null);
         setActiveTab('branches');
@@ -133,8 +153,8 @@ export const Branch = () => {
         }
     };
 
-    // Handle edit branch
     const handleEditBranch = (branch) => {
+        setErrors({});
         setEditingBranch(branch);
         setIsEditMode(true);
         setFormData({
@@ -169,6 +189,7 @@ export const Branch = () => {
     useEffect(() => {
         setError('');
         setSuccess('');
+        setErrors({});
     }, [activeTab]);
           
   return (
@@ -355,28 +376,28 @@ export const Branch = () => {
         <form onSubmit={handleSubmitBranch}>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Branch Name</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Branch Name <span className="text-red-500">*</span></label>
               <input 
                 type="text" 
                 name="branchName"
                 value={formData.branchName}
                 onChange={handleInputChange}
                 placeholder="Enter branch name" 
-                className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 sm:p-3 text-xs sm:text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500" 
-                required
+                className={`mt-1 block w-full border rounded-lg shadow-sm p-2 sm:p-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${errors.branchName ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
               />
+              {errors.branchName && <p className="text-red-500 text-xs mt-1">{errors.branchName}</p>}
             </div>
             <div>
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Location</label>
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Location <span className="text-red-500">*</span></label>
               <input 
                 type="text" 
                 name="location"
                 value={formData.location}
                 onChange={handleInputChange}
                 placeholder="Enter branch location" 
-                className="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 sm:p-3 text-xs sm:text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500" 
-                required
+                className={`mt-1 block w-full border rounded-lg shadow-sm p-2 sm:p-3 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 ${errors.location ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
               />
+              {errors.location && <p className="text-red-500 text-xs mt-1">{errors.location}</p>}
             </div>
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">Active Status</label>
