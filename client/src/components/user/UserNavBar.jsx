@@ -147,63 +147,24 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
       `}>
         <div className="overflow-y-auto flex-1 scrollbar-hide">
           <div className="flex items-center mb-8">
-                      <img
-                        src={logo}
-                        alt="Softroniics Logo"
-                        className="h-10 w-auto object-contain"
-                      />
-                    </div>
+            <img
+              src={logo}
+              alt="Softroniics Logo"
+              className="h-10 w-auto object-contain"
+            />
+          </div>
           <nav className="space-y-4">
             {/* My Attendance */}
             <Link
               to="/student/attendance-dashboard"
               onClick={() => handleNavItemClick('/student/attendance-dashboard')}
               className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/attendance-dashboard'
-                  ? 'bg-orange-100 text-orange-600 font-semibold'
-                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+                ? 'bg-orange-100 text-orange-600 font-semibold'
+                : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
                 }`}
             >
               <Calendar className="w-5 h-5 mr-3" />
               My Attendance
-            </Link>
-
-            {/* Leave Request */}
-            <Link
-              to="/student/leave-request"
-              onClick={() => handleNavItemClick('/student/leave-request')}
-              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/leave-request'
-                  ? 'bg-orange-100 text-orange-600 font-semibold'
-                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
-                }`}
-            >
-              <Send className="w-5 h-5 mr-3" />
-              Leave Request
-            </Link>
-
-            {/* Task Submission */}
-            <Link
-              to="/student/task-submission"
-              onClick={() => handleNavItemClick('/student/task-submission')}
-              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/task-submission'
-                  ? 'bg-orange-100 text-orange-600 font-semibold'
-                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
-                }`}
-            >
-              <SquarePen className="w-5 h-5 mr-3" />
-              Task Submission
-            </Link>
-
-            {/* Material List */}
-            <Link
-              to="/student/material"
-              onClick={() => handleNavItemClick('/student/material')}
-              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/material'
-                  ? 'bg-orange-100 text-orange-600 font-semibold'
-                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
-                }`}
-            >
-              <Book className="w-5 h-5 mr-3" />
-              Material List
             </Link>
 
             {/* Weekly Schedule */}
@@ -211,8 +172,8 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               to="/student/weekly-schedule"
               onClick={() => handleNavItemClick('/student/weekly-schedule')}
               className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/weekly-schedule'
-                  ? 'bg-orange-100 text-orange-600 font-semibold'
-                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+                ? 'bg-orange-100 text-orange-600 font-semibold'
+                : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
                 }`}
             >
               <Calendar className="w-5 h-5 mr-3" />
@@ -224,21 +185,63 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               to="/student/menor-card"
               onClick={() => handleNavItemClick('/student/menor-card')}
               className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/menor-card'
-                  ? 'bg-orange-100 text-orange-600 font-semibold'
-                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+                ? 'bg-orange-100 text-orange-600 font-semibold'
+                : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
                 }`}
             >
               <FileText className="w-5 h-5 mr-3" />
               My Card
             </Link>
 
+            {/* Task Submission */}
+            <Link
+              to="/student/task-submission"
+              onClick={() => handleNavItemClick('/student/task-submission')}
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/task-submission'
+                ? 'bg-orange-100 text-orange-600 font-semibold'
+                : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+                }`}
+            >
+              <SquarePen className="w-5 h-5 mr-3" />
+              Task Submission
+            </Link>
+
+            {/* Material List */}
+            <Link
+              to="/student/material"
+              onClick={() => handleNavItemClick('/student/material')}
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/material'
+                ? 'bg-orange-100 text-orange-600 font-semibold'
+                : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+                }`}
+            >
+              <Book className="w-5 h-5 mr-3" />
+              Material List
+            </Link>
+
+
+
+            {/* Leave Request */}
+            <Link
+              to="/student/leave-request"
+              onClick={() => handleNavItemClick('/student/leave-request')}
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/leave-request'
+                ? 'bg-orange-100 text-orange-600 font-semibold'
+                : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+                }`}
+            >
+              <Send className="w-5 h-5 mr-3" />
+              Leave Request
+            </Link>
+
+
             {/* Notifications */}
             <Link
               to="/student/notification"
               onClick={() => handleNavItemClick('/student/notification')}
               className={`flex items-center justify-between font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/notification'
-                  ? 'bg-orange-100 text-orange-600 font-semibold'
-                  : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+                ? 'bg-orange-100 text-orange-600 font-semibold'
+                : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
                 }`}
             >
               <div className="flex items-center">
