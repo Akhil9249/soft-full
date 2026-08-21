@@ -5,6 +5,12 @@ const sendEmail = async ({ to, subject, text, html }) => {
   try {
     // Setup SMTP transport config.
     // Nodemailer supports using GMail directly or generic SMTP servers.
+    console.log("DEBUG: EMAIL_HOST =", process.env.EMAIL_HOST);
+    console.log("DEBUG: EMAIL_PORT =", process.env.EMAIL_PORT);
+    console.log("DEBUG: EMAIL_SECURE =", process.env.EMAIL_SECURE);
+    console.log("DEBUG: EMAIL_USER =", process.env.EMAIL_USER ? `${process.env.EMAIL_USER.substring(0, 4)}...` : "UNDEFINED");
+    console.log("DEBUG: EMAIL_PASS =", process.env.EMAIL_PASS ? `DEFINED (length: ${process.env.EMAIL_PASS.length})` : "UNDEFINED");
+
     const transporter = nodemailer.createTransport({
       host: (process.env.EMAIL_HOST || "").trim() || "smtp.gmail.com",
       port: parseInt((process.env.EMAIL_PORT || "").trim() || "587", 10),
