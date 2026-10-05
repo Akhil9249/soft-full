@@ -366,7 +366,20 @@ export const StaffManagement = () => {
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({ ...prev, [name]: value }));
+        setFormData((prev) => {
+            const updated = { ...prev, [name]: value };
+            if (name === 'branch') {
+                // If branch changes, filter out any selected timings that do not belong to the new branch
+                const validTimeSlots = prev.time.filter(tId => {
+                    const timingObj = timings.find(t => t._id === tId);
+                    if (!timingObj) return false;
+                    const timingBranchId = typeof timingObj.branch === 'object' && timingObj.branch ? timingObj.branch._id : timingObj.branch;
+                    return String(timingBranchId) === String(value);
+                });
+                updated.time = validTimeSlots;
+            }
+            return updated;
+        });
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: "" }));
         }
@@ -1383,27 +1396,43 @@ export const StaffManagement = () => {
                             {/* Left Side: Dropdown */}
                             <div>
                                 <label className="block text-gray-700 font-medium mb-2">Select Timings</label>
-                                <select
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
-                                    onChange={(e) => {
-                                        const selectedId = e.target.value;
-                                        if (selectedId && !formData.time.includes(selectedId)) {
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                time: [...prev.time, selectedId]
-                                            }));
-                                        }
-                                        e.target.value = ""; // reset dropdown after selection
-                                    }}
-                                    defaultValue=""
-                                >
-                                    <option value="" disabled>-- Select a Timing --</option>
-                                    {timings.filter(t => !formData.time.includes(t._id)).map(t => (
-                                        <option key={t._id} value={t._id}>{t.timeSlot}</option>
-                                    ))}
-                                </select>
-                                {timings.length === 0 && (
-                                    <p className="text-sm text-gray-500 mt-2">No timings available. Please add timings in the system.</p>
+                                {!formData.branch ? (
+                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
+                                        Please select a <strong>Branch</strong> under Professional Details first to view and assign branch timings.
+                                    </div>
+                                ) : (
+                                    <>
+                                        <select
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                                            onChange={(e) => {
+                                                const selectedId = e.target.value;
+                                                if (selectedId && !formData.time.includes(selectedId)) {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        time: [...prev.time, selectedId]
+                                                    }));
+                                                }
+                                                e.target.value = ""; // reset dropdown after selection
+                                            }}
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>-- Select a Timing --</option>
+                                            {timings
+                                                .filter(t => {
+                                                    const timingBranchId = typeof t.branch === 'object' && t.branch ? t.branch._id : t.branch;
+                                                    return String(timingBranchId) === String(formData.branch) && !formData.time.includes(t._id);
+                                                })
+                                                .map(t => (
+                                                    <option key={t._id} value={t._id}>{t.timeSlot}</option>
+                                                ))}
+                                        </select>
+                                        {timings.filter(t => {
+                                            const timingBranchId = typeof t.branch === 'object' && t.branch ? t.branch._id : t.branch;
+                                            return String(timingBranchId) === String(formData.branch);
+                                        }).length === 0 && (
+                                            <p className="text-sm text-gray-500 mt-2">No timings available for this branch. Please add timings for this branch in the system.</p>
+                                        )}
+                                    </>
                                 )}
                             </div>
 

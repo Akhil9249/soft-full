@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from '../../../components/admin/AdminNavBar';
 import useAuth from '../../../hooks/useAuth';
 import AdminService from '../../../services/admin-api-service/AdminService';
@@ -7,6 +7,7 @@ import AdminService from '../../../services/admin-api-service/AdminService';
 const MenorCard = () => {
     const { getInternByIdData, getMentorCardData, postMentorCardData, putMentorCardData } = AdminService();
     const { auth } = useAuth();
+    const navigate = useNavigate();
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const internId = queryParams.get('internId');
@@ -219,7 +220,16 @@ const MenorCard = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="text-right flex flex-col justify-between items-end">
+                    <div className="text-right flex items-center gap-3">
+                        <button
+                            onClick={() => navigate(`/monthly-menor-card?internId=${internId}`)}
+                            className="bg-white hover:bg-gray-50 text-indigo-600 border border-indigo-200 font-bold py-2.5 px-4 rounded-lg flex items-center transition-all shadow-sm text-sm"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            Monthly Card
+                        </button>
                         <button
                             onClick={handleAddNew}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg flex items-center transition-colors shadow-sm text-sm"

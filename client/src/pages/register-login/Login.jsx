@@ -205,7 +205,7 @@ const Login = () => {
       }
       setOtpArray(newOtpArray);
       setOtp(newOtpArray.join(''));
-      
+
       // Auto-focus the last pasted box or next empty box
       const focusIndex = Math.min(pastedData.length, 5);
       const nextInput = document.getElementById(`otp-${focusIndex}`);
@@ -355,7 +355,7 @@ const Login = () => {
                   <label htmlFor="password" className="block text-sm font-semibold text-gray-700">
                     Password
                   </label>
-                
+
                 </div>
                 <div className="relative">
                   <input
@@ -519,7 +519,7 @@ const Login = () => {
                     {resetLoading ? 'Verifying...' : 'Verify OTP'}
                   </button>
                 )}
-                
+
                 <button
                   type="button"
                   onClick={() => {
@@ -678,8 +678,8 @@ const Login = () => {
                 <button
                   onClick={closeModal}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${modal.type === 'success'
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-red-600 text-white hover:bg-red-700'
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-red-600 text-white hover:bg-red-700'
                     }`}
                 >
                   {modal.type === 'success' ? 'Continue' : 'Try Again'}

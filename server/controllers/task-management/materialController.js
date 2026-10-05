@@ -38,6 +38,8 @@ const createMaterial = async (req, res) => {
       audience,
       branch,
       batches,
+      courses,
+      categories,
       interns,
       individualInterns,
       allowDownload
@@ -50,6 +52,8 @@ const createMaterial = async (req, res) => {
       audience,
       branch,
       batches,
+      courses,
+      categories,
       interns,
       individualInterns
     });
@@ -89,19 +93,25 @@ const createMaterial = async (req, res) => {
     }
 
     // Validate audience enum
-    if (!["All interns", "By batches", "By Branches", "Individual interns"].includes(audience)) {
+    if (!["All interns", "By batches", "By Courses", "By Category", "Individual interns"].includes(audience)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'All interns', 'By batches', 'By Branches', 'Individual interns'"
+        message: "Audience must be one of: 'All interns', 'By batches', 'By Courses', 'By Category', 'Individual interns'"
       });
     }
 
     // Clean audience-specific fields based on selected audience
     let cleanBatches = [];
+    let cleanCourses = [];
+    let cleanCategories = [];
     let cleanIndividualInterns = [];
 
     if (audience === "By batches") {
       cleanBatches = batches || [];
+    } else if (audience === "By Courses") {
+      cleanCourses = courses || [];
+    } else if (audience === "By Category") {
+      cleanCategories = categories || [];
     } else if (audience === "Individual interns") {
       cleanIndividualInterns = individualInterns || [];
     }
@@ -111,6 +121,20 @@ const createMaterial = async (req, res) => {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Batches are required when audience is 'By batches'"
+      });
+    }
+
+    if (audience === "By Courses" && cleanCourses.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "Courses are required when audience is 'By Courses'"
+      });
+    }
+
+    if (audience === "By Category" && cleanCategories.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "Categories are required when audience is 'By Category'"
       });
     }
 
@@ -128,6 +152,8 @@ const createMaterial = async (req, res) => {
       audience: audience,
       branch: branchArray,
       batches: cleanBatches,
+      courses: cleanCourses,
+      categories: cleanCategories,
       individualInterns: cleanIndividualInterns,
       allowDownload: allowDownload !== undefined ? (allowDownload === 'true' || allowDownload === true) : true
     });
@@ -204,6 +230,8 @@ const getMaterials = async (req, res) => {
       .populate('mentor', 'fullName email')
       .populate('branch', 'branchName location')
       .populate('batches', 'batchName description branch')
+      .populate('courses', 'courseName description')
+      .populate('categories', 'categoryName')
       .populate({
         path: 'individualInterns',
         select: 'fullName email branch courseStatus',
@@ -240,6 +268,8 @@ const getMaterialById = async (req, res) => {
       .populate('mentor', 'fullName email')
       .populate('branch', 'branchName location')
       .populate('batches', 'batchName description branch')
+      .populate('courses', 'courseName description')
+      .populate('categories', 'categoryName')
       .populate({
         path: 'individualInterns',
         select: 'fullName email branch courseStatus',
@@ -282,15 +312,17 @@ const updateMaterial = async (req, res) => {
       audience,
       branch,
       batches,
+      courses,
+      categories,
       individualInterns,
       allowDownload
     } = req.body;
 
     // Validate audience if provided
-    if (audience && !["All interns", "By batches", "By Branches", "Individual interns"].includes(audience)) {
+    if (audience && !["All interns", "By batches", "By Courses", "By Category", "Individual interns"].includes(audience)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'All interns', 'By batches', 'By Branches', 'Individual interns'"
+        message: "Audience must be one of: 'All interns', 'By batches', 'By Courses', 'By Category', 'Individual interns'"
       });
     }
 
@@ -299,10 +331,16 @@ const updateMaterial = async (req, res) => {
 
     // Clean audience-specific fields based on selected audience
     let cleanBatches = [];
+    let cleanCourses = [];
+    let cleanCategories = [];
     let cleanIndividualInterns = [];
 
     if (activeAudience === "By batches") {
       cleanBatches = batches !== undefined ? batches : (isAudienceChanged ? [] : currentMaterial.batches);
+    } else if (activeAudience === "By Courses") {
+      cleanCourses = courses !== undefined ? courses : (isAudienceChanged ? [] : currentMaterial.courses);
+    } else if (activeAudience === "By Category") {
+      cleanCategories = categories !== undefined ? categories : (isAudienceChanged ? [] : currentMaterial.categories);
     } else if (activeAudience === "Individual interns") {
       cleanIndividualInterns = individualInterns !== undefined ? individualInterns : (isAudienceChanged ? [] : currentMaterial.individualInterns);
     }
@@ -312,6 +350,20 @@ const updateMaterial = async (req, res) => {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Batches are required when audience is 'By batches'"
+      });
+    }
+
+    if (activeAudience === "By Courses" && cleanCourses.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "Courses are required when audience is 'By Courses'"
+      });
+    }
+
+    if (activeAudience === "By Category" && cleanCategories.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "Categories are required when audience is 'By Category'"
       });
     }
 
@@ -371,6 +423,8 @@ const updateMaterial = async (req, res) => {
       updateData.allowDownload = (allowDownload === 'true' || allowDownload === true);
     }
     updateData.batches = cleanBatches;
+    updateData.courses = cleanCourses;
+    updateData.categories = cleanCategories;
     updateData.individualInterns = cleanIndividualInterns;
 
     const updatedMaterial = await Material.findByIdAndUpdate(
@@ -381,6 +435,8 @@ const updateMaterial = async (req, res) => {
       .populate('mentor', 'fullName email')
       .populate('branch', 'branchName location')
       .populate('batches', 'batchName description branch')
+      .populate('courses', 'courseName description')
+      .populate('categories', 'categoryName')
       .populate({
         path: 'individualInterns',
         select: 'fullName email branch courseStatus',
@@ -669,6 +725,15 @@ const getMyMaterials = async (req, res) => {
       }
     }
 
+    let internCategoryId = null;
+    if (intern.course) {
+      const Course = require("../../models/course-management/courseModel");
+      const courseObj = await Course.findById(intern.course);
+      if (courseObj && courseObj.category) {
+        internCategoryId = courseObj.category;
+      }
+    }
+
     const baseConditions = [];
 
     // Condition 1: All interns in the branch
@@ -693,11 +758,19 @@ const getMyMaterials = async (req, res) => {
       individualInterns: { $in: [internId] }
     });
 
-    // Condition 4: By Branches (if intern has a branch)
-    if (branchId) {
+    // Condition 4: By Category
+    if (internCategoryId) {
       baseConditions.push({
-        audience: "By Branches",
-        branch: { $in: [branchId] }
+        audience: "By Category",
+        categories: { $in: [internCategoryId] }
+      });
+    }
+
+    // Condition 5: By Courses
+    if (intern.course) {
+      baseConditions.push({
+        audience: "By Courses",
+        courses: { $in: [intern.course] }
       });
     }
 
@@ -726,6 +799,8 @@ const getMyMaterials = async (req, res) => {
       .populate('mentor', 'fullName email')
       .populate('branch', 'branchName location')
       .populate('batches', 'batchName description branch')
+      .populate('courses', 'courseName description')
+      .populate('categories', 'categoryName')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

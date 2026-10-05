@@ -2,15 +2,19 @@
 const mongoose = require("mongoose");
 
 const notificationSchema = new mongoose.Schema({
-  title: { type: String, required: true, trim: true },
-  content: { type: String, required: true },
-  type: { type: String, required: true, enum: ["Task Notification", "Weekly Schedule", "Common Notification", "Announcement","Reminder"] }, // example types
-  branch: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
+  title: { type: String, required: [true, "Notification title is required"], trim: true },
+  content: { type: String, required: [true, "Notification content is required"] },
+  type: { type: String, required: [true, "Notification type is required"], enum: ["Task Notification", "Weekly Schedule", "Common Notification", "Announcement", "Reminder"] }, // example types
+  branch: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Branch",
+    required: [true, "Branch selection is required"]
+  }],
   audience: {
     type: String,
-    enum: ["All interns", "By batches", "By courses","Individual interns"],
-    default: "All interns"  ,
-    required: true
+    enum: ["All interns", "By batches", "By Courses", "By Category", "Individual interns"],
+    default: "All interns",
+    required: [true, "Audience selection is required"]
   },
   batches: {
     type: [mongoose.Schema.Types.ObjectId],
@@ -20,6 +24,11 @@ const notificationSchema = new mongoose.Schema({
   courses: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: "Course",
+    default: []
+  },
+  categories: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Category",
     default: []
   },
   interns: {

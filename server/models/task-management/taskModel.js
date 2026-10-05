@@ -45,7 +45,7 @@ const taskSchema = new mongoose.Schema({
   },
   audience: {
     type: String,
-    enum: ["By batches", "By category", "Individual interns"],
+    enum: ["All interns", "By batches", "By Courses", "By Category", "Individual interns"],
     default: "By batches",
     required: true
   },
@@ -64,6 +64,11 @@ const taskSchema = new mongoose.Schema({
     ref: "Category",
     default: []
   },
+  courses: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Course",
+    default: []
+  },
   interns: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: "Intern",
@@ -79,11 +84,6 @@ const taskSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  // batch: {
-  //   type: String,
-  //   required: true,
-  //   trim: true
-  // },
   isActive: {
     type: Boolean,
     default: true

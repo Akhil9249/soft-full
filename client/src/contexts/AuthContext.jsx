@@ -13,9 +13,10 @@ export const AuthProvider = ({ children }) => {
     const name = localStorage.getItem("name")
     const role = localStorage.getItem("role");
     const id = localStorage.getItem("userId");
+    const branch = localStorage.getItem("branch");
 
     if (accessToken && role && !auth.accessToken) {
-        setAuth({ accessToken, role, image, name, id });
+        setAuth({ accessToken, role, image, name, id, branch });
     };
 
     useEffect(() => {

@@ -207,7 +207,8 @@ const getInterns = async (req, res) => {
       query.course = course;
     }
     if (branch) {
-      query.branch = branch;
+      const branchIds = branch.split(',');
+      query.branch = { $in: branchIds };
     }
     if (batch) {
       query.batch = batch;

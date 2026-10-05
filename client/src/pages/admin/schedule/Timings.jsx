@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react'
-
 import { X, Edit2 } from 'lucide-react';
+import useAuth from '../../../hooks/useAuth';
 import { Navbar } from '../../../components/admin/AdminNavBar';
 import Tabs from '../../../components/button/Tabs';   
 import AdminService from '../../../services/admin-api-service/AdminService';
 
 export const Timings = () => {
+  const { auth } = useAuth();
+  const userRole = (auth?.role || localStorage.getItem("role") || "").toLowerCase();
+  const isSuperAdmin = userRole === "super admin";
 
   const [activeTab, setActiveTab] = useState('timings');
   const [error, setError] = useState('');
@@ -13,6 +16,9 @@ export const Timings = () => {
   const [branches, setBranches] = useState([]);
   const [timings, setTimings] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [userBranchId, setUserBranchId] = useState(
+    auth?.branch ? (typeof auth.branch === 'object' ? auth.branch._id : auth.branch) : (localStorage.getItem("branch") || '')
+  );
   const [selectedBranch, setSelectedBranch] = useState('');
   const [deletingTiming, setDeletingTiming] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -22,7 +28,7 @@ export const Timings = () => {
   const [newForm, setNewForm] = useState({ start: '', end: '', branch: '' });
   const [errors, setErrors] = useState({});
   
-  const { getBranchesData, getTimingsData, postTimingsData, deleteTimingsData, putTimingsData } = AdminService();
+  const { getBranchesData, getTimingsData, postTimingsData, deleteTimingsData, putTimingsData, getUserProfile } = AdminService();
   const headData = "Settings"
 
   const tabOptions = [
@@ -32,21 +38,45 @@ export const Timings = () => {
 
   const fetchBranches = async () => {
     try {
-      console.log("fetchBranches");
-      
       setLoading(true);
       setError('');
-      // const res = await axiosPrivate.get('http://localhost:3000/api/branches');
       const res = await getBranchesData();
-      console.log("branches==",res.data);
-      
-      setBranches(res.data || []);
+      const fetchedBranches = res?.data || [];
+
+      if (isSuperAdmin) {
+        setBranches(fetchedBranches);
+        if (fetchedBranches.length > 0) {
+          const calicutBranch = fetchedBranches.find(b => b.branchName?.toLowerCase().includes('calicut'));
+          const defaultBranchId = calicutBranch ? calicutBranch._id : fetchedBranches[0]._id;
+          setSelectedBranch(prev => prev || defaultBranchId);
+        }
+      } else {
+        let staffBranchId = userBranchId;
+        if (!staffBranchId || staffBranchId === "undefined" || staffBranchId === "null") {
+          try {
+            const profileRes = await getUserProfile();
+            const profileBranch = profileRes?.data?.user?.branch;
+            if (profileBranch) {
+              staffBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
+              localStorage.setItem("branch", staffBranchId);
+              setUserBranchId(staffBranchId);
+            }
+          } catch (e) {
+            console.error("Failed to fetch staff profile for branch:", e);
+          }
+        }
+
+        const staffBranch = fetchedBranches.find(b => String(b._id) === String(staffBranchId));
+        setBranches(staffBranch ? [staffBranch] : fetchedBranches);
+        if (staffBranchId) {
+          setSelectedBranch(staffBranchId);
+          setNewForm(prev => ({ ...prev, branch: staffBranchId }));
+        }
+      }
     } catch (err) {
       console.error('Failed to load branches:', err);
       setError('Failed to load branches');
-      // Set default branches if API fails
-      setBranches([
-      ]);
+      setBranches([]);
     } finally {
       setLoading(false);
     }
@@ -56,9 +86,7 @@ export const Timings = () => {
     try {
       setLoading(true);
       setError('');
-      // const res = await axiosPrivate.get('http://localhost:3000/api/timings');
       const res = await getTimingsData();
-      console.log("timings==", res.data);
       setTimings(res.data || []);
     } catch (err) {
       console.error('Failed to load timings:', err);
@@ -80,17 +108,18 @@ export const Timings = () => {
     setError('');
     setSuccess('');
     setErrors({});
+    if (!isSuperAdmin && userBranchId) {
+      setNewForm(prev => ({ ...prev, branch: userBranchId }));
+    }
   }, [activeTab]);
 
   // Filter timings based on selected branch
-  const filteredTimings = selectedBranch 
-    ? timings.filter(timing => {
-        if (typeof timing.branch === 'object' && timing.branch) {
-          return timing.branch._id === selectedBranch;
-        }
-        return timing.branch === selectedBranch;
-      })
-    : timings;
+  const filteredTimings = timings.filter(timing => {
+    const targetBranchId = isSuperAdmin ? selectedBranch : (userBranchId || selectedBranch);
+    if (!targetBranchId) return false;
+    const timingBranchId = typeof timing.branch === 'object' && timing.branch ? timing.branch._id : timing.branch;
+    return String(timingBranchId) === String(targetBranchId);
+  });
 
   // Handle delete timing
   const handleDeleteTiming = (timing) => {
@@ -103,7 +132,6 @@ export const Timings = () => {
 
     try {
       setLoading(true);
-      // await axiosPrivate.delete(`http://localhost:3000/api/timings/${deletingTiming._id}`);
       await deleteTimingsData(deletingTiming._id);
       setSuccess('Timing deleted successfully.');
       await fetchTimings();
@@ -142,10 +170,11 @@ export const Timings = () => {
 
   const handleEditClick = (timing) => {
     const [start, end] = timing.timeSlot.split(' - ');
+    const timingBranchId = typeof timing.branch === 'object' ? timing.branch?._id : timing.branch;
     setEditForm({
       start: convertTo24Hour(start),
       end: convertTo24Hour(end),
-      branch: typeof timing.branch === 'object' ? timing.branch?._id : timing.branch
+      branch: !isSuperAdmin && userBranchId ? userBranchId : timingBranchId
     });
     setEditingTiming(timing);
     setShowEditModal(true);
@@ -188,7 +217,7 @@ export const Timings = () => {
     setShowEditModal(false);
     setEditingTiming(null);
     setErrors({});
-    setEditForm({ start: '', end: '', branch: '' });
+    setEditForm({ start: '', end: '', branch: !isSuperAdmin && userBranchId ? userBranchId : '' });
   };
 
 
@@ -196,22 +225,30 @@ export const Timings = () => {
     return (
       <div className="mt-4 sm:mt-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900">Added Timings</h3>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-4 w-full sm:w-auto">
-            <label className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">Filter by Branch:</label>
-            <select
-              value={selectedBranch}
-              onChange={(e) => setSelectedBranch(e.target.value)}
-              className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-            >
-              <option value="">All Branches</option>
-              {branches.map(branch => (
-                <option key={branch._id} value={branch._id}>
-                  {branch.branchName}
-                </option>
-              ))}
-            </select>
+          <div>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900">Added Timings</h3>
+            {!isSuperAdmin && branches.length > 0 && (
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                Branch: <span className="font-semibold text-orange-600">{branches[0]?.branchName}</span>
+              </p>
+            )}
           </div>
+          {isSuperAdmin && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:space-x-4 w-full sm:w-auto">
+              <label className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">Filter by Branch:</label>
+              <select
+                value={selectedBranch}
+                onChange={(e) => setSelectedBranch(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              >
+                {branches.map(branch => (
+                  <option key={branch._id} value={branch._id}>
+                    {branch.branchName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         {loading ? (
           <div className="flex items-center justify-center p-6 sm:p-8">
@@ -220,10 +257,7 @@ export const Timings = () => {
         ) : filteredTimings.length === 0 ? (
           <div className="flex items-center justify-center p-6 sm:p-8">
             <p className="text-xs sm:text-sm text-gray-500 text-center">
-              {selectedBranch 
-                ? 'No timings found for the selected branch.' 
-                : 'No timings available. Please add timings to view them here.'
-              }
+              No timings found for the selected branch.
             </p>
           </div>
         ) : (
@@ -234,19 +268,9 @@ export const Timings = () => {
                 className="bg-gray-200 text-gray-700 px-3 sm:px-4 py-2 rounded-full flex items-center gap-2 sm:space-x-2 text-xs sm:text-sm"
               >
                 <span className="font-medium">{timing.timeSlot}</span>
-                {/* <span className="text-xs sm:text-sm text-gray-500 border-r border-gray-300 pr-2 mr-1">
-                  {typeof timing.branch === 'object' && timing.branch 
-                    ? timing.branch.branchName 
-                    : 'Unknown Branch'
-                  }
-                </span> */}
                 <Edit2
                   className="w-4 h-4 text-gray-500 cursor-pointer hover:text-blue-500 flex-shrink-0"
                   onClick={() => handleEditClick(timing)}
-                />
-                <X 
-                  className="w-4 h-4 text-gray-500 cursor-pointer hover:text-red-500 flex-shrink-0" 
-                  onClick={() => handleDeleteTiming(timing)}
                 />
               </div>
             ))}
@@ -285,7 +309,7 @@ export const Timings = () => {
       });
       setSuccess('Timing created successfully!');
       // Reset form
-      setNewForm({ start: '', end: '', branch: '' });
+      setNewForm({ start: '', end: '', branch: !isSuperAdmin && userBranchId ? userBranchId : '' });
       setErrors({});
       // Refresh timings list
       await fetchTimings();
@@ -302,7 +326,7 @@ export const Timings = () => {
       setError('');
       setSuccess('');
       setErrors({});
-      setNewForm({ start: '', end: '', branch: '' });
+      setNewForm({ start: '', end: '', branch: !isSuperAdmin && userBranchId ? userBranchId : '' });
       setActiveTab('timings');
     };
 
@@ -380,13 +404,14 @@ export const Timings = () => {
                <select
                  id="branch-name"
                  value={newForm.branch || ''}
+                 disabled={!isSuperAdmin && !!userBranchId}
                  onChange={(e) => {
                    setNewForm(prev => ({ ...prev, branch: e.target.value }));
                    if (errors.branch) setErrors(prev => ({ ...prev, branch: '' }));
                  }}
-                 className={`p-2 sm:p-3 bg-gray-100 text-gray-800 rounded-lg sm:rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none text-sm sm:text-base ${errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
+                 className={`p-2 sm:p-3 bg-gray-100 text-gray-800 rounded-lg sm:rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none text-sm sm:text-base ${errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'} ${!isSuperAdmin && userBranchId ? 'opacity-75 cursor-not-allowed' : ''}`}
                >
-                 <option value="">Choose Branch</option>
+                 {isSuperAdmin && <option value="">Choose Branch</option>}
                  {loading ? (
                    <option disabled>Loading branches...</option>
                  ) : branches.length === 0 ? (
@@ -508,13 +533,14 @@ export const Timings = () => {
                 <label className="text-sm text-gray-600 mb-1">Branch Name <span className="text-red-500">*</span></label>
                 <select
                   value={editForm.branch}
+                  disabled={!isSuperAdmin && !!userBranchId}
                   onChange={(e) => {
                     setEditForm(prev => ({ ...prev, branch: e.target.value }));
                     if (errors.branch) setErrors(prev => ({ ...prev, branch: '' }));
                   }}
-                  className={`p-2 bg-gray-100 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#F9A825] ${errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
+                  className={`p-2 bg-gray-100 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#F9A825] ${errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'} ${!isSuperAdmin && userBranchId ? 'opacity-75 cursor-not-allowed' : ''}`}
                 >
-                  <option value="">Choose Branch</option>
+                  {isSuperAdmin && <option value="">Choose Branch</option>}
                   {branches.map((branch) => (
                     <option key={branch._id} value={branch._id}>
                       {branch.branchName}

@@ -17,6 +17,10 @@ export const TaskManagement = () => {
   const [modules, setModules] = useState([]);
   const [mentors, setMentors] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [courseSearchTerm, setCourseSearchTerm] = useState('');
+  const [selectedCourses, setSelectedCourses] = useState([]);
   const [branches, setBranches] = useState([]);
   const [branchesLoading, setBranchesLoading] = useState(false);
   const [selectedBranches, setSelectedBranches] = useState([]);
@@ -72,6 +76,7 @@ export const TaskManagement = () => {
     audience: '',
     branch: ''
   });
+  const defaultBranchSet = useRef(false);
 
   // const axiosPrivate = useAxiosPrivate();
 
@@ -150,7 +155,7 @@ export const TaskManagement = () => {
     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0006 0v-1m-4-4l4-4m0 0l4 4m-4-4v12"></path></svg>
   );
 
-  const { getBatchesData, getModulesData, getStaffData, getTasksData, putTasksData, postTasksData, getInternsData, getCategoriesData, deleteTasksData, downloadTaskAttachment, getBranchesData } = AdminService();
+  const { getBatchesData, getModulesData, getStaffData, getTasksData, putTasksData, postTasksData, getInternsData, getCategoriesData, getCoursesData, deleteTasksData, downloadTaskAttachment, getBranchesData } = AdminService();
 
   // API functions to fetch data
   const fetchTasks = async (page = 1, search = '', taskType = '', status = '', audience = '', branch = '') => {
@@ -303,6 +308,24 @@ export const TaskManagement = () => {
       setCategories([]);
     } finally {
       setCategoriesLoading(false);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      setCoursesLoading(true);
+      const res = await getCoursesData('page=1&limit=10000');
+      const coursesData = res?.data || [];
+      if (Array.isArray(coursesData)) {
+        setCourses(coursesData);
+      } else {
+        setCourses([]);
+      }
+    } catch (err) {
+      console.error('Failed to load courses:', err);
+      setCourses([]);
+    } finally {
+      setCoursesLoading(false);
     }
   };
 
@@ -576,7 +599,7 @@ export const TaskManagement = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isBranchDropdownOpen, isModuleDropdownOpen]);
 
-  // Automatically clear selected audience items (batches, courses, interns) that do not belong to the selected branches
+  // Automatically clear selected audience items (batches, categories, interns) that do not belong to the selected branches
   useEffect(() => {
     if (selectedBranches.length > 0) {
       // Clear batches
@@ -600,32 +623,50 @@ export const TaskManagement = () => {
           return selectedBranches.some(b => b._id === cbId);
         });
       }));
+
+      // Clear courses
+      setSelectedCourses(prev => prev.filter(course => {
+        const branchId = course.branch?._id || course.branch;
+        if (!branchId) return true;
+        return selectedBranches.some(b => b._id === branchId);
+      }));
+
+      // Fetch filtered data based on active audience type when branches are toggled
+      if (formData.audience === 'Individual interns' || formData.audience === 'All interns') {
+        fetchInterns();
+      } else if (formData.audience === 'By batches') {
+        fetchBatches();
+      } else if (formData.audience === 'By Category') {
+        fetchCategories();
+      }
     } else {
       // If no branches are selected, clear all audience selections and reset audience form field
       setSelectedBatches([]);
       setSelectedCategories([]);
       setSelectedInterns([]);
+      setSelectedCourses([]);
       setFormData(prev => ({ ...prev, audience: "" }));
     }
-  }, [selectedBranches]);
+  }, [selectedBranches, formData.audience]);
 
   // Set default branch filter based on user role and details once mentors/staff list and branches are loaded
   useEffect(() => {
+    if (branches.length === 0) return;
+    if (defaultBranchSet.current) return;
+
     const role = localStorage.getItem("role")?.toLowerCase() || "";
     if (role === "super admin") {
-      if (branches.length > 0 && !filters.branch) {
-        const calicutBranch = branches.find(b => b.branchName?.toLowerCase().includes("calicut"));
-        const defaultBranch = calicutBranch ? calicutBranch._id : branches[0]._id;
-        setFilters(prev => ({ ...prev, branch: defaultBranch }));
-        fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, defaultBranch);
-      }
+      const calicutBranch = branches.find(b => b.branchName?.toLowerCase().includes("calicut"));
+      const defaultBranch = calicutBranch ? calicutBranch._id : branches[0]._id;
+      setFilters(prev => ({ ...prev, branch: defaultBranch }));
+      fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, defaultBranch);
+      defaultBranchSet.current = true;
     } else {
       let ownBranchId = localStorage.getItem("branch");
       if (ownBranchId && ownBranchId !== "undefined" && ownBranchId !== "null") {
-        if (!filters.branch) {
-          setFilters(prev => ({ ...prev, branch: ownBranchId }));
-          fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, ownBranchId);
-        }
+        setFilters(prev => ({ ...prev, branch: ownBranchId }));
+        fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, ownBranchId);
+        defaultBranchSet.current = true;
       } else {
         // Fallback: fetch dynamically
         adminService.getUserProfile().then(profileRes => {
@@ -633,15 +674,26 @@ export const TaskManagement = () => {
           if (profileBranch) {
             const profileBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
             localStorage.setItem("branch", profileBranchId);
-            if (!filters.branch) {
-              setFilters(prev => ({ ...prev, branch: profileBranchId }));
-              fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, profileBranchId);
-            }
+            setFilters(prev => ({ ...prev, branch: profileBranchId }));
+            fetchTasks(1, searchTerm, filters.taskType, filters.status, filters.audience, profileBranchId);
+            defaultBranchSet.current = true;
           }
         }).catch(err => console.error("Error fetching branch fallback:", err));
       }
     }
   }, [branches]);
+
+  // Automatically select all ongoing interns of selected branches when 'All interns' is selected
+  useEffect(() => {
+    if (formData.audience === 'All interns' && interns.length > 0) {
+      const ongoingInterns = interns.filter(intern => {
+        const branchId = intern.branch?._id || intern.branch;
+        const matchesBranch = selectedBranches.some(b => b._id === branchId);
+        return intern.courseStatus === 'Ongoing' && matchesBranch;
+      });
+      setSelectedInterns(ongoingInterns);
+    }
+  }, [formData.audience, interns, selectedBranches]);
 
   const isFirstRender = useRef(true);
 
@@ -673,13 +725,23 @@ export const TaskManagement = () => {
         }
       }
 
-      if (editingTask.audience === "By category" && editingTask.categories && editingTask.categories.length > 0 && categories.length > 0) {
+      if (editingTask.audience === "By Category" && editingTask.categories && editingTask.categories.length > 0 && categories.length > 0) {
         const selectedCategoryObjects = editingTask.categories.map(category => {
           const categoryId = typeof category === 'object' ? category._id : category;
           return categories.find(c => c._id === categoryId) || (typeof category === 'object' ? category : null);
         }).filter(Boolean);
         if (selectedCategoryObjects.length > 0) {
           setSelectedCategories(selectedCategoryObjects);
+        }
+      }
+
+      if (editingTask.audience === "By Courses" && editingTask.courses && editingTask.courses.length > 0 && courses.length > 0) {
+        const selectedCourseObjects = editingTask.courses.map(course => {
+          const courseId = typeof course === 'object' ? course._id : course;
+          return courses.find(c => c._id === courseId) || (typeof course === 'object' ? course : null);
+        }).filter(Boolean);
+        if (selectedCourseObjects.length > 0) {
+          setSelectedCourses(selectedCourseObjects);
         }
       }
 
@@ -703,7 +765,7 @@ export const TaskManagement = () => {
         }
       }
     }
-  }, [isEditMode, editingTask, batches, categories, interns, branches]);
+  }, [isEditMode, editingTask, batches, categories, courses, interns, branches]);
 
   // Clear messages when switching tabs
   useEffect(() => {
@@ -742,6 +804,7 @@ export const TaskManagement = () => {
     setSelectedBatches([]);
     setSelectedCategories([]);
     setSelectedInterns([]);
+    setSelectedCourses([]);
     setSelectedBranches([]);
 
     // Set selected branches based on task data
@@ -766,7 +829,7 @@ export const TaskManagement = () => {
       setSelectedBatches(selectedBatchObjects);
     }
 
-    if (task.audience === "By category" && task.categories && task.categories.length > 0) {
+    if (task.audience === "By Category" && task.categories && task.categories.length > 0) {
       console.log('Task categories data:', task.categories);
       const selectedCategoryObjects = task.categories.map(category => {
         const categoryId = typeof category === 'object' ? category._id : category;
@@ -774,6 +837,16 @@ export const TaskManagement = () => {
       }).filter(Boolean);
       console.log('Selected category objects:', selectedCategoryObjects);
       setSelectedCategories(selectedCategoryObjects);
+    }
+
+    if (task.audience === "By Courses" && task.courses && task.courses.length > 0) {
+      console.log('Task courses data:', task.courses);
+      const selectedCourseObjects = task.courses.map(course => {
+        const courseId = typeof course === 'object' ? course._id : course;
+        return courses.find(c => c._id === courseId) || (typeof course === 'object' ? course : null);
+      }).filter(Boolean);
+      console.log('Selected course objects:', selectedCourseObjects);
+      setSelectedCourses(selectedCourseObjects);
     }
 
     if (task.audience === "Individual interns" && task.individualInterns && task.individualInterns.length > 0) {
@@ -790,8 +863,11 @@ export const TaskManagement = () => {
     if (task.audience === "Individual interns" && interns.length === 0) {
       fetchInterns();
     }
-    if (task.audience === "By category" && categories.length === 0) {
+    if (task.audience === "By Category" && categories.length === 0) {
       fetchCategories();
+    }
+    if (task.audience === "By Courses" && courses.length === 0) {
+      fetchCourses();
     }
 
     setActiveTab('new-task');
@@ -809,6 +885,8 @@ export const TaskManagement = () => {
     setBatchSearchTerm('');
     setSelectedCategories([]);
     setCategorySearchTerm('');
+    setSelectedCourses([]);
+    setCourseSearchTerm('');
     setSelectedBranches([]);
     setIsBranchDropdownOpen(false);
     setActiveTab('tasks-list');
@@ -927,6 +1005,24 @@ export const TaskManagement = () => {
     }
   };
 
+  const handleCourseSearch = (searchTerm) => {
+    setCourseSearchTerm(searchTerm);
+  };
+
+  const handleCourseSelect = (course) => {
+    const isSelected = selectedCourses.find(selected => selected._id === course._id);
+    let newCourses;
+    if (isSelected) {
+      newCourses = selectedCourses.filter(selected => selected._id !== course._id);
+    } else {
+      newCourses = [...selectedCourses, course];
+    }
+    setSelectedCourses(newCourses);
+    if (errors.audienceData && newCourses.length > 0) {
+      setErrors(prev => ({ ...prev, audienceData: "" }));
+    }
+  };
+
   // Clear all functions
   const handleClearAllInterns = () => {
     setSelectedInterns([]);
@@ -941,6 +1037,11 @@ export const TaskManagement = () => {
   const handleClearAllCategories = () => {
     setSelectedCategories([]);
     showNotification('info', 'Selection Cleared', 'Cleared all selected categories');
+  };
+
+  const handleClearAllCourses = () => {
+    setSelectedCourses([]);
+    showNotification('info', 'Selection Cleared', 'Cleared all selected courses');
   };
 
   const filteredInterns = interns.filter(intern => {
@@ -983,6 +1084,12 @@ export const TaskManagement = () => {
     );
 
     return matchesSearch && matchesBranch;
+  });
+
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = course.courseName?.toLowerCase().includes(courseSearchTerm.toLowerCase()) ||
+      course.description?.toLowerCase().includes(courseSearchTerm.toLowerCase());
+    return matchesSearch;
   });
 
   // Handle form submission
@@ -1040,8 +1147,10 @@ export const TaskManagement = () => {
     if (formData.audience) {
       if (formData.audience === "By batches" && selectedBatches.length === 0) {
         newErrors.audienceData = "At least one batch must be selected";
-      } else if (formData.audience === "By category" && selectedCategories.length === 0) {
+      } else if (formData.audience === "By Category" && selectedCategories.length === 0) {
         newErrors.audienceData = "At least one category must be selected";
+      } else if (formData.audience === "By Courses" && selectedCourses.length === 0) {
+        newErrors.audienceData = "At least one course must be selected";
       } else if (formData.audience === "Individual interns" && selectedInterns.length === 0) {
         newErrors.audienceData = "At least one intern must be selected";
       }
@@ -1143,6 +1252,10 @@ export const TaskManagement = () => {
       selectedCategories.forEach(category => payload.append('categories', category._id));
     }
 
+    if (selectedCourses.length > 0) {
+      selectedCourses.forEach(course => payload.append('courses', course._id));
+    }
+
     try {
       setLoading(true);
       let res;
@@ -1184,6 +1297,8 @@ export const TaskManagement = () => {
       setBatchSearchTerm('');
       setSelectedCategories([]);
       setCategorySearchTerm('');
+      setSelectedCourses([]);
+      setCourseSearchTerm('');
       setSelectedBranches([]);
       setIsBranchDropdownOpen(false);
     } catch (err) {
@@ -1349,8 +1464,10 @@ export const TaskManagement = () => {
                   className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 >
                   <option value="">All Audience</option>
+                  <option value="All interns">All interns</option>
                   <option value="By batches">By batches</option>
-                  <option value="By category">By category</option>
+                  <option value="By Category">By Category</option>
+                  <option value="By Courses">By Courses</option>
                   <option value="Individual interns">Individual interns</option>
                 </select>
                 <select
@@ -1359,6 +1476,7 @@ export const TaskManagement = () => {
                   className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   disabled={localStorage.getItem("role")?.toLowerCase() !== 'super admin'}
                 >
+                  <option value="">All Branches</option>
                   {branches.map(branch => (
                     <option key={branch._id} value={branch._id}>
                       {branch.branchName}
@@ -2044,15 +2162,30 @@ export const TaskManagement = () => {
                           setSelectedBatches([]);
                           setSelectedCategories([]);
                           setSelectedInterns([]);
-                        } else if (newAudience === 'By category') {
+                          setSelectedCourses([]);
+                        } else if (newAudience === 'By Category') {
                           setSelectedBatches([]);
                           setSelectedCategories([]);
                           setSelectedInterns([]);
+                          setSelectedCourses([]);
                           fetchCategories();
+                        } else if (newAudience === 'By Courses') {
+                          setSelectedBatches([]);
+                          setSelectedCategories([]);
+                          setSelectedInterns([]);
+                          setSelectedCourses([]);
+                          fetchCourses();
                         } else if (newAudience === 'Individual interns') {
                           setSelectedBatches([]);
                           setSelectedCategories([]);
                           setSelectedInterns([]);
+                          setSelectedCourses([]);
+                          fetchInterns();
+                        } else if (newAudience === 'All interns') {
+                          setSelectedBatches([]);
+                          setSelectedCategories([]);
+                          setSelectedInterns([]);
+                          setSelectedCourses([]);
                           fetchInterns();
                         }
                       }}
@@ -2064,8 +2197,10 @@ export const TaskManagement = () => {
                       ) : (
                         <>
                           <option value="">Choose Audience</option>
+                          <option value="All interns">All interns</option>
                           <option value="By batches">By batches</option>
-                          <option value="By category">By category</option>
+                          <option value="By Category">By Category</option>
+                          <option value="By Courses">By Courses</option>
                           <option value="Individual interns">Individual interns</option>
                         </>
                       )}
@@ -2075,8 +2210,8 @@ export const TaskManagement = () => {
                   </div>
                 </div>
 
-                {/* Intern Search Section - Only show when Individual interns is selected */}
-                {formData.audience === 'Individual interns' && (
+                {/* Intern Search Section - Only show when Individual interns or All interns is selected */}
+                {(formData.audience === 'Individual interns' || formData.audience === 'All interns') && (
                   <div className="mt-4 sm:mt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                       {/* Search Section */}
@@ -2325,8 +2460,8 @@ export const TaskManagement = () => {
                   </div>
                 )}
 
-                {/* Category Search Section - Only show when By category is selected */}
-                {formData.audience === 'By category' && (
+                {/* Category Search Section - Only show when By Category is selected */}
+                {formData.audience === 'By Category' && (
                   <div className="mt-4 sm:mt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                       {/* Search Section */}
@@ -2431,6 +2566,131 @@ export const TaskManagement = () => {
                                   <button
                                     type="button"
                                     onClick={() => handleCategorySelect(category)}
+                                    className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors"
+                                    title="Remove from selection"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Course Search Section - Only show when By Courses is selected */}
+                {formData.audience === 'By Courses' && (
+                  <div className="mt-4 sm:mt-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                      {/* Search Section */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Search Courses</label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="Search by course name or description..."
+                            value={courseSearchTerm}
+                            onChange={(e) => handleCourseSearch(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          />
+                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"></path>
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* Search Results */}
+                        <div className="mt-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+                          {coursesLoading ? (
+                            <div className="p-4 text-center text-gray-500">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                              Loading courses...
+                            </div>
+                          ) : filteredCourses.length === 0 ? (
+                            <div className="p-4 text-center text-gray-500">
+                              {courseSearchTerm ? 'No courses found matching your search.' : 'No courses available.'}
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              {filteredCourses.map((course) => {
+                                const isSelected = selectedCourses.find(selected => selected._id === course._id);
+                                return (
+                                  <div
+                                    key={course._id}
+                                    onClick={() => handleCourseSelect(course)}
+                                    className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${isSelected ? 'bg-orange-50 border-orange-200' : ''
+                                      }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
+                                        <div className="text-xs text-gray-500">{course.description || 'No description'}</div>
+                                      </div>
+                                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'
+                                        }`}>
+                                        {isSelected && (
+                                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                                          </svg>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Selected Courses */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Selected Courses ({selectedCourses.length})
+                          </label>
+                          {selectedCourses.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleClearAllCourses}
+                              className="text-xs text-red-600 hover:text-red-800 font-medium"
+                            >
+                              Clear All
+                            </button>
+                          )}
+                        </div>
+                        <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md bg-gray-50 p-3">
+                          {selectedCourses.length === 0 ? (
+                            <div className="text-center text-gray-500 py-4">
+                              <svg className="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.433 9.496 5 8 5c-4 0-8 3-8 8s4 8 8 8c.94 0 1.841-.213 2.684-.606m3.56-5.894C15.687 7.159 15.589 8 15 8s-1.5-.5-1.5-.5V5a2 2 00-2-2h-2c-1.5 0-2 1-2 2v2.5"></path>
+                              </svg>
+                              No courses selected
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {selectedCourses.map((course) => (
+                                <div key={course._id} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg hover:bg-purple-50 transition-colors">
+                                  <div className="flex items-center">
+                                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                                      <span className="text-purple-600 font-medium text-sm">
+                                        {course.courseName?.charAt(0)?.toUpperCase() || 'C'}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
+                                      <div className="text-xs text-gray-500">{course.description || 'No description'}</div>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCourseSelect(course)}
                                     className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors"
                                     title="Remove from selection"
                                   >
@@ -2630,8 +2890,10 @@ export const TaskManagement = () => {
               )}
 
               {/* Audience details */}
-              {(viewingTask.audience === 'By batches' && viewingTask.batches?.length) ||
-                (viewingTask.audience === 'By category' && viewingTask.categories?.length) ||
+              {(viewingTask.audience === 'All interns') ||
+                (viewingTask.audience === 'By batches' && viewingTask.batches?.length) ||
+                (viewingTask.audience === 'By Category' && viewingTask.categories?.length) ||
+                (viewingTask.audience === 'By Courses' && viewingTask.courses?.length) ||
                 (viewingTask.audience === 'Individual interns' && viewingTask.individualInterns?.length) ? (
                 <div className="mt-4 sm:mt-5">
                   <h2 className="text-[#f7931e] font-semibold mb-3 text-sm sm:text-base italic">Target Audience Details</h2>
@@ -2644,6 +2906,11 @@ export const TaskManagement = () => {
                     {Array.isArray(viewingTask.categories) && viewingTask.categories.map((c, i) => (
                       <span key={`c-${i}`} className="inline-flex items-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 rounded-full border border-purple-200">
                         {typeof c === 'object' ? c.categoryName : c}
+                      </span>
+                    ))}
+                    {Array.isArray(viewingTask.courses) && viewingTask.courses.map((course, i) => (
+                      <span key={`course-${i}`} className="inline-flex items-center px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 rounded-full border border-indigo-200">
+                        {typeof course === 'object' ? course.courseName : course}
                       </span>
                     ))}
                     {Array.isArray(viewingTask.individualInterns) && viewingTask.individualInterns.map((s, i) => (

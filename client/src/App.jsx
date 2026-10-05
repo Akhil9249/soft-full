@@ -32,7 +32,8 @@ import Material from "./pages/admin/task-management/Material";
 import UserMaterial from "./pages/user/task-management/Material";
 import LeaveRequest from "./pages/admin/attendance/LeaveRequest";
 import AppTemp from "./pages/admin/attendance/Report";
-import MenorCard from "./pages/admin/administration/MenorCard";
+import MenorCard from "./pages/admin/administration/MentorCard";
+import MonthlyMenorCard from "./pages/admin/administration/MonthlyMentorCard";
 import Dashboard from "./pages/admin/administration/Dashboard";
 import UserProtectedRoute from "./components/protected-route/UserProtectedRoute";
 import AttendanceDashboard from "./pages/user/attendance/AttendanceDashboard";
@@ -63,6 +64,7 @@ function App() {
 
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/menor-card" element={<MenorCard />} />
+        <Route path="/monthly-menor-card" element={<MonthlyMenorCard />} />
         <Route path="/student-management" element={<StudentManagement />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/category" element={<Category />} />

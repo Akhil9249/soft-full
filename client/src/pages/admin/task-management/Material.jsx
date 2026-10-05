@@ -21,21 +21,32 @@ const Material = () => {
     title: '',
     mentor: '',
     attachments: null, // Will store File object or URL string
-    audience: 'All interns',
+    audience: '',
     allowDownload: true,
   });
 
   // Audience-specific selections
   const [selectedBatches, setSelectedBatches] = useState([]);
   const [selectedInterns, setSelectedInterns] = useState([]);
+  const [selectedCourses, setSelectedCourses] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
 
   // Search states
   const [batchSearchTerm, setBatchSearchTerm] = useState('');
   const [internSearchTerm, setInternSearchTerm] = useState('');
+  const [courseSearchTerm, setCourseSearchTerm] = useState('');
+  const [categorySearchTerm, setCategorySearchTerm] = useState('');
+
+  // Loaded option states
+  const [courses, setCourses] = useState([]);
+  const [categories, setCategories] = useState([]);
 
   // Loading states
   const [batchesLoading, setBatchesLoading] = useState(false);
   const [internsLoading, setInternsLoading] = useState(false);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const defaultBranchSet = useRef(false);
 
   // File upload - will store File object or URL string
   const [selectedFile, setSelectedFile] = useState(null);
@@ -73,7 +84,7 @@ const Material = () => {
     branch: ''
   });
 
-  const audiences = ['All interns', 'By batches', 'By Branches', 'Individual interns'];
+  const audiences = ['All interns', 'By batches', 'By Category', 'By Courses', 'Individual interns'];
   const tabOptions = [
     { value: "materialList", label: "Material List" },
     { value: "new-material", label: "New Material" }
@@ -140,7 +151,7 @@ const Material = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isBranchDropdownOpen]);
 
-  // Automatically clear selected audience items (batches, interns) that do not belong to the selected branches
+  // Automatically clear selected audience items (batches, interns, courses, categories) that do not belong to the selected branches
   useEffect(() => {
     if (selectedBranches.length > 0) {
       // Clear batches
@@ -154,30 +165,60 @@ const Material = () => {
         const branchId = intern.branch?._id || intern.branch;
         return selectedBranches.some(b => b._id === branchId);
       }));
+
+      // Clear categories
+      setSelectedCategories(prev => prev.filter(category => {
+        const catBranches = category.branch || [];
+        if (catBranches.length === 0) return true; // Global category/No branch restriction
+        return catBranches.some(cb => {
+          const cbId = cb?._id || cb;
+          return selectedBranches.some(b => b._id === cbId);
+        });
+      }));
+
+      // Clear courses
+      setSelectedCourses(prev => prev.filter(course => {
+        const branchId = course.branch?._id || course.branch;
+        if (!branchId) return true;
+        return selectedBranches.some(b => b._id === branchId);
+      }));
+
+      // Fetch filtered data based on active audience type when branches are toggled
+      if (formData.audience === 'Individual interns' || formData.audience === 'All interns') {
+        loadInterns();
+      } else if (formData.audience === 'By batches') {
+        loadBatches();
+      } else if (formData.audience === 'By Category') {
+        loadCategories();
+      }
     } else {
       // If no branches are selected, clear all audience selections
       setSelectedBatches([]);
       setSelectedInterns([]);
+      setSelectedCourses([]);
+      setSelectedCategories([]);
+      setFormData(prev => ({ ...prev, audience: '' }));
     }
-  }, [selectedBranches]);
+  }, [selectedBranches, formData.audience]);
 
   // Set default branch filter based on user role and details once mentors/staff list and branches are loaded
   useEffect(() => {
+    if (branches.length === 0) return;
+    if (defaultBranchSet.current) return;
+
     const role = localStorage.getItem("role")?.toLowerCase() || "";
     if (role === "super admin") {
-      if (branches.length > 0 && !filters.branch) {
-        const calicutBranch = branches.find(b => b.branchName?.toLowerCase().includes("calicut"));
-        const defaultBranch = calicutBranch ? calicutBranch._id : branches[0]._id;
-        setFilters(prev => ({ ...prev, branch: defaultBranch }));
-        loadMaterials(1, searchTerm, filters.audience, filters.mentor, defaultBranch);
-      }
+      const calicutBranch = branches.find(b => b.branchName?.toLowerCase().includes("calicut"));
+      const defaultBranch = calicutBranch ? calicutBranch._id : branches[0]._id;
+      setFilters(prev => ({ ...prev, branch: defaultBranch }));
+      loadMaterials(1, searchTerm, filters.audience, filters.mentor, defaultBranch);
+      defaultBranchSet.current = true;
     } else {
       let ownBranchId = localStorage.getItem("branch");
       if (ownBranchId && ownBranchId !== "undefined" && ownBranchId !== "null") {
-        if (!filters.branch) {
-          setFilters(prev => ({ ...prev, branch: ownBranchId }));
-          loadMaterials(1, searchTerm, filters.audience, filters.mentor, ownBranchId);
-        }
+        setFilters(prev => ({ ...prev, branch: ownBranchId }));
+        loadMaterials(1, searchTerm, filters.audience, filters.mentor, ownBranchId);
+        defaultBranchSet.current = true;
       } else {
         // Fallback: fetch dynamically
         adminService.getUserProfile().then(profileRes => {
@@ -185,10 +226,9 @@ const Material = () => {
           if (profileBranch) {
             const profileBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
             localStorage.setItem("branch", profileBranchId);
-            if (!filters.branch) {
-              setFilters(prev => ({ ...prev, branch: profileBranchId }));
-              loadMaterials(1, searchTerm, filters.audience, filters.mentor, profileBranchId);
-            }
+            setFilters(prev => ({ ...prev, branch: profileBranchId }));
+            loadMaterials(1, searchTerm, filters.audience, filters.mentor, profileBranchId);
+            defaultBranchSet.current = true;
           }
         }).catch(err => console.error("Error fetching branch fallback:", err));
       }
@@ -292,12 +332,54 @@ const Material = () => {
   // Load interns
   const loadInterns = async () => {
     try {
-      const response = await adminService.getInternsData('page=1&limit=10000&courseStatus=Ongoing');
+      setInternsLoading(true);
+      const branchIds = selectedBranches.map(b => b._id).join(',');
+      const response = await adminService.getInternsData(`page=1&limit=10000&courseStatus=Ongoing${branchIds ? `&branch=${branchIds}` : ''}`);
       setInterns(response.data || []);
     } catch (error) {
       console.error('Error loading interns:', error);
+    } finally {
+      setInternsLoading(false);
     }
   };
+
+  // Load courses
+  const loadCourses = async () => {
+    try {
+      setCoursesLoading(true);
+      const response = await adminService.getCoursesData('page=1&limit=10000');
+      setCourses(response?.data || []);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+    } finally {
+      setCoursesLoading(false);
+    }
+  };
+
+  // Load categories
+  const loadCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      const response = await adminService.getCategoriesData('page=1&limit=10000');
+      setCategories(response?.data || []);
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  // Automatically select all ongoing interns of selected branches when 'All interns' is selected
+  useEffect(() => {
+    if (formData.audience === 'All interns' && interns.length > 0) {
+      const ongoingInterns = interns.filter(intern => {
+        const branchId = intern.branch?._id || intern.branch;
+        const matchesBranch = selectedBranches.some(b => b._id === branchId);
+        return intern.courseStatus === 'Ongoing' && matchesBranch;
+      });
+      setSelectedInterns(ongoingInterns);
+    }
+  }, [formData.audience, interns, selectedBranches]);
 
   // Handle form input changes
   const handleInputChange = (e) => {
@@ -315,6 +397,15 @@ const Material = () => {
     if (name === 'audience') {
       setSelectedBatches([]);
       setSelectedInterns([]);
+      setSelectedCourses([]);
+      setSelectedCategories([]);
+      if (value === 'By Category') {
+        loadCategories();
+      } else if (value === 'By Courses') {
+        loadCourses();
+      } else if (value === 'Individual interns' || value === 'All interns') {
+        loadInterns();
+      }
       if (errors.audienceData) {
         setErrors(prev => ({ ...prev, audienceData: "" }));
       }
@@ -433,6 +524,80 @@ const Material = () => {
     return matchesSearch && matchesBranch;
   });
 
+  // Course search and selection
+  const handleCourseSearch = (term) => {
+    setCourseSearchTerm(term);
+  };
+
+  const handleCourseSelect = (course) => {
+    const isSelected = selectedCourses.find(c => c._id === course._id);
+    let newCourses;
+    if (isSelected) {
+      newCourses = selectedCourses.filter(c => c._id !== course._id);
+    } else {
+      newCourses = [...selectedCourses, course];
+    }
+    setSelectedCourses(newCourses);
+    if (errors.audienceData && newCourses.length > 0) {
+      setErrors(prev => ({ ...prev, audienceData: "" }));
+    }
+  };
+
+  const handleClearAllCourses = () => {
+    setSelectedCourses([]);
+  };
+
+  // Category search and selection
+  const handleCategorySearch = (term) => {
+    setCategorySearchTerm(term);
+  };
+
+  const handleCategorySelect = (category) => {
+    const isSelected = selectedCategories.find(c => c._id === category._id);
+    let newCategories;
+    if (isSelected) {
+      newCategories = selectedCategories.filter(c => c._id !== category._id);
+    } else {
+      newCategories = [...selectedCategories, category];
+    }
+    setSelectedCategories(newCategories);
+    if (errors.audienceData && newCategories.length > 0) {
+      setErrors(prev => ({ ...prev, audienceData: "" }));
+    }
+  };
+
+  const handleClearAllCategories = () => {
+    setSelectedCategories([]);
+  };
+
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = course.courseName?.toLowerCase().includes(courseSearchTerm.toLowerCase()) ||
+      course.description?.toLowerCase().includes(courseSearchTerm.toLowerCase());
+
+    const matchesBranch = selectedBranches.length > 0 && selectedBranches.some(b => {
+      const branchId = course.branch?._id || course.branch;
+      if (!branchId) return true;
+      return b._id === branchId;
+    });
+
+    return matchesSearch && matchesBranch;
+  });
+
+  const filteredCategories = categories.filter(category => {
+    const matchesSearch = category.categoryName?.toLowerCase().includes(categorySearchTerm.toLowerCase());
+
+    const matchesBranch = selectedBranches.length > 0 && selectedBranches.some(b => {
+      const catBranches = category.branch || [];
+      if (catBranches.length === 0) return true;
+      return catBranches.some(cb => {
+        const cbId = cb?._id || cb;
+        return b._id === cbId;
+      });
+    });
+
+    return matchesSearch && matchesBranch;
+  });
+
   // Form submission
   const validateForm = () => {
     const newErrors = {};
@@ -453,9 +618,15 @@ const Material = () => {
       newErrors.branch = "At least one branch must be selected";
     }
 
-    if (formData.audience) {
+    if (!formData.audience) {
+      newErrors.audienceData = "Audience is required";
+    } else {
       if (formData.audience === "By batches" && selectedBatches.length === 0) {
         newErrors.audienceData = "At least one batch must be selected";
+      } else if (formData.audience === "By Category" && selectedCategories.length === 0) {
+        newErrors.audienceData = "At least one category must be selected";
+      } else if (formData.audience === "By Courses" && selectedCourses.length === 0) {
+        newErrors.audienceData = "At least one course must be selected";
       } else if (formData.audience === "Individual interns" && selectedInterns.length === 0) {
         newErrors.audienceData = "At least one intern must be selected";
       }
@@ -502,6 +673,12 @@ const Material = () => {
       if (formData.audience === 'By batches' && selectedBatches.length > 0) {
         selectedBatches.forEach(batch => payload.append('batches', batch._id));
       }
+      if (formData.audience === 'By Category' && selectedCategories.length > 0) {
+        selectedCategories.forEach(category => payload.append('categories', category._id));
+      }
+      if (formData.audience === 'By Courses' && selectedCourses.length > 0) {
+        selectedCourses.forEach(course => payload.append('courses', course._id));
+      }
       if (formData.audience === 'Individual interns' && selectedInterns.length > 0) {
         selectedInterns.forEach(intern => payload.append('individualInterns', intern._id));
       }
@@ -532,11 +709,15 @@ const Material = () => {
       title: '',
       mentor: '',
       attachments: null,
-      audience: 'All interns',
+      audience: '',
       allowDownload: true,
     });
     setSelectedBatches([]);
     setSelectedInterns([]);
+    setSelectedCourses([]);
+    setSelectedCategories([]);
+    setCourseSearchTerm('');
+    setCategorySearchTerm('');
     setSelectedBranches([]);
     setIsBranchDropdownOpen(false);
     setSelectedFile(null);
@@ -567,7 +748,27 @@ const Material = () => {
         }
       }
 
-      if (editingMaterial.audience === "Individual interns" && (editingMaterial.individualInterns || editingMaterial.interns) && interns.length > 0) {
+      if (editingMaterial.audience === "By Category" && editingMaterial.categories && editingMaterial.categories.length > 0 && categories.length > 0) {
+        const selectedCategoryObjects = editingMaterial.categories.map(cat => {
+          const catId = typeof cat === 'object' ? cat._id : cat;
+          return categories.find(c => c._id === catId) || (typeof cat === 'object' ? cat : null);
+        }).filter(Boolean);
+        if (selectedCategoryObjects.length > 0) {
+          setSelectedCategories(selectedCategoryObjects);
+        }
+      }
+
+      if (editingMaterial.audience === "By Courses" && editingMaterial.courses && editingMaterial.courses.length > 0 && courses.length > 0) {
+        const selectedCourseObjects = editingMaterial.courses.map(course => {
+          const courseId = typeof course === 'object' ? course._id : course;
+          return courses.find(c => c._id === courseId) || (typeof course === 'object' ? course : null);
+        }).filter(Boolean);
+        if (selectedCourseObjects.length > 0) {
+          setSelectedCourses(selectedCourseObjects);
+        }
+      }
+
+      if ((editingMaterial.audience === "Individual interns" || editingMaterial.audience === "All interns") && (editingMaterial.individualInterns || editingMaterial.interns) && interns.length > 0) {
         const sourceInterns = editingMaterial.individualInterns || editingMaterial.interns || [];
         const selectedInternObjects = sourceInterns.map(intern => {
           const internId = typeof intern === 'object' ? intern._id : intern;
@@ -588,7 +789,7 @@ const Material = () => {
         }
       }
     }
-  }, [editingMaterial, batches, interns, branches]);
+  }, [editingMaterial, batches, interns, branches, courses, categories]);
 
   const handleView = (material) => {
     setViewingMaterial(material);
@@ -621,6 +822,8 @@ const Material = () => {
     // Set selections based on material data
     setSelectedBatches(material.batches || []);
     setSelectedInterns(material.individualInterns || material.interns || []);
+    setSelectedCourses(material.courses || []);
+    setSelectedCategories(material.categories || []);
     setSelectedBranches([]);
 
     if (material.branch && material.branch.length > 0) {
@@ -629,6 +832,13 @@ const Material = () => {
         return branches.find(b => b._id === branchId) || (typeof br === 'object' ? br : null);
       }).filter(Boolean);
       setSelectedBranches(selectedBranchObjects);
+    }
+
+    if (material.audience === 'By Category' && categories.length === 0) {
+      loadCategories();
+    }
+    if (material.audience === 'By Courses' && courses.length === 0) {
+      loadCourses();
     }
 
     setActiveTab('new-material');
@@ -877,14 +1087,14 @@ const Material = () => {
                 </div>
               </div>
             )}
-
-            {/* Audience Info */}
+             {/* Audience Info */}
             <div className="space-y-2">
               <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Audience Type</h4>
               <div className="flex items-center">
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${material.audience === 'All interns' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
                     material.audience === 'By batches' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                      material.audience === 'By Branches' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
+                    material.audience === 'By Category' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                    material.audience === 'By Courses' ? 'bg-pink-100 text-pink-800 border border-pink-200' :
                         'bg-green-100 text-green-800 border border-green-200'
                   }`}>
                   {material.audience}
@@ -900,6 +1110,32 @@ const Material = () => {
                   {material.batches.map((batch, index) => (
                     <span key={index} className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-lg border border-purple-100">
                       {batch.batchName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {material.audience === 'By Category' && material.categories?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Assigned Categories ({material.categories.length})</h4>
+                <div className="flex flex-wrap gap-2">
+                  {material.categories.map((cat, index) => (
+                    <span key={index} className="px-3 py-1 bg-orange-50 text-orange-700 text-xs font-medium rounded-lg border border-orange-100">
+                      {cat.categoryName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {material.audience === 'By Courses' && material.courses?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Assigned Courses ({material.courses.length})</h4>
+                <div className="flex flex-wrap gap-2">
+                  {material.courses.map((course, index) => (
+                    <span key={index} className="px-3 py-1 bg-pink-50 text-pink-700 text-xs font-medium rounded-lg border border-pink-100">
+                      {course.courseName}
                     </span>
                   ))}
                 </div>
@@ -1122,7 +1358,8 @@ const Material = () => {
                   <option value="">All Audience</option>
                   <option value="All interns">All interns</option>
                   <option value="By batches">By batches</option>
-                  <option value="By Branches">By Branches</option>
+                  <option value="By Category">By Category</option>
+                  <option value="By Courses">By Courses</option>
                   <option value="Individual interns">Individual interns</option>
                 </select>
                 <select
@@ -1143,6 +1380,7 @@ const Material = () => {
                   className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
                   disabled={localStorage.getItem("role")?.toLowerCase() !== 'super admin'}
                 >
+                  <option value="">All Branches</option>
                   {branches.map(branch => (
                     <option key={branch._id} value={branch._id}>
                       {branch.branchName}
@@ -1628,23 +1866,8 @@ const Material = () => {
               <h3 className="text-base sm:text-lg lg:text-xl font-bold text-gray-800 border-b pb-2">Audience Selection</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                {/* Audience Type */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Audience Type</label>
-                  <select
-                    name="audience"
-                    value={formData.audience}
-                    onChange={handleInputChange}
-                    className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white text-sm h-[38px] ${errors.audienceData ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
-                  >
-                    {audiences.map(audience => (
-                      <option key={audience} value={audience}>{audience}</option>
-                    ))}
-                  </select>
-                  {errors.audienceData && <p className="text-red-500 text-xs mt-1">{errors.audienceData}</p>}
-                </div>
 
-                {/* Branches Dropdown */}
+                      {/* Branches Dropdown */}
                 <div className="branch-dropdown-container relative">
                   <label className="block text-sm font-medium text-gray-700">Branches <span className="text-red-500">*</span></label>
                   <button
@@ -1702,12 +1925,40 @@ const Material = () => {
                     </div>
                   )}
                 </div>
+                
+                {/* Audience Type */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Audience Type {selectedBranches.length === 0 && <span className="text-xs text-red-500 font-normal ml-2">(Select branches first)</span>}
+                  </label>
+                  <select
+                    name="audience"
+                    value={formData.audience || ''}
+                    onChange={handleInputChange}
+                    className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white text-sm h-[38px] disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed ${errors.audienceData ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
+                    disabled={selectedBranches.length === 0}
+                  >
+                    {selectedBranches.length === 0 ? (
+                      <option value="">Choose branches first</option>
+                    ) : (
+                      <>
+                        <option value="">Choose Audience</option>
+                        {audiences.map(audience => (
+                          <option key={audience} value={audience}>{audience}</option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                  {errors.audienceData && <p className="text-red-500 text-xs mt-1">{errors.audienceData}</p>}
+                </div>
+
+          
               </div>
             </div>
 
             {/* 2. Material Details Section */}
-            {/* Intern Search Section - Only show when Individual interns is selected */}
-            {formData.audience === 'Individual interns' && (
+            {/* Intern Search Section - Only show when Individual interns or All interns is selected */}
+            {(formData.audience === 'Individual interns' || formData.audience === 'All interns') && (
               <div className="mt-4 sm:mt-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   {/* Search Section */}
@@ -1939,6 +2190,253 @@ const Material = () => {
                               <button
                                 type="button"
                                 onClick={() => handleBatchSelect(batch)}
+                                className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors"
+                                title="Remove from selection"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Course Search Section - Only show when By Courses is selected */}
+            {formData.audience === 'By Courses' && (
+              <div className="mt-4 sm:mt-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  {/* Search Section */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Search Courses</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search by course name or description..."
+                        value={courseSearchTerm}
+                        onChange={(e) => handleCourseSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      />
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"></path>
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Search Results */}
+                    <div className="mt-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+                      {coursesLoading ? (
+                        <div className="p-4 text-center text-gray-500">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                          Loading courses...
+                        </div>
+                      ) : filteredCourses.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          {courseSearchTerm ? 'No courses found matching your search.' : 'No courses available.'}
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          {filteredCourses.map((course) => {
+                            const isSelected = selectedCourses.find(selected => selected._id === course._id);
+                            return (
+                              <div
+                                key={course._id}
+                                onClick={() => handleCourseSelect(course)}
+                                className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${isSelected ? 'bg-orange-50 border-orange-200' : ''
+                                  }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
+                                    <div className="text-xs text-gray-500">{course.description || 'No description'}</div>
+                                  </div>
+                                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'
+                                    }`}>
+                                    {isSelected && (
+                                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                                      </svg>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Selected Courses */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Selected Courses ({selectedCourses.length})
+                      </label>
+                      {selectedCourses.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleClearAllCourses}
+                          className="text-xs text-red-600 hover:text-red-800 font-medium"
+                        >
+                          Clear All
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md bg-gray-50 p-3">
+                      {selectedCourses.length === 0 ? (
+                        <div className="text-center text-gray-500 py-4">
+                          <svg className="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.433 9.496 5 8 5c-4 0-8 3-8 8s4 8 8 8c.94 0 1.841-.213 2.684-.606m3.56-5.894C15.687 7.159 15.589 8 15 8s-1.5-.5-1.5-.5V5a2 2 0 00-2-2h-2c-1.5 0-2 1-2 2v2.5M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.402 2.572-1.065z"></path>
+                          </svg>
+                          No courses selected
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {selectedCourses.map((course) => (
+                            <div key={course._id} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg hover:bg-orange-50 transition-colors">
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+                                  <span className="text-orange-600 font-medium text-sm">
+                                    {course.courseName?.charAt(0)?.toUpperCase() || 'C'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleCourseSelect(course)}
+                                className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors"
+                                title="Remove from selection"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Category Search Section - Only show when By Category is selected */}
+            {formData.audience === 'By Category' && (
+              <div className="mt-4 sm:mt-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  {/* Search Section */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Search Categories</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search by category name..."
+                        value={categorySearchTerm}
+                        onChange={(e) => handleCategorySearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      />
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"></path>
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Search Results */}
+                    <div className="mt-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+                      {categoriesLoading ? (
+                        <div className="p-4 text-center text-gray-500">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                          Loading categories...
+                        </div>
+                      ) : filteredCategories.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          {categorySearchTerm ? 'No categories found matching your search.' : 'No categories available.'}
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          {filteredCategories.map((category) => {
+                            const isSelected = selectedCategories.find(selected => selected._id === category._id);
+                            return (
+                              <div
+                                key={category._id}
+                                onClick={() => handleCategorySelect(category)}
+                                className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${isSelected ? 'bg-orange-50 border-orange-200' : ''
+                                  }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">{category.categoryName}</div>
+                                  </div>
+                                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300'
+                                    }`}>
+                                    {isSelected && (
+                                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                                      </svg>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Selected Categories */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Selected Categories ({selectedCategories.length})
+                      </label>
+                      {selectedCategories.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleClearAllCategories}
+                          className="text-xs text-red-600 hover:text-red-800 font-medium"
+                        >
+                          Clear All
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md bg-gray-50 p-3">
+                      {selectedCategories.length === 0 ? (
+                        <div className="text-center text-gray-500 py-4">
+                          <svg className="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                          </svg>
+                          No categories selected
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {selectedCategories.map((category) => (
+                            <div key={category._id} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg hover:bg-orange-50 transition-colors">
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+                                  <span className="text-orange-600 font-medium text-sm">
+                                    {category.categoryName?.charAt(0)?.toUpperCase() || 'K'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">{category.categoryName}</div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleCategorySelect(category)}
                                 className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors"
                                 title="Remove from selection"
                               >

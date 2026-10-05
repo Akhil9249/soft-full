@@ -59,7 +59,8 @@ const getBatches = async (req, res) => {
       query.status = status;
     }
     if (branch) {
-      query.branch = branch;
+      const branchIds = branch.split(',');
+      query.branch = { $in: branchIds };
     }
 
     // Role-based branch restriction: only super admin sees all

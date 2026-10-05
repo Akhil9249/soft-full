@@ -111,7 +111,7 @@ const AdminService = () => {
         return response.data;
     };
     const getInternsDataSearch = async (searchTerm, branch = '') => {
-        const url = branch 
+        const url = branch
             ? `/api/intern/search?q=${encodeURIComponent(searchTerm)}&branch=${branch}`
             : `/api/intern/search?q=${encodeURIComponent(searchTerm)}`;
         const response = await axiosPrivate.get(url);
@@ -816,6 +816,33 @@ const AdminService = () => {
 
         putMentorCardData: async (id, data) => {
             const response = await axiosPrivate.put(`/api/mentor-card/${id}`, data);
+            return response.data;
+        },
+
+        // ======================================== monthly mentor card ========================================
+
+        postMonthlyCardData: async (data) => {
+            const response = await axiosPrivate.post("/api/monthly-card/create", data);
+            return response.data;
+        },
+
+        getMonthlyCardData: async (internId) => {
+            const response = await axiosPrivate.get(`/api/monthly-card/intern/${internId}`);
+            return response.data;
+        },
+
+        getMyMonthlyCardData: async () => {
+            const response = await axiosPrivate.get("/api/monthly-card/my-cards");
+            return response.data;
+        },
+
+        putMonthlyCardData: async (id, data) => {
+            const response = await axiosPrivate.put(`/api/monthly-card/${id}`, data);
+            return response.data;
+        },
+
+        deleteMonthlyCardData: async (id) => {
+            const response = await axiosPrivate.delete(`/api/monthly-card/${id}`);
             return response.data;
         },
 

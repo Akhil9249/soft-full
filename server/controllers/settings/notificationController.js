@@ -17,7 +17,8 @@ const createNotification = async (req, res) => {
       branch, 
       audience, 
       batches, 
-      courses, 
+      courses,
+      categories,
       interns, 
       individualInterns, 
       pushNotification 
@@ -27,16 +28,57 @@ const createNotification = async (req, res) => {
       return res.status(400).json({ message: "Title, content, type, and audience are required fields" });
     }
 
+    // Parse branch safely (supports raw arrays and JSON strings)
+    let branchArray = [];
+    if (branch) {
+      try {
+        branchArray = Array.isArray(branch) ? branch : JSON.parse(branch);
+      } catch (e) {
+        branchArray = [branch];
+      }
+    }
+
+    if (!branchArray || branchArray.length === 0) {
+      return res.status(400).json({ message: "At least one branch must be selected" });
+    }
+
+    // Validate audience enum
+    if (!["All interns", "By batches", "By Courses", "By Category", "Individual interns"].includes(audience)) {
+      return res.status(400).json({
+        message: "Audience must be one of: 'All interns', 'By batches', 'By Courses', 'By Category', 'Individual interns'"
+      });
+    }
+
+    // Clean audience-specific fields
+    let cleanBatches = [];
+    let cleanCourses = [];
+    let cleanCategories = [];
+    let cleanIndividualInterns = [];
+
+    if (audience === "By batches") {
+      cleanBatches = batches || [];
+    } else if (audience === "By Courses") {
+      cleanCourses = courses || [];
+    } else if (audience === "By Category") {
+      cleanCategories = categories || [];
+    } else if (audience === "Individual interns" || audience === "All interns") {
+      cleanIndividualInterns = individualInterns || [];
+    }
+
     // Validate audience-specific fields
-    if (audience === "By batches" && (!batches || batches.length === 0)) {
+    if (audience === "By batches" && cleanBatches.length === 0) {
       return res.status(400).json({ message: "Batches must be selected when audience is 'By batches'" });
     }
-    
-    if (audience === "By courses" && (!courses || courses.length === 0)) {
-      return res.status(400).json({ message: "Courses must be selected when audience is 'By courses'" });
+
+    if (audience === "By Courses" && cleanCourses.length === 0) {
+      return res.status(400).json({ message: "Courses must be selected when audience is 'By Courses'" });
+    }
+
+    if (audience === "By Category" && cleanCategories.length === 0) {
+      return res.status(400).json({ message: "Categories must be selected when audience is 'By Category'" });
     }
     
-    if (audience === "Individual interns" && (!individualInterns || individualInterns.length === 0)) {
+    if (audience === "Individual interns" && cleanIndividualInterns.length === 0) {
       return res.status(400).json({ message: "Individual interns must be selected when audience is 'Individual interns'" });
     }
 
@@ -44,12 +86,13 @@ const createNotification = async (req, res) => {
       title,
       content,
       type,
-      branch: branch || null,
+      branch: branchArray,
       audience,
-      batches: batches || [],
-      courses: courses || [],
+      batches: cleanBatches,
+      courses: cleanCourses,
+      categories: cleanCategories,
       interns: interns || [],
-      individualInterns: individualInterns || [],
+      individualInterns: cleanIndividualInterns,
       pushNotification: pushNotification !== undefined ? pushNotification : true,
     });
 
@@ -58,6 +101,7 @@ const createNotification = async (req, res) => {
       .populate('branch', 'branchName')
       .populate('batches', 'batchName')
       .populate('courses', 'courseName')
+      .populate('categories', 'categoryName')
       .populate('interns', 'fullName email')
       .populate('individualInterns', 'fullName email');
 
@@ -65,24 +109,37 @@ const createNotification = async (req, res) => {
     console.log("📢 Push notification triggered!");
     try {
       let userIds = [];
-      const targetQuery = { isActive: true };
-      if (branch) targetQuery.branch = branch;
+      const targetQuery = { isActive: true, courseStatus: "Ongoing" };
+      if (branchArray && branchArray.length > 0) {
+        targetQuery.branch = { $in: branchArray };
+      }
 
       if (audience === "All interns") {
         const targetInterns = await internModel.find(targetQuery).select('_id');
         userIds = targetInterns.map(i => i._id);
-      } else if (audience === "By batches" && batches && batches.length > 0) {
-        const batchDocs = await Batch.find({ _id: { $in: batches } }).select('batchName');
+      } else if (audience === "By batches" && cleanBatches.length > 0) {
+        const batchDocs = await Batch.find({ _id: { $in: cleanBatches } }).select('batchName');
         const batchNames = batchDocs.map(b => b.batchName);
         targetQuery.batch = { $in: batchNames };
         const targetInterns = await internModel.find(targetQuery).select('_id');
         userIds = targetInterns.map(i => i._id);
-      } else if (audience === "By courses" && courses && courses.length > 0) {
-        targetQuery.course = { $in: courses };
+      } else if (audience === "By Branches") {
         const targetInterns = await internModel.find(targetQuery).select('_id');
         userIds = targetInterns.map(i => i._id);
-      } else if (audience === "Individual interns" && individualInterns && individualInterns.length > 0) {
-        userIds = individualInterns;
+      } else if (audience === "By Courses" && cleanCourses.length > 0) {
+        targetQuery.course = { $in: cleanCourses };
+        const targetInterns = await internModel.find(targetQuery).select('_id');
+        userIds = targetInterns.map(i => i._id);
+      } else if (audience === "By Category" && cleanCategories.length > 0) {
+        const CourseModel = require("../../models/course-management/courseModel");
+        const courseDocs = await CourseModel.find({ category: { $in: cleanCategories } }).select('_id');
+        const courseIds = courseDocs.map(c => c._id);
+        targetQuery.course = { $in: courseIds };
+        const targetInterns = await internModel.find(targetQuery).select('_id');
+        userIds = targetInterns.map(i => i._id);
+      } else if (audience === "Individual interns" && cleanIndividualInterns.length > 0) {
+        const targetInterns = await internModel.find({ _id: { $in: cleanIndividualInterns }, courseStatus: "Ongoing" }).select('_id');
+        userIds = targetInterns.map(i => i._id);
       }
 
       if (userIds.length > 0) {
@@ -132,8 +189,7 @@ const getNotifications = async (req, res) => {
       filter.audience = audience;
     }
     if (branch) {
-      // branch can be ObjectId string or populated; store is ObjectId so match by id
-      filter.branch = branch;
+      filter.branch = { $in: [branch] };
     }
 
     const totalCount = await Notification.countDocuments(filter);
@@ -173,6 +229,7 @@ const getNotifications = async (req, res) => {
       .populate('branch', 'branchName')
       .populate('batches', 'batchName')
       .populate('courses', 'courseName')
+      .populate('categories', 'categoryName')
       .populate('interns', 'fullName email')
       .populate('individualInterns', 'fullName email')
       .sort({ createdAt: -1 })
@@ -212,6 +269,7 @@ const getNotificationById = async (req, res) => {
       .populate('branch', 'branchName')
       .populate('batches', 'batchName')
       .populate('courses', 'courseName')
+      .populate('categories', 'categoryName')
       .populate('interns', 'fullName email')
       .populate('individualInterns', 'fullName email');
     
@@ -232,22 +290,64 @@ const updateNotification = async (req, res) => {
       branch, 
       audience, 
       batches, 
-      courses, 
+      courses,
+      categories,
       interns, 
       individualInterns, 
       pushNotification 
     } = req.body;
 
+    // Parse branch safely (supports raw arrays and JSON strings)
+    let branchArray = [];
+    if (branch) {
+      try {
+        branchArray = Array.isArray(branch) ? branch : JSON.parse(branch);
+      } catch (e) {
+        branchArray = [branch];
+      }
+    }
+
+    if (!branchArray || branchArray.length === 0) {
+      return res.status(400).json({ message: "At least one branch must be selected" });
+    }
+
+    // Validate audience enum
+    if (audience && !["All interns", "By batches", "By Courses", "By Category", "Individual interns"].includes(audience)) {
+      return res.status(400).json({
+        message: "Audience must be one of: 'All interns', 'By batches', 'By Courses', 'By Category', 'Individual interns'"
+      });
+    }
+
+    // Clean audience-specific fields
+    let cleanBatches = [];
+    let cleanCourses = [];
+    let cleanCategories = [];
+    let cleanIndividualInterns = [];
+
+    if (audience === "By batches") {
+      cleanBatches = batches || [];
+    } else if (audience === "By Courses") {
+      cleanCourses = courses || [];
+    } else if (audience === "By Category") {
+      cleanCategories = categories || [];
+    } else if (audience === "Individual interns" || audience === "All interns") {
+      cleanIndividualInterns = individualInterns || [];
+    }
+
     // Validate audience-specific fields if audience is being updated
-    if (audience === "By batches" && (!batches || batches.length === 0)) {
+    if (audience === "By batches" && cleanBatches.length === 0) {
       return res.status(400).json({ message: "Batches must be selected when audience is 'By batches'" });
     }
-    
-    if (audience === "By courses" && (!courses || courses.length === 0)) {
-      return res.status(400).json({ message: "Courses must be selected when audience is 'By courses'" });
+
+    if (audience === "By Courses" && cleanCourses.length === 0) {
+      return res.status(400).json({ message: "Courses must be selected when audience is 'By Courses'" });
+    }
+
+    if (audience === "By Category" && cleanCategories.length === 0) {
+      return res.status(400).json({ message: "Categories must be selected when audience is 'By Category'" });
     }
     
-    if (audience === "Individual interns" && (!individualInterns || individualInterns.length === 0)) {
+    if (audience === "Individual interns" && cleanIndividualInterns.length === 0) {
       return res.status(400).json({ message: "Individual interns must be selected when audience is 'Individual interns'" });
     }
 
@@ -257,12 +357,12 @@ const updateNotification = async (req, res) => {
         title,
         content,
         type,
-        branch: branch || null,
+        branch: branchArray,
         audience,
-        batches: batches || [],
-        courses: courses || [],
-        interns: interns || [],
-        individualInterns: individualInterns || [],
+        batches: cleanBatches,
+        courses: cleanCourses,
+        categories: cleanCategories,
+        individualInterns: cleanIndividualInterns,
         pushNotification: pushNotification !== undefined ? pushNotification : true,
       },
       {
@@ -273,6 +373,7 @@ const updateNotification = async (req, res) => {
       .populate('branch', 'branchName')
       .populate('batches', 'batchName')
       .populate('courses', 'courseName')
+      .populate('categories', 'categoryName')
       .populate('interns', 'fullName email')
       .populate('individualInterns', 'fullName email');
 
@@ -359,6 +460,24 @@ const getInternNotifications = async (req, res) => {
       return res.status(404).json({ message: "Intern not found" });
     }
 
+    if (intern.courseStatus !== "Ongoing") {
+      return res.status(200).json({
+        message: "Notifications retrieved successfully",
+        data: [],
+        pagination: {
+          currentPage: page,
+          totalPages: 0,
+          totalCount: 0,
+          limit,
+          skip,
+          hasNextPage: false,
+          hasPrevPage: false,
+          startIndex: 0,
+          endIndex: 0
+        }
+      });
+    }
+
     // Find the batch document corresponding to the intern's batch name string
     let batchId = null;
     if (intern.batch) {
@@ -368,17 +487,29 @@ const getInternNotifications = async (req, res) => {
       }
     }
 
+    // Find the intern course's category
+    const CourseModel = require("../../models/course-management/courseModel");
+    let internCourseCategoryId = null;
+    if (intern.course) {
+      const courseDoc = await CourseModel.findById(intern.course).select('category');
+      if (courseDoc) {
+        internCourseCategoryId = courseDoc.category;
+      }
+    }
+
     // Build the query targeted to the intern
     const query = {
       isActive: true,
       isDeleted: false,
       $and: [
-        { $or: [ { branch: null }, { branch: intern.branch } ] },
+        { $or: [ { branch: null }, { branch: { $size: 0 } }, { branch: intern.branch } ] },
         {
           $or: [
-            { audience: "All interns" },
+            ...(intern.courseStatus === "Ongoing" ? [{ audience: "All interns" }] : []),
+            { audience: "By Branches" },
             ...(batchId ? [{ audience: "By batches", batches: batchId }] : []),
-            ...(intern.course ? [{ audience: "By courses", courses: intern.course }] : []),
+            ...(intern.course ? [{ audience: "By Courses", courses: intern.course }] : []),
+            ...(internCourseCategoryId ? [{ audience: "By Category", categories: internCourseCategoryId }] : []),
             { audience: "Individual interns", individualInterns: internId }
           ]
         }
@@ -396,6 +527,7 @@ const getInternNotifications = async (req, res) => {
       .populate('branch', 'branchName')
       .populate('batches', 'batchName')
       .populate('courses', 'courseName')
+      .populate('categories', 'categoryName')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -458,6 +590,10 @@ const getUnreadCount = async (req, res) => {
       return res.status(404).json({ message: "Intern not found" });
     }
 
+    if (intern.courseStatus !== "Ongoing") {
+      return res.status(200).json({ count: 0 });
+    }
+
     let batchId = null;
     if (intern.batch) {
       const batchDoc = await Batch.findOne({ batchName: intern.batch });
@@ -466,17 +602,29 @@ const getUnreadCount = async (req, res) => {
       }
     }
 
+    // Find the intern course's category
+    const CourseModel = require("../../models/course-management/courseModel");
+    let internCourseCategoryId = null;
+    if (intern.course) {
+      const courseDoc = await CourseModel.findById(intern.course).select('category');
+      if (courseDoc) {
+        internCourseCategoryId = courseDoc.category;
+      }
+    }
+
     const query = {
       isActive: true,
       isDeleted: false,
       readBy: { $ne: internId },
       $and: [
-        { $or: [ { branch: null }, { branch: intern.branch } ] },
+        { $or: [ { branch: null }, { branch: { $size: 0 } }, { branch: intern.branch } ] },
         {
           $or: [
-            { audience: "All interns" },
+            ...(intern.courseStatus === "Ongoing" ? [{ audience: "All interns" }] : []),
+            { audience: "By Branches" },
             ...(batchId ? [{ audience: "By batches", batches: batchId }] : []),
-            ...(intern.course ? [{ audience: "By courses", courses: intern.course }] : []),
+            ...(intern.course ? [{ audience: "By Courses", courses: intern.course }] : []),
+            ...(internCourseCategoryId ? [{ audience: "By Category", categories: internCourseCategoryId }] : []),
             { audience: "Individual interns", individualInterns: internId }
           ]
         }

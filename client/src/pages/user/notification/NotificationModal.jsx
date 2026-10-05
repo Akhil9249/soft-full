@@ -157,7 +157,10 @@ const NotificationModal = ({
                   </span>
 
                   <p>
-                    {notification.branch?.branchName || notification.branch || "calicut"}
+                    {Array.isArray(notification.branch)
+                      ? (notification.branch.map(b => typeof b === 'object' ? b.branchName : b).filter(Boolean).join(', ') || "calicut")
+                      : (notification.branch?.branchName || notification.branch || "calicut")
+                    }
                   </p>
                 </div>
 

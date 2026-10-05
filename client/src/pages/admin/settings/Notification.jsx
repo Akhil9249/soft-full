@@ -12,6 +12,7 @@ import MessageModal from '../../../components/common/MessageModal';
 // Separate memoized form component to prevent re-renders
 const NotificationForm = memo(({
     formData,
+    errors = {},
     handleInputChange,
     handlePublish,
     handleCancel,
@@ -20,31 +21,45 @@ const NotificationForm = memo(({
     isSubmitting,
     isEditMode,
     editingNotification,
+    selectedBranches,
+    setSelectedBranches,
+    isBranchDropdownOpen,
+    setIsBranchDropdownOpen,
+    branchDropdownRef,
     // Audience selection props
     batches,
     batchesLoading,
-    courses,
-    coursesLoading,
     interns,
     internsLoading,
     selectedBatches,
-    selectedCourses,
     selectedInterns,
     batchSearchTerm,
-    courseSearchTerm,
     internSearchTerm,
     handleBatchSearch,
-    handleCourseSearch,
     handleInternSearch,
     handleBatchSelect,
-    handleCourseSelect,
     handleInternSelect,
     handleClearAllBatches,
-    handleClearAllCourses,
     handleClearAllInterns,
     filteredBatches,
+    filteredInterns,
+    // Courses and categories props
+    courses,
+    coursesLoading,
+    selectedCourses,
+    courseSearchTerm,
+    handleCourseSearch,
+    handleCourseSelect,
+    handleClearAllCourses,
     filteredCourses,
-    filteredInterns
+    categories,
+    categoriesLoading,
+    selectedCategories,
+    categorySearchTerm,
+    handleCategorySearch,
+    handleCategorySelect,
+    handleClearAllCategories,
+    filteredCategories
 }) => (
     <div className="p-4 sm:p-6 lg:p-8 bg-white rounded-lg h-full shadow-lg">
         <div className="mb-4 sm:mb-6">
@@ -56,7 +71,7 @@ const NotificationForm = memo(({
             {/* Notification Title Input */}
             <div className="flex flex-col">
                 <label htmlFor="notification-title" className="text-sm text-gray-600 mb-2">
-                    Notification Title
+                    Notification Title <span className="text-red-500">*</span>
                 </label>
                 <input
                     type="text"
@@ -65,15 +80,18 @@ const NotificationForm = memo(({
                     value={formData.title || ''}
                     onChange={handleInputChange}
                     placeholder="Enter Notification Title"
-                    className="p-3 bg-gray-100 text-gray-800 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F9A825]"
+                    className={`p-3 bg-gray-100 text-gray-800 rounded-xl border ${
+                        errors.title ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-[#F9A825]'
+                    } focus:outline-none focus:ring-2`}
                     autoComplete="off"
                 />
+                {errors.title && <span className="text-red-500 text-xs mt-1 font-medium">{errors.title}</span>}
             </div>
 
             {/* Notification Content Textarea */}
             <div className="flex flex-col">
                 <label htmlFor="notification-content" className="text-sm text-gray-600 mb-2">
-                    Notification Content
+                    Notification Content <span className="text-red-500">*</span>
                 </label>
                 <textarea
                     id="notification-content"
@@ -82,23 +100,28 @@ const NotificationForm = memo(({
                     onChange={handleInputChange}
                     placeholder="Enter The Details Of The Notification"
                     rows="5"
-                    className="p-3 bg-gray-100 text-gray-800 rounded-xl resize-none border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F9A825]"
+                    className={`p-3 bg-gray-100 text-gray-800 rounded-xl resize-none border ${
+                        errors.content ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-[#F9A825]'
+                    } focus:outline-none focus:ring-2`}
                     autoComplete="off"
                 ></textarea>
+                {errors.content && <span className="text-red-500 text-xs mt-1 font-medium">{errors.content}</span>}
             </div>
 
             {/* Type, Audience and Branch Selectors */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 <div className="flex flex-col">
                     <label htmlFor="notification-type" className="text-sm text-gray-600 mb-2">
-                        Type of Notification
+                        Type of Notification <span className="text-red-500">*</span>
                     </label>
                     <select
                         id="notification-type"
                         name="type"
                         value={formData.type || ''}
                         onChange={handleInputChange}
-                        className="p-3 bg-gray-100 text-gray-800 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none"
+                        className={`p-3 bg-gray-100 text-gray-800 rounded-xl border ${
+                            errors.type ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-[#F9A825]'
+                        } focus:outline-none focus:ring-2 appearance-none`}
                     >
                         <option value="">Choose Type</option>
                         <option value="Task Notification">Task Notification</option>
@@ -107,47 +130,94 @@ const NotificationForm = memo(({
                         <option value="Announcement">Announcement</option>
                         <option value="Reminder">Reminder</option>
                     </select>
+                    {errors.type && <span className="text-red-500 text-xs mt-1 font-medium">{errors.type}</span>}
+                </div>
+                <div className="flex flex-col relative" ref={branchDropdownRef}>
+                    <label className="text-sm text-gray-600 mb-2">
+                        Select Branches <span className="text-red-500">*</span>
+                    </label>
+                    <button
+                        type="button"
+                        onClick={() => setIsBranchDropdownOpen(!isBranchDropdownOpen)}
+                        className={`p-3 flex justify-between items-center bg-gray-100 text-gray-800 rounded-xl border ${
+                            errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-[#F9A825]'
+                        } focus:outline-none focus:ring-2 text-left min-h-[46px]`}
+                    >
+                        <span className="text-sm block truncate">
+                            {selectedBranches.length > 0
+                                ? `${selectedBranches.length} Branch${selectedBranches.length > 1 ? 'es' : ''} Selected`
+                                : "Select Branches"}
+                        </span>
+                        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    {errors.branch && <span className="text-red-500 text-xs mt-1 font-medium">{errors.branch}</span>}
+
+                    {isBranchDropdownOpen && (
+                        <div className="absolute left-0 right-0 mt-2 bg-white rounded-xl shadow-lg z-50 border border-gray-200 max-h-60 overflow-y-auto p-2 space-y-1">
+                            {branchesLoading ? (
+                                <p className="text-sm text-gray-500 p-2">Loading branches...</p>
+                            ) : branches.length === 0 ? (
+                                <p className="text-sm text-gray-500 p-2">No active branches available</p>
+                            ) : (
+                                branches.map(branch => {
+                                    const isSelected = selectedBranches.some(b => b._id === branch._id);
+                                    return (
+                                        <label
+                                            key={branch._id}
+                                            className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer select-none"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => {
+                                                    let newBranches;
+                                                    if (isSelected) {
+                                                        newBranches = selectedBranches.filter(b => b._id !== branch._id);
+                                                    } else {
+                                                        newBranches = [...selectedBranches, branch];
+                                                    }
+                                                    setSelectedBranches(newBranches);
+                                                }}
+                                                className="h-4 w-4 text-[#F9A825] border-gray-300 rounded focus:ring-[#F9A825]"
+                                            />
+                                            <span className="text-sm text-gray-700">{branch.branchName}</span>
+                                        </label>
+                                    );
+                                })
+                            )}
+                        </div>
+                    )}
                 </div>
                 <div className="flex flex-col">
                     <label htmlFor="audience" className="text-sm text-gray-600 mb-2">
-                        Select Audience
+                        Select Audience <span className="text-red-500">*</span> {selectedBranches.length === 0 && <span className="text-xs text-red-500 font-normal ml-2">(Select branches first)</span>}
                     </label>
                     <select
                         id="audience"
                         name="audience"
                         value={formData.audience || ''}
                         onChange={handleInputChange}
-                        className="p-3 bg-gray-100 text-gray-800 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none"
+                        className={`p-3 bg-gray-100 text-gray-800 rounded-xl border ${
+                            errors.audience ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-[#F9A825]'
+                        } focus:outline-none focus:ring-2 appearance-none disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed`}
+                        disabled={selectedBranches.length === 0}
                     >
-                        <option value="">Choose Audience</option>
-                        <option value="All interns">All interns</option>
-                        <option value="By batches">By batches</option>
-                        <option value="By courses">By courses</option>
-                        <option value="Individual interns">Individual interns</option>
-                    </select>
-                </div>
-                <div className="flex flex-col">
-                    <label htmlFor="branch-select" className="text-sm text-gray-600 mb-2">
-                        Select Branch
-                    </label>
-                    <select
-                        id="branch-select"
-                        name="branch"
-                        value={formData.branch || ''}
-                        onChange={handleInputChange}
-                        className="p-3 bg-gray-100 text-gray-800 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#F9A825] appearance-none"
-                    >
-                        <option value="">Choose Branch</option>
-                        {branchesLoading ? (
-                            <option disabled>Loading branches...</option>
+                        {selectedBranches.length === 0 ? (
+                            <option value="">Choose branches first</option>
                         ) : (
-                            branches.map((branch) => (
-                                <option key={branch._id} value={branch._id}>
-                                    {branch.branchName}
-                                </option>
-                            ))
+                            <>
+                                <option value="">Choose Audience</option>
+                                <option value="All interns">All interns</option>
+                                <option value="By batches">By batches</option>
+                                <option value="By Courses">By Courses</option>
+                                <option value="By Category">By Category</option>
+                                <option value="Individual interns">Individual interns</option>
+                            </>
                         )}
                     </select>
+                    {errors.audience && <span className="text-red-500 text-xs mt-1 font-medium">{errors.audience}</span>}
                 </div>
             </div>
 
@@ -155,10 +225,17 @@ const NotificationForm = memo(({
 
         {/* Audience Selection Section */}
         <div className="mt-6 sm:mt-8 border-t border-gray-200 pt-4 sm:pt-6">
-            <h4 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Audience Selection</h4>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3 sm:mb-4">
+                <h4 className="text-base sm:text-lg font-medium text-gray-900">Audience Selection</h4>
+                {errors.audienceDetails && (
+                    <span className="text-red-500 text-xs font-medium bg-red-50 px-3 py-1 rounded-lg border border-red-100 animate-pulse">
+                        {errors.audienceDetails}
+                    </span>
+                )}
+            </div>
 
-            {/* Intern Search Section - Only show when Individual interns is selected */}
-            {formData.audience === 'Individual interns' && (
+            {/* Intern Search Section - Only show when Individual interns or All interns is selected */}
+            {(formData.audience === 'Individual interns' || formData.audience === 'All interns') && (
                 <div className="mt-4 sm:mt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                         {/* Search Section */}
@@ -407,8 +484,8 @@ const NotificationForm = memo(({
                 </div>
             )}
 
-            {/* Course Search Section - Only show when By courses is selected */}
-            {formData.audience === 'By courses' && (
+            {/* Course Search Section - Only show when By Courses is selected */}
+            {formData.audience === 'By Courses' && (
                 <div className="mt-4 sm:mt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                         {/* Search Section */}
@@ -417,7 +494,7 @@ const NotificationForm = memo(({
                             <div className="relative">
                                 <input
                                     type="text"
-                                    placeholder="Search by course name or description..."
+                                    placeholder="Search by course name..."
                                     value={courseSearchTerm}
                                     onChange={(e) => handleCourseSearch(e.target.value)}
                                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F9A825] focus:border-transparent"
@@ -454,7 +531,7 @@ const NotificationForm = memo(({
                                                     <div className="flex items-center justify-between">
                                                         <div>
                                                             <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
-                                                            <div className="text-xs text-gray-500">{course.description || 'No description'}</div>
+                                                            <div className="text-xs text-gray-500">{course.duration}</div>
                                                         </div>
                                                         <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-[#F9A825] border-[#F9A825]' : 'border-gray-300'
                                                             }`}>
@@ -509,7 +586,6 @@ const NotificationForm = memo(({
                                                     </div>
                                                     <div>
                                                         <div className="text-sm font-medium text-gray-900">{course.courseName}</div>
-                                                        <div className="text-xs text-gray-500">{course.description || 'No description'}</div>
                                                     </div>
                                                 </div>
                                                 <button
@@ -531,6 +607,131 @@ const NotificationForm = memo(({
                     </div>
                 </div>
             )}
+
+            {/* Category Search Section - Only show when By Category is selected */}
+            {formData.audience === 'By Category' && (
+                <div className="mt-4 sm:mt-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        {/* Search Section */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Search Categories</label>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Search by category name..."
+                                    value={categorySearchTerm}
+                                    onChange={(e) => handleCategorySearch(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#F9A825] focus:border-transparent"
+                                />
+                                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                    <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd"></path>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            {/* Search Results */}
+                            <div className="mt-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+                                {categoriesLoading ? (
+                                    <div className="p-4 text-center text-gray-500">
+                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#F9A825] mx-auto mb-2"></div>
+                                        Loading categories...
+                                    </div>
+                                ) : filteredCategories.length === 0 ? (
+                                    <div className="p-4 text-center text-gray-500">
+                                        {categorySearchTerm ? 'No categories found matching your search.' : 'No categories available.'}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1">
+                                        {filteredCategories.map((category) => {
+                                            const isSelected = selectedCategories.find(selected => selected._id === category._id);
+                                            return (
+                                                <div
+                                                    key={category._id}
+                                                    onClick={() => handleCategorySelect(category)}
+                                                    className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 ${isSelected ? 'bg-[#F9A825]/10 border-[#F9A825]/20' : ''
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <div className="text-sm font-medium text-gray-900">{category.categoryName}</div>
+                                                        </div>
+                                                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-[#F9A825] border-[#F9A825]' : 'border-gray-300'
+                                                            }`}>
+                                                            {isSelected && (
+                                                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                                                                </svg>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Selected Categories */}
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Selected Categories ({selectedCategories.length})
+                                </label>
+                                {selectedCategories.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={handleClearAllCategories}
+                                        className="text-xs text-red-600 hover:text-red-800 font-medium"
+                                    >
+                                        Clear All
+                                    </button>
+                                )}
+                            </div>
+                            <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md bg-gray-50 p-3">
+                                {selectedCategories.length === 0 ? (
+                                    <div className="text-center text-gray-500 py-4">
+                                        <svg className="w-8 h-8 mx-auto mb-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.433 9.496 5 8 5c-4 0-8 3-8 8s4 8 8 8c.94 0 1.841-.213 2.684-.606m3.56-5.894C15.687 7.159 15.589 8 15 8s-1.5-.5-1.5-.5V5a2 2 00-2-2h-2c-1.5 0-2 1-2 2v2.5M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.402 2.572-1.065z"></path>
+                                        </svg>
+                                        No categories selected
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {selectedCategories.map((category) => (
+                                            <div key={category._id} className="flex items-center justify-between p-2 bg-white border border-gray-200 rounded-lg hover:bg-green-50 transition-colors">
+                                                <div className="flex items-center">
+                                                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                                        <span className="text-green-600 font-medium text-sm">
+                                                            {category.categoryName?.charAt(0)?.toUpperCase() || 'C'}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-900">{category.categoryName}</div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleCategorySelect(category)}
+                                                    className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors"
+                                                    title="Remove from selection"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
         </div>
 
         {/* Action Buttons */}
@@ -555,31 +756,42 @@ const NotificationForm = memo(({
 export const Notification = () => {
 
     const [activeTab, setActiveTab] = useState('notifications');
+    const [errors, setErrors] = useState({});
 
     // AdminService for fetching data
-    const { getBranchesData, createNotification, getBatchesData, getCoursesData, getInternsData, getNotificationsData, updateNotification, deleteNotification } = AdminService();
+    const { getBranchesData, createNotification, getBatchesData, getCoursesData, getCategoriesData, getInternsData, getNotificationsData, updateNotification, deleteNotification } = AdminService();
 
     // State for branches
     const [branches, setBranches] = useState([]);
     const [branchesLoading, setBranchesLoading] = useState(false);
+    const [selectedBranches, setSelectedBranches] = useState([]);
+    const [isBranchDropdownOpen, setIsBranchDropdownOpen] = useState(false);
 
     // State for audience selection (similar to TaskManagement)
     const [batches, setBatches] = useState([]);
     const [batchesLoading, setBatchesLoading] = useState(false);
-    const [courses, setCourses] = useState([]);
-    const [coursesLoading, setCoursesLoading] = useState(false);
     const [interns, setInterns] = useState([]);
     const [internsLoading, setInternsLoading] = useState(false);
 
     // Search terms for audience selection
     const [batchSearchTerm, setBatchSearchTerm] = useState('');
-    const [courseSearchTerm, setCourseSearchTerm] = useState('');
     const [internSearchTerm, setInternSearchTerm] = useState('');
 
     // Selected items for audience selection
     const [selectedBatches, setSelectedBatches] = useState([]);
-    const [selectedCourses, setSelectedCourses] = useState([]);
     const [selectedInterns, setSelectedInterns] = useState([]);
+
+    // States for courses
+    const [courses, setCourses] = useState([]);
+    const [coursesLoading, setCoursesLoading] = useState(false);
+    const [courseSearchTerm, setCourseSearchTerm] = useState('');
+    const [selectedCourses, setSelectedCourses] = useState([]);
+
+    // States for categories
+    const [categories, setCategories] = useState([]);
+    const [categoriesLoading, setCategoriesLoading] = useState(false);
+    const [categorySearchTerm, setCategorySearchTerm] = useState('');
+    const [selectedCategories, setSelectedCategories] = useState([]);
 
     // State for form data
     const [formData, setFormData] = useState({
@@ -587,7 +799,6 @@ export const Notification = () => {
         content: '',
         type: '',
         audience: '',
-        branch: '',
         pushNotification: true
     });
 
@@ -644,7 +855,8 @@ export const Notification = () => {
     const fetchBatches = async () => {
         try {
             setBatchesLoading(true);
-            const res = await getBatchesData();
+            const branchIds = selectedBranches.map(b => b._id).join(',');
+            const res = await getBatchesData(`page=1&limit=10000${branchIds ? `&branch=${branchIds}` : ''}`);
             const batchesData = res?.data || [];
             if (Array.isArray(batchesData)) {
                 setBatches(batchesData);
@@ -663,7 +875,7 @@ export const Notification = () => {
     const fetchCourses = async () => {
         try {
             setCoursesLoading(true);
-            const res = await getCoursesData();
+            const res = await getCoursesData('page=1&limit=10000');
             const coursesData = res?.data || [];
             if (Array.isArray(coursesData)) {
                 setCourses(coursesData);
@@ -678,11 +890,31 @@ export const Notification = () => {
         }
     };
 
+    // Fetch categories from backend
+    const fetchCategories = async () => {
+        try {
+            setCategoriesLoading(true);
+            const res = await getCategoriesData('page=1&limit=10000');
+            const categoriesData = res?.data || [];
+            if (Array.isArray(categoriesData)) {
+                setCategories(categoriesData);
+            } else {
+                setCategories([]);
+            }
+        } catch (err) {
+            console.error('Failed to load categories:', err);
+            setCategories([]);
+        } finally {
+            setCategoriesLoading(false);
+        }
+    };
+
     // Fetch interns from backend
     const fetchInterns = async () => {
         try {
             setInternsLoading(true);
-            const res = await getInternsData();
+            const branchIds = selectedBranches.map(b => b._id).join(',');
+            const res = await getInternsData(`page=1&limit=10000&courseStatus=Ongoing${branchIds ? `&branch=${branchIds}` : ''}`);
             const internsData = res?.data || [];
             if (Array.isArray(internsData)) {
                 setInterns(internsData);
@@ -726,11 +958,77 @@ export const Notification = () => {
         }
     };
 
+    const branchDropdownRef = useRef(null);
+
     // Load branches and notifications when component mounts
     useEffect(() => {
         fetchBranches();
         fetchNotifications();
     }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (branchDropdownRef.current && !branchDropdownRef.current.contains(event.target)) {
+                setIsBranchDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        if (selectedBranches.length > 0) {
+            // Clear batches that don't match selected branches
+            setSelectedBatches(prev => prev.filter(batch => {
+                const branchId = batch.branch?._id || batch.branch;
+                return selectedBranches.some(b => b._id === branchId);
+            }));
+
+            // Clear interns that don't match selected branches
+            setSelectedInterns(prev => prev.filter(intern => {
+                const branchId = intern.branch?._id || intern.branch;
+                return selectedBranches.some(b => b._id === branchId);
+            }));
+
+            // Clear categories that don't match selected branches
+            setSelectedCategories(prev => prev.filter(category => {
+                return selectedBranches.some(b => {
+                    const catBranches = category.branch || [];
+                    return catBranches.some(cb => {
+                        const cbId = cb?._id || cb;
+                        return b._id === cbId;
+                    });
+                });
+            }));
+
+            // Fetch filtered data based on active audience type when branches are toggled
+            if (formData.audience === 'Individual interns' || formData.audience === 'All interns') {
+                fetchInterns();
+            } else if (formData.audience === 'By batches') {
+                fetchBatches();
+            } else if (formData.audience === 'By Category') {
+                fetchCategories();
+            }
+        } else {
+            // If no branches are selected, clear audience selection and form audience field
+            setSelectedBatches([]);
+            setSelectedInterns([]);
+            setSelectedCourses([]);
+            setSelectedCategories([]);
+            setFormData(prev => ({ ...prev, audience: '' }));
+        }
+    }, [selectedBranches, formData.audience]);
+
+    useEffect(() => {
+        if (formData.audience === 'All interns' && interns.length > 0) {
+            const ongoingInterns = interns.filter(intern => {
+                const branchId = intern.branch?._id || intern.branch;
+                const matchesBranch = selectedBranches.some(b => b._id === branchId);
+                return intern.courseStatus === 'Ongoing' && matchesBranch;
+            });
+            setSelectedInterns(ongoingInterns);
+        }
+    }, [formData.audience, interns, selectedBranches]);
 
     const isFirstRender = useRef(true);
 
@@ -754,6 +1052,18 @@ export const Notification = () => {
     // Handle form input changes
     const handleInputChange = useCallback((e) => {
         const { name, value, type, checked } = e.target;
+
+        // Clear error for the current field as the user types/interacts
+        setErrors(prevErrors => {
+            if (!prevErrors[name] && !prevErrors.audienceDetails) return prevErrors;
+            const newErrors = { ...prevErrors };
+            delete newErrors[name];
+            if (name === 'audience') {
+                delete newErrors.audienceDetails;
+            }
+            return newErrors;
+        });
+
         setFormData(prev => {
             const newData = {
                 ...prev,
@@ -763,37 +1073,86 @@ export const Notification = () => {
             // Clear selections when audience changes
             if (name === 'audience') {
                 setSelectedBatches([]);
-                setSelectedCourses([]);
                 setSelectedInterns([]);
+                setSelectedCourses([]);
+                setSelectedCategories([]);
                 setBatchSearchTerm('');
-                setCourseSearchTerm('');
                 setInternSearchTerm('');
+                setCourseSearchTerm('');
+                setCategorySearchTerm('');
 
                 // Fetch data based on audience selection
-                if (value === 'Individual interns' && interns.length === 0) {
+                if ((value === 'Individual interns' || value === 'All interns') && interns.length === 0) {
                     fetchInterns();
-                } else if (value === 'By courses' && courses.length === 0) {
-                    fetchCourses();
                 } else if (value === 'By batches' && batches.length === 0) {
                     fetchBatches();
+                } else if (value === 'By Courses' && courses.length === 0) {
+                    fetchCourses();
+                } else if (value === 'By Category' && categories.length === 0) {
+                    fetchCategories();
                 }
             }
 
             return newData;
         });
-    }, [interns.length, courses.length, batches.length]);
+    }, [interns.length, batches.length, courses.length, categories.length]);
+
+    // Form validation logic
+    const validateForm = useCallback(() => {
+        const newErrors = {};
+        
+        if (!formData.title?.trim()) {
+            newErrors.title = 'Notification title is required';
+        } else if (formData.title.trim().length < 3) {
+            newErrors.title = 'Title must be at least 3 characters long';
+        } else if (formData.title.trim().length > 100) {
+            newErrors.title = 'Title must not exceed 100 characters';
+        }
+
+        if (!formData.content?.trim()) {
+            newErrors.content = 'Notification content is required';
+        } else if (formData.content.trim().length < 10) {
+            newErrors.content = 'Content must be at least 10 characters long';
+        }
+
+        if (!formData.type) {
+            newErrors.type = 'Notification type is required';
+        }
+
+        if (selectedBranches.length === 0) {
+            newErrors.branch = 'At least one branch must be selected';
+        }
+
+        if (!formData.audience) {
+            newErrors.audience = 'Audience selection is required';
+        } else {
+            if (formData.audience === 'By batches' && selectedBatches.length === 0) {
+                newErrors.audienceDetails = 'Please select at least one batch';
+            } else if (formData.audience === 'Individual interns' && selectedInterns.length === 0) {
+                newErrors.audienceDetails = 'Please select at least one intern';
+            } else if (formData.audience === 'By Courses' && selectedCourses.length === 0) {
+                newErrors.audienceDetails = 'Please select at least one course';
+            } else if (formData.audience === 'By Category' && selectedCategories.length === 0) {
+                newErrors.audienceDetails = 'Please select at least one category';
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    }, [formData, selectedBranches, selectedBatches, selectedInterns, selectedCourses, selectedCategories]);
 
     // Function to handle form submission
     const handlePublish = useCallback(async () => {
         try {
-            setIsSubmitting(true);
-
-            // Validate required fields
-            if (!formData.title || !formData.content || !formData.type || !formData.audience) {
-                setModalMessage('Please fill in all required fields (Title, Content, Type, and Audience).');
+            // Validate form
+            const isValid = validateForm();
+            if (!isValid) {
+                setModalMessage('Please correct the highlighted errors in the form.');
                 setShowModal(true);
                 return;
             }
+
+            setIsSubmitting(true);
 
             // Prepare data for API
             const notificationData = {
@@ -801,10 +1160,11 @@ export const Notification = () => {
                 content: formData.content,
                 type: formData.type,
                 audience: formData.audience,
-                branch: formData.branch || null,
+                branch: selectedBranches.map(b => b._id),
                 pushNotification: formData.pushNotification,
                 batches: selectedBatches.length > 0 ? selectedBatches.map(batch => batch._id) : [],
                 courses: selectedCourses.length > 0 ? selectedCourses.map(course => course._id) : [],
+                categories: selectedCategories.length > 0 ? selectedCategories.map(cat => cat._id) : [],
                 interns: [], // This field is for general interns, not individual ones
                 individualInterns: selectedInterns.length > 0 ? selectedInterns.map(intern => intern._id) : []
             };
@@ -828,16 +1188,19 @@ export const Notification = () => {
                     content: '',
                     type: '',
                     audience: '',
-                    branch: '',
                     pushNotification: true
                 });
+                setErrors({}); // Reset error messages
                 // Clear all selected items
                 setSelectedBatches([]);
-                setSelectedCourses([]);
                 setSelectedInterns([]);
+                setSelectedBranches([]);
+                setSelectedCourses([]);
+                setSelectedCategories([]);
                 setBatchSearchTerm('');
-                setCourseSearchTerm('');
                 setInternSearchTerm('');
+                setCourseSearchTerm('');
+                setCategorySearchTerm('');
                 // Clear edit mode
                 setEditingNotification(null);
                 setIsEditMode(false);
@@ -853,7 +1216,7 @@ export const Notification = () => {
         } finally {
             setIsSubmitting(false);
         }
-    }, [formData, createNotification]);
+    }, [formData, createNotification, isEditMode, editingNotification, selectedBatches, selectedInterns, selectedBranches, selectedCourses, selectedCategories, currentPage, fetchNotifications, validateForm]);
 
     // Function to handle form cancellation
     const handleCancel = useCallback(() => {
@@ -869,16 +1232,19 @@ export const Notification = () => {
             content: '',
             type: '',
             audience: '',
-            branch: '',
             pushNotification: true
         });
+        setErrors({}); // Reset error messages
         // Clear all selected items
         setSelectedBatches([]);
-        setSelectedCourses([]);
         setSelectedInterns([]);
+        setSelectedBranches([]);
+        setSelectedCourses([]);
+        setSelectedCategories([]);
         setBatchSearchTerm('');
-        setCourseSearchTerm('');
         setInternSearchTerm('');
+        setCourseSearchTerm('');
+        setCategorySearchTerm('');
         // Clear edit mode
         setEditingNotification(null);
         setIsEditMode(false);
@@ -893,25 +1259,26 @@ export const Notification = () => {
 
     const handleBatchSelect = useCallback((batch) => {
         const isSelected = selectedBatches.find(selected => selected._id === batch._id);
+        let updated;
         if (isSelected) {
-            setSelectedBatches(selectedBatches.filter(selected => selected._id !== batch._id));
+            updated = selectedBatches.filter(selected => selected._id !== batch._id);
         } else {
-            setSelectedBatches([...selectedBatches, batch]);
+            updated = [...selectedBatches, batch];
+        }
+        setSelectedBatches(updated);
+
+        // Clear error if selection is valid
+        if (updated.length > 0) {
+            setErrors(prev => {
+                if (!prev.audienceDetails) return prev;
+                const newErrors = { ...prev };
+                delete newErrors.audienceDetails;
+                return newErrors;
+            });
         }
     }, [selectedBatches]);
 
-    const handleCourseSearch = useCallback((searchTerm) => {
-        setCourseSearchTerm(searchTerm);
-    }, []);
 
-    const handleCourseSelect = useCallback((course) => {
-        const isSelected = selectedCourses.find(selected => selected._id === course._id);
-        if (isSelected) {
-            setSelectedCourses(selectedCourses.filter(selected => selected._id !== course._id));
-        } else {
-            setSelectedCourses([...selectedCourses, course]);
-        }
-    }, [selectedCourses]);
 
     const handleInternSearch = useCallback((searchTerm) => {
         setInternSearchTerm(searchTerm);
@@ -919,10 +1286,22 @@ export const Notification = () => {
 
     const handleInternSelect = useCallback((intern) => {
         const isSelected = selectedInterns.find(selected => selected._id === intern._id);
+        let updated;
         if (isSelected) {
-            setSelectedInterns(selectedInterns.filter(selected => selected._id !== intern._id));
+            updated = selectedInterns.filter(selected => selected._id !== intern._id);
         } else {
-            setSelectedInterns([...selectedInterns, intern]);
+            updated = [...selectedInterns, intern];
+        }
+        setSelectedInterns(updated);
+
+        // Clear error if selection is valid
+        if (updated.length > 0) {
+            setErrors(prev => {
+                if (!prev.audienceDetails) return prev;
+                const newErrors = { ...prev };
+                delete newErrors.audienceDetails;
+                return newErrors;
+            });
         }
     }, [selectedInterns]);
 
@@ -931,18 +1310,75 @@ export const Notification = () => {
         setSelectedBatches([]);
     }, []);
 
+
+
+    const handleClearAllInterns = useCallback(() => {
+        setSelectedInterns([]);
+    }, []);
+
+    const handleCourseSearch = useCallback((searchTerm) => {
+        setCourseSearchTerm(searchTerm);
+    }, []);
+
+    const handleCourseSelect = useCallback((course) => {
+        const isSelected = selectedCourses.find(selected => selected._id === course._id);
+        let updated;
+        if (isSelected) {
+            updated = selectedCourses.filter(selected => selected._id !== course._id);
+        } else {
+            updated = [...selectedCourses, course];
+        }
+        setSelectedCourses(updated);
+
+        // Clear error if selection is valid
+        if (updated.length > 0) {
+            setErrors(prev => {
+                if (!prev.audienceDetails) return prev;
+                const newErrors = { ...prev };
+                delete newErrors.audienceDetails;
+                return newErrors;
+            });
+        }
+    }, [selectedCourses]);
+
     const handleClearAllCourses = useCallback(() => {
         setSelectedCourses([]);
     }, []);
 
-    const handleClearAllInterns = useCallback(() => {
-        setSelectedInterns([]);
+    const handleCategorySearch = useCallback((searchTerm) => {
+        setCategorySearchTerm(searchTerm);
+    }, []);
+
+    const handleCategorySelect = useCallback((category) => {
+        const isSelected = selectedCategories.find(selected => selected._id === category._id);
+        let updated;
+        if (isSelected) {
+            updated = selectedCategories.filter(selected => selected._id !== category._id);
+        } else {
+            updated = [...selectedCategories, category];
+        }
+        setSelectedCategories(updated);
+
+        // Clear error if selection is valid
+        if (updated.length > 0) {
+            setErrors(prev => {
+                if (!prev.audienceDetails) return prev;
+                const newErrors = { ...prev };
+                delete newErrors.audienceDetails;
+                return newErrors;
+            });
+        }
+    }, [selectedCategories]);
+
+    const handleClearAllCategories = useCallback(() => {
+        setSelectedCategories([]);
     }, []);
 
     // Edit notification handler
     const handleEditNotification = useCallback((notification) => {
         setEditingNotification(notification);
         setIsEditMode(true);
+        setErrors({}); // Reset error messages
 
         // Populate form data
         setFormData({
@@ -950,17 +1386,32 @@ export const Notification = () => {
             content: notification.content || '',
             type: notification.type || '',
             audience: notification.audience || '',
-            branch: notification.branch?._id || notification.branch || '',
             pushNotification: notification.pushNotification !== undefined ? notification.pushNotification : true
         });
 
         // Clear all selections first
         setSelectedBatches([]);
-        setSelectedCourses([]);
         setSelectedInterns([]);
+        setSelectedBranches([]);
+        setSelectedCourses([]);
+        setSelectedCategories([]);
         setBatchSearchTerm('');
-        setCourseSearchTerm('');
         setInternSearchTerm('');
+        setCourseSearchTerm('');
+        setCategorySearchTerm('');
+
+        // Set selected branches based on notification branch array
+        if (notification.branch) {
+            const branchArray = Array.isArray(notification.branch) ? notification.branch : [notification.branch];
+            const selectedBranchObjects = branchArray.map(b => {
+                if (typeof b === 'object' && b._id) {
+                    return b;
+                } else {
+                    return branches.find(x => x._id === b);
+                }
+            }).filter(Boolean);
+            setSelectedBranches(selectedBranchObjects);
+        }
 
         // Set selected items based on notification data
         if (notification.audience === "By batches" && notification.batches && notification.batches.length > 0) {
@@ -974,7 +1425,7 @@ export const Notification = () => {
             setSelectedBatches(selectedBatchObjects);
         }
 
-        if (notification.audience === "By courses" && notification.courses && notification.courses.length > 0) {
+        if (notification.audience === "By Courses" && notification.courses && notification.courses.length > 0) {
             const selectedCourseObjects = notification.courses.map(course => {
                 if (typeof course === 'object' && course._id) {
                     return course;
@@ -985,7 +1436,18 @@ export const Notification = () => {
             setSelectedCourses(selectedCourseObjects);
         }
 
-        if (notification.audience === "Individual interns" && notification.individualInterns && notification.individualInterns.length > 0) {
+        if (notification.audience === "By Category" && notification.categories && notification.categories.length > 0) {
+            const selectedCategoryObjects = notification.categories.map(category => {
+                if (typeof category === 'object' && category._id) {
+                    return category;
+                } else {
+                    return categories.find(c => c._id === category);
+                }
+            }).filter(Boolean);
+            setSelectedCategories(selectedCategoryObjects);
+        }
+
+        if ((notification.audience === "Individual interns" || notification.audience === "All interns") && notification.individualInterns && notification.individualInterns.length > 0) {
             const selectedInternObjects = notification.individualInterns.map(intern => {
                 if (typeof intern === 'object' && intern._id) {
                     return intern;
@@ -997,18 +1459,21 @@ export const Notification = () => {
         }
 
         // Load data if needed based on audience type
-        if (notification.audience === "Individual interns" && interns.length === 0) {
+        if ((notification.audience === "Individual interns" || notification.audience === "All interns") && interns.length === 0) {
             fetchInterns();
-        }
-        if (notification.audience === "By courses" && courses.length === 0) {
-            fetchCourses();
         }
         if (notification.audience === "By batches" && batches.length === 0) {
             fetchBatches();
         }
+        if (notification.audience === "By Courses" && courses.length === 0) {
+            fetchCourses();
+        }
+        if (notification.audience === "By Category" && categories.length === 0) {
+            fetchCategories();
+        }
 
         setActiveTab('new-notification');
-    }, [batches, courses, interns]);
+    }, [batches, interns, branches, courses, categories]);
 
     // Cancel edit handler
     const handleCancelEdit = useCallback(() => {
@@ -1019,15 +1484,18 @@ export const Notification = () => {
             content: '',
             type: '',
             audience: '',
-            branch: '',
             pushNotification: true
         });
+        setErrors({}); // Reset error messages
         setSelectedBatches([]);
-        setSelectedCourses([]);
         setSelectedInterns([]);
+        setSelectedBranches([]);
+        setSelectedCourses([]);
+        setSelectedCategories([]);
         setBatchSearchTerm('');
-        setCourseSearchTerm('');
         setInternSearchTerm('');
+        setCourseSearchTerm('');
+        setCategorySearchTerm('');
         setActiveTab('notifications');
     }, []);
 
@@ -1035,6 +1503,7 @@ export const Notification = () => {
         if (tabName === 'notifications') {
             handleCancelEdit();
         } else {
+            setErrors({}); // Reset error messages
             setActiveTab(tabName);
         }
     }, [handleCancelEdit]);
@@ -1113,20 +1582,46 @@ export const Notification = () => {
     }, [currentPage, paginationInfo, handlePageChange]);
 
     // Filtered data for search
-    const filteredBatches = batches.filter(batch =>
-        batch.batchName?.toLowerCase().includes(batchSearchTerm.toLowerCase()) ||
-        batch.description?.toLowerCase().includes(batchSearchTerm.toLowerCase())
-    );
+    const filteredBatches = batches.filter(batch => {
+        const branchId = batch.branch?._id || batch.branch;
+        const matchesBranch = selectedBranches.some(b => b._id === branchId);
+        const matchesSearch = batch.batchName?.toLowerCase().includes(batchSearchTerm.toLowerCase()) ||
+                              batch.description?.toLowerCase().includes(batchSearchTerm.toLowerCase());
+        return matchesBranch && matchesSearch;
+    });
 
-    const filteredCourses = courses.filter(course =>
-        course.courseName?.toLowerCase().includes(courseSearchTerm.toLowerCase()) ||
-        course.description?.toLowerCase().includes(courseSearchTerm.toLowerCase())
-    );
 
-    const filteredInterns = interns.filter(intern =>
-        intern.fullName?.toLowerCase().includes(internSearchTerm.toLowerCase()) ||
-        intern.email?.toLowerCase().includes(internSearchTerm.toLowerCase())
-    );
+
+    const filteredInterns = interns.filter(intern => {
+        const branchId = intern.branch?._id || intern.branch;
+        const matchesBranch = selectedBranches.some(b => b._id === branchId);
+        const matchesSearch = intern.fullName?.toLowerCase().includes(internSearchTerm.toLowerCase()) ||
+                              intern.email?.toLowerCase().includes(internSearchTerm.toLowerCase());
+        const isOngoing = intern.courseStatus === 'Ongoing';
+        return matchesBranch && matchesSearch && isOngoing;
+    });
+
+    const filteredCourses = courses.filter(course => {
+        const matchesSearch = course.courseName?.toLowerCase().includes(courseSearchTerm.toLowerCase()) ||
+                              course.description?.toLowerCase().includes(courseSearchTerm.toLowerCase());
+        return matchesSearch;
+    });
+
+    const filteredCategories = categories.filter(category => {
+        const matchesSearch = category.categoryName?.toLowerCase().includes(categorySearchTerm.toLowerCase());
+        const matchesBranch = selectedBranches.length > 0 && (
+            !category.branch ||
+            category.branch.length === 0 ||
+            selectedBranches.some(b => {
+                const catBranches = category.branch || [];
+                return catBranches.some(cb => {
+                    const cbId = cb?._id || cb;
+                    return b._id === cbId;
+                });
+            })
+        );
+        return matchesSearch && matchesBranch;
+    });
 
     // Component for the "Notifications" list view
     const NotificationsView = () => {
@@ -1224,7 +1719,8 @@ export const Notification = () => {
                         <option value="">All Audience</option>
                         <option value="All interns">All interns</option>
                         <option value="By batches">By batches</option>
-                        <option value="By courses">By courses</option>
+                        <option value="By Courses">By Courses</option>
+                        <option value="By Category">By Category</option>
                         <option value="Individual interns">Individual interns</option>
                     </select>
                     <select
@@ -1304,7 +1800,15 @@ export const Notification = () => {
                                                 </span>
                                             </td>
                                             <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
-                                                {notification.branch ? (
+                                                {Array.isArray(notification.branch) && notification.branch.length > 0 ? (
+                                                    <div className="flex flex-wrap justify-center gap-1">
+                                                        {notification.branch.map((b, idx) => (
+                                                            <span key={b._id || idx} className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                                                                {b.branchName || b}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : notification.branch && !Array.isArray(notification.branch) ? (
                                                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
                                                         {notification.branch.branchName || notification.branch}
                                                     </span>
@@ -1379,11 +1883,19 @@ export const Notification = () => {
                                             <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                                                 {notification.audience}
                                             </span>
-                                            {notification.branch && (
+                                            {Array.isArray(notification.branch) && notification.branch.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1 mt-1">
+                                                    {notification.branch.map((b, idx) => (
+                                                        <span key={b._id || idx} className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                                                            {b.branchName || b}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            ) : notification.branch && !Array.isArray(notification.branch) ? (
                                                 <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
                                                     {notification.branch.branchName || notification.branch}
                                                 </span>
-                                            )}
+                                            ) : null}
                                         </div>
                                         <div className="text-xs text-gray-500 mt-2">
                                             {notification.createdAt ? new Date(notification.createdAt).toLocaleDateString() : 'N/A'} {notification.createdAt ? new Date(notification.createdAt).toLocaleTimeString() : 'N/A'}
@@ -1565,6 +2077,7 @@ export const Notification = () => {
                 {activeTab === 'new-notification' && (
                     <NotificationForm
                         formData={formData}
+                        errors={errors}
                         handleInputChange={handleInputChange}
                         handlePublish={handlePublish}
                         handleCancel={handleCancel}
@@ -1573,31 +2086,46 @@ export const Notification = () => {
                         isSubmitting={isSubmitting}
                         isEditMode={isEditMode}
                         editingNotification={editingNotification}
+                        // Branch multi-select props
+                        selectedBranches={selectedBranches}
+                        setSelectedBranches={setSelectedBranches}
+                        isBranchDropdownOpen={isBranchDropdownOpen}
+                        setIsBranchDropdownOpen={setIsBranchDropdownOpen}
+                        branchDropdownRef={branchDropdownRef}
                         // Audience selection props
                         batches={batches}
                         batchesLoading={batchesLoading}
-                        courses={courses}
-                        coursesLoading={coursesLoading}
                         interns={interns}
                         internsLoading={internsLoading}
                         selectedBatches={selectedBatches}
-                        selectedCourses={selectedCourses}
                         selectedInterns={selectedInterns}
                         batchSearchTerm={batchSearchTerm}
-                        courseSearchTerm={courseSearchTerm}
                         internSearchTerm={internSearchTerm}
                         handleBatchSearch={handleBatchSearch}
-                        handleCourseSearch={handleCourseSearch}
                         handleInternSearch={handleInternSearch}
                         handleBatchSelect={handleBatchSelect}
-                        handleCourseSelect={handleCourseSelect}
                         handleInternSelect={handleInternSelect}
                         handleClearAllBatches={handleClearAllBatches}
-                        handleClearAllCourses={handleClearAllCourses}
                         handleClearAllInterns={handleClearAllInterns}
                         filteredBatches={filteredBatches}
-                        filteredCourses={filteredCourses}
                         filteredInterns={filteredInterns}
+                        // Courses and categories props
+                        courses={courses}
+                        coursesLoading={coursesLoading}
+                        selectedCourses={selectedCourses}
+                        courseSearchTerm={courseSearchTerm}
+                        handleCourseSearch={handleCourseSearch}
+                        handleCourseSelect={handleCourseSelect}
+                        handleClearAllCourses={handleClearAllCourses}
+                        filteredCourses={filteredCourses}
+                        categories={categories}
+                        categoriesLoading={categoriesLoading}
+                        selectedCategories={selectedCategories}
+                        categorySearchTerm={categorySearchTerm}
+                        handleCategorySearch={handleCategorySearch}
+                        handleCategorySelect={handleCategorySelect}
+                        handleClearAllCategories={handleClearAllCategories}
+                        filteredCategories={filteredCategories}
                     />
                 )}
             </div>
@@ -1693,7 +2221,12 @@ export const Notification = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 text-xs sm:text-sm">
                                 <p className="leading-6"><span className="font-semibold text-gray-900">Type:</span> <span className="text-gray-600">{viewingNotification.type || 'N/A'}</span></p>
                                 <p className="leading-6"><span className="font-semibold text-gray-900">Audience:</span> <span className="text-gray-600">{viewingNotification.audience || 'N/A'}</span></p>
-                                <p className="leading-6"><span className="font-semibold text-gray-900">Branch:</span> <span className="text-gray-600">{viewingNotification.branch?.branchName || (typeof viewingNotification.branch === 'string' ? viewingNotification.branch : 'N/A')}</span></p>
+                                <p className="leading-6"><span className="font-semibold text-gray-900">Branch:</span> <span className="text-gray-600">
+                                    {Array.isArray(viewingNotification.branch)
+                                        ? viewingNotification.branch.map(b => typeof b === 'object' ? b.branchName : b).join(', ')
+                                        : viewingNotification.branch?.branchName || (typeof viewingNotification.branch === 'string' ? viewingNotification.branch : 'N/A')
+                                    }
+                                </span></p>
 
                                 <p className="leading-6"><span className="font-semibold text-gray-900">Created:</span> <span className="text-gray-600">{viewingNotification.createdAt ? new Date(viewingNotification.createdAt).toLocaleString() : 'N/A'}</span></p>
                                 {viewingNotification._id && (
@@ -1708,7 +2241,7 @@ export const Notification = () => {
                                 </div>
                             )}
 
-                            {(viewingNotification.batches?.length || viewingNotification.courses?.length || viewingNotification.individualInterns?.length) ? (
+                            {(viewingNotification.batches?.length || viewingNotification.courses?.length || viewingNotification.categories?.length || viewingNotification.individualInterns?.length) ? (
                                 <div className="mt-5">
                                     <h2 className="text-[#F9A825] font-semibold mb-3 text-base italic">Target Audience Details</h2>
                                     <div className="flex flex-wrap gap-2">
@@ -1720,6 +2253,11 @@ export const Notification = () => {
                                         {Array.isArray(viewingNotification.courses) && viewingNotification.courses.map((c, i) => (
                                             <span key={`c-${i}`} className="inline-flex items-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 rounded-full border border-purple-200">
                                                 {typeof c === 'object' ? c.courseName : c}
+                                            </span>
+                                        ))}
+                                        {Array.isArray(viewingNotification.categories) && viewingNotification.categories.map((cat, i) => (
+                                            <span key={`cat-${i}`} className="inline-flex items-center px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-100 rounded-full border border-indigo-200">
+                                                {typeof cat === 'object' ? cat.categoryName : cat}
                                             </span>
                                         ))}
                                         {Array.isArray(viewingNotification.individualInterns) && viewingNotification.individualInterns.map((s, i) => (

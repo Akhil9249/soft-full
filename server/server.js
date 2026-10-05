@@ -30,6 +30,7 @@ const taskSubmissionRoutes = require("./routes/taskSubmissionRoutes");
 const materialRoutes = require("./routes/materialRoutes");
 const internsAttendanceRoutes = require("./routes/internsAttendanceRoutes");
 const mentorCardRoutes = require("./routes/mentorCardRoutes");
+const monthlyCardRoutes = require("./routes/monthlyCardRoutes");
 const leaveRequestRoutes = require("./routes/leaveRequestRoutes");
 
 const errorHandle = require("./middlewares/errorHandle");
@@ -100,6 +101,7 @@ app.use("/api/task-submissions", taskSubmissionRoutes);
 app.use("/api/materials", materialRoutes);
 app.use("/api/interns-attendance", internsAttendanceRoutes);
 app.use("/api/mentor-card", mentorCardRoutes);
+app.use("/api/monthly-card", monthlyCardRoutes);
 app.use("/api/leave-requests", leaveRequestRoutes);
 
 // Error handler

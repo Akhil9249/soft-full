@@ -29,12 +29,13 @@ const deleteFromCloudinary = async (url) => {
 };
 
 // Helper function to validate that only one audience field has data
-const validateSingleAudienceField = (batches, categories, interns, individualInterns) => {
+const validateSingleAudienceField = (batches, categories, interns, individualInterns, courses) => {
   const audienceFields = [
     { field: 'batches', data: batches },
     { field: 'categories', data: categories },
     { field: 'interns', data: interns },
-    { field: 'individualInterns', data: individualInterns }
+    { field: 'individualInterns', data: individualInterns },
+    { field: 'courses', data: courses }
   ];
 
   const fieldsWithData = audienceFields.filter(field => field.data && field.data.length > 0);
@@ -68,7 +69,8 @@ const createTask = async (req, res) => {
       batches,
       categories,
       interns,
-      individualInterns
+      individualInterns,
+      courses
     } = req.body;
 
     console.log("Creating task:", {
@@ -87,7 +89,8 @@ const createTask = async (req, res) => {
       batches,
       categories,
       interns,
-      individualInterns
+      individualInterns,
+      courses
     });
 
     // Validate required fields
@@ -123,11 +126,16 @@ const createTask = async (req, res) => {
       });
     }
 
+    // Normalize audience values
+    let activeAudience = audience;
+    if (audience === "By category") activeAudience = "By Category";
+    if (audience === "By course") activeAudience = "By Courses";
+
     // Validate audience enum
-    if (!["By batches", "By category", "Individual interns"].includes(audience)) {
+    if (!["All interns", "By batches", "By Courses", "By Category", "Individual interns"].includes(activeAudience)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'By batches', 'By category', 'Individual interns'"
+        message: "Audience must be one of: 'All interns', 'By batches', 'By Courses', 'By Category', 'Individual interns'"
       });
     }
 
@@ -136,31 +144,41 @@ const createTask = async (req, res) => {
     let cleanCategories = [];
     let cleanInterns = [];
     let cleanIndividualInterns = [];
+    let cleanCourses = [];
 
-    if (audience === "By batches") {
+    if (activeAudience === "By batches") {
       cleanBatches = batches || [];
-    } else if (audience === "By category") {
+    } else if (activeAudience === "By Category") {
       cleanCategories = categories || [];
-    } else if (audience === "Individual interns") {
+    } else if (activeAudience === "By Courses") {
+      cleanCourses = courses || [];
+    } else if (activeAudience === "Individual interns") {
       cleanIndividualInterns = individualInterns || [];
     }
 
     // Validate audience-specific fields
-    if (audience === "By batches" && cleanBatches.length === 0) {
+    if (activeAudience === "By batches" && cleanBatches.length === 0) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Batches are required when audience is 'By batches'"
       });
     }
 
-    if (audience === "By category" && cleanCategories.length === 0) {
+    if (activeAudience === "By Category" && cleanCategories.length === 0) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Categories are required when audience is 'By category'"
+        message: "Categories are required when audience is 'By Category'"
       });
     }
 
-    if (audience === "Individual interns" && cleanIndividualInterns.length === 0) {
+    if (activeAudience === "By Courses" && cleanCourses.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "Courses are required when audience is 'By Courses'"
+      });
+    }
+
+    if (activeAudience === "Individual interns" && cleanIndividualInterns.length === 0) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
         message: "Individual interns are required when audience is 'Individual interns'"
@@ -168,7 +186,7 @@ const createTask = async (req, res) => {
     }
 
     // Validate that only one audience field can have data at a time (using cleaned data)
-    const audienceValidation = validateSingleAudienceField(cleanBatches, cleanCategories, cleanInterns, cleanIndividualInterns);
+    const audienceValidation = validateSingleAudienceField(cleanBatches, cleanCategories, cleanInterns, cleanIndividualInterns, cleanCourses);
     if (!audienceValidation.isValid) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
@@ -216,12 +234,13 @@ const createTask = async (req, res) => {
       attachments: attachmentsValue,
       totalMarks: totalMarks ? Number(totalMarks) : 0,
       status: status || "Pending",
-      audience: audience,
+      audience: activeAudience,
       branch: branchArray,
       batches: cleanBatches,
       categories: cleanCategories,
       interns: cleanInterns,
-      individualInterns: cleanIndividualInterns
+      individualInterns: cleanIndividualInterns,
+      courses: cleanCourses
     });
 
     res.status(201).json({
@@ -302,6 +321,7 @@ const getTasks = async (req, res) => {
       .populate('branch', 'branchName location')
       .populate('batches', 'batchName description branch')
       .populate('categories', 'categoryName')
+      .populate('courses', 'courseName description')
       .populate({
         path: 'interns',
         select: 'fullName email branch courseStatus',
@@ -343,6 +363,7 @@ const getTaskById = async (req, res) => {
       .populate('branch', 'branchName location')
       .populate('batches', 'batchName description branch')
       .populate('categories', 'categoryName')
+      .populate('courses', 'courseName description')
       .populate({
         path: 'interns',
         select: 'fullName email branch courseStatus',
@@ -394,7 +415,8 @@ const updateTask = async (req, res) => {
       batches,
       categories,
       interns,
-      individualInterns
+      individualInterns,
+      courses
     } = req.body;
 
     // Validate taskType enum if provided
@@ -405,16 +427,21 @@ const updateTask = async (req, res) => {
       });
     }
 
+    // Normalize audience values if provided
+    let normalizedAudience = audience;
+    if (audience === "By category") normalizedAudience = "By Category";
+    if (audience === "By course") normalizedAudience = "By Courses";
+
     // Validate audience enum if provided
-    if (audience && !["By batches", "By category", "Individual interns"].includes(audience)) {
+    if (normalizedAudience && !["All interns", "By batches", "By Courses", "By Category", "Individual interns"].includes(normalizedAudience)) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Audience must be one of: 'By batches', 'By category', 'Individual interns'"
+        message: "Audience must be one of: 'All interns', 'By batches', 'By Courses', 'By Category', 'Individual interns'"
       });
     }
 
-    const activeAudience = audience || currentTask.audience;
-    const isAudienceChanged = audience && audience !== currentTask.audience;
+    const activeAudience = normalizedAudience || currentTask.audience;
+    const isAudienceChanged = normalizedAudience && normalizedAudience !== currentTask.audience;
 
     // Clean audience-specific fields: if audience changes or is reset, clean other fields.
     // If not changed, fallback to existing or provided values.
@@ -422,11 +449,14 @@ const updateTask = async (req, res) => {
     let cleanCategories = [];
     let cleanInterns = [];
     let cleanIndividualInterns = [];
+    let cleanCourses = [];
 
     if (activeAudience === "By batches") {
       cleanBatches = batches !== undefined ? batches : (isAudienceChanged ? [] : currentTask.batches);
-    } else if (activeAudience === "By category") {
+    } else if (activeAudience === "By Category") {
       cleanCategories = categories !== undefined ? categories : (isAudienceChanged ? [] : currentTask.categories);
+    } else if (activeAudience === "By Courses") {
+      cleanCourses = courses !== undefined ? courses : (isAudienceChanged ? [] : currentTask.courses);
     } else if (activeAudience === "Individual interns") {
       cleanIndividualInterns = individualInterns !== undefined ? individualInterns : (isAudienceChanged ? [] : currentTask.individualInterns);
     }
@@ -439,10 +469,17 @@ const updateTask = async (req, res) => {
       });
     }
 
-    if (activeAudience === "By category" && cleanCategories.length === 0) {
+    if (activeAudience === "By Category" && cleanCategories.length === 0) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
-        message: "Categories are required when audience is 'By category'"
+        message: "Categories are required when audience is 'By Category'"
+      });
+    }
+
+    if (activeAudience === "By Courses" && cleanCourses.length === 0) {
+      if (req.file) await deleteFromCloudinary(req.file.path);
+      return res.status(400).json({
+        message: "Courses are required when audience is 'By Courses'"
       });
     }
 
@@ -454,7 +491,7 @@ const updateTask = async (req, res) => {
     }
 
     // Validate that only one audience field can have data at a time
-    const audienceValidation = validateSingleAudienceField(cleanBatches, cleanCategories, cleanInterns, cleanIndividualInterns);
+    const audienceValidation = validateSingleAudienceField(cleanBatches, cleanCategories, cleanInterns, cleanIndividualInterns, cleanCourses);
     if (!audienceValidation.isValid) {
       if (req.file) await deleteFromCloudinary(req.file.path);
       return res.status(400).json({
@@ -534,7 +571,7 @@ const updateTask = async (req, res) => {
     // and we don't add it to updateData, so the existing value is preserved
     if (totalMarks !== undefined) updateData.totalMarks = Number(totalMarks);
     if (status) updateData.status = status;
-    if (audience) updateData.audience = audience;
+    if (audience) updateData.audience = activeAudience;
     if (branchArray !== undefined) updateData.branch = branchArray;
 
     // Clear out non-active audience fields completely in database
@@ -542,6 +579,7 @@ const updateTask = async (req, res) => {
     updateData.categories = cleanCategories;
     updateData.interns = cleanInterns;
     updateData.individualInterns = cleanIndividualInterns;
+    updateData.courses = cleanCourses;
 
     const updated = await Task.findByIdAndUpdate(
       req.params.id,
@@ -552,6 +590,7 @@ const updateTask = async (req, res) => {
       .populate('branch', 'branchName location')
       .populate('batches', 'batchName description branch')
       .populate('categories', 'categoryName')
+      .populate('courses', 'courseName description')
       .populate({
         path: 'interns',
         select: 'fullName email branch courseStatus',
@@ -848,13 +887,20 @@ const getMyTasks = async (req, res) => {
 
     // Find tasks assigned to this intern based on audience rules
     const orConditions = [
+      { audience: "All interns" },
       { audience: "By batches", batches: { $in: batchIds } },
       { audience: "Individual interns", individualInterns: queryInternId },
       { audience: "Individual interns", interns: queryInternId }
     ];
 
     if (internCategoryId) {
+      orConditions.push({ audience: "By Category", categories: internCategoryId });
       orConditions.push({ audience: "By category", categories: internCategoryId });
+    }
+
+    if (intern.course) {
+      orConditions.push({ audience: "By Courses", courses: intern.course });
+      orConditions.push({ audience: "By course", courses: intern.course });
     }
 
     console.log("Fetching tasks for intern:", internId, {
@@ -875,7 +921,10 @@ const getMyTasks = async (req, res) => {
       isActive: { $ne: false },
       isDeleted: { $ne: true },
       $or: orConditions,
-      _id: { $nin: submittedTaskIds }
+      _id: { $nin: submittedTaskIds },
+      $and: [
+        { $or: [ { branch: null }, { branch: { $size: 0 } }, { branch: intern.branch } ] }
+      ]
     };
 
     if (page && limit) {

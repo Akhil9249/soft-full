@@ -12,13 +12,23 @@ const materialSchema = new mongoose.Schema({
   }],
   audience: {
     type: String,
-    enum: ["All interns", "By batches", "By Branches", "Individual interns"],
+    enum: ["All interns", "By batches", "By Courses", "By Category", "Individual interns"],
     default: "All interns",
     required: true
   },
   batches: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: "Batch",
+    default: []
+  },
+  categories: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Category",
+    default: []
+  },
+  courses: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Course",
     default: []
   },
   interns: {

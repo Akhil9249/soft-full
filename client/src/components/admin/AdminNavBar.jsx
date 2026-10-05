@@ -158,7 +158,7 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               {openSections.administration && (
                 <ul className="pl-8 mt-2 space-y-2 text-sm text-gray-500">
                   {/* Role Management - Only for Super Admin */}
-                  {auth?.role?.toLowerCase() === "super admin" && (
+                  {(auth?.role?.toLowerCase() === "super admin" || localStorage.getItem("role")?.toLowerCase() === "super admin") && (
                     <li>
                       <Link
                         to="/"
@@ -173,21 +173,19 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                     </li>
                   )}
 
-                  {/* Staff Management - Only for Super Admin and Admin */}
-                  {(auth?.role?.toLowerCase() === "super admin" || auth?.role?.toLowerCase() === "admin" || auth?.role?.toLowerCase() === "branch admin") && (
-                    <li>
-                      <Link
-                        to="/staff-management"
-                        onClick={() => handleNavItemClick('/staff-management')}
-                        className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/staff-management'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
-                          }`}
-                      >
-                        Staff Management
-                      </Link>
-                    </li>
-                  )}
+                  {/* Staff Management */}
+                  <li>
+                    <Link
+                      to="/staff-management"
+                      onClick={() => handleNavItemClick('/staff-management')}
+                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/staff-management'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
+                        }`}
+                    >
+                      Staff Management
+                    </Link>
+                  </li>
 
                   {/* Intern Management - Available for all roles */}
                   <li>
@@ -210,7 +208,7 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               <div onClick={() => toggleSection('course')} className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200">
                 {/* <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h6z"></path></svg> */}
                 <Book className="w-5 h-5 mr-3" />
-                Course 
+                Course
                 <svg className={`ml-auto w-4 h-4 transform transition-transform duration-200 ${openSections.course ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"></path>
                 </svg>
@@ -250,7 +248,7 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                 {/* <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h6z"></path></svg> */}
                 <FileText className="w-5 h-5 mr-3" />
 
-                Syllabus 
+                Syllabus
                 <svg className={`ml-auto w-4 h-4 transform transition-transform duration-200 ${openSections.syllabus ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"></path>
                 </svg>
@@ -288,7 +286,7 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
             <div className={`font-medium ${openSections.task ? 'text-orange-500' : 'text-gray-600'}`}>
               <div onClick={() => toggleSection('task')} className="flex items-center cursor-pointer p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200">
                 <SquarePen className="w-5 h-5 mr-3" />
-                Task
+                Task & Materials
                 <svg className={`ml-auto w-4 h-4 transform transition-transform duration-200 ${openSections.task ? 'rotate-180' : ''}`} fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"></path>
                 </svg>
@@ -347,48 +345,42 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               </div>
               {openSections.schedule && (
                 <ul className="pl-8 mt-2 space-y-2 text-sm text-gray-500">
-                  {!(auth?.role?.toLowerCase() === 'mentor' || localStorage.getItem("role")?.toLowerCase() === 'mentor') && (
-                    <li>
-                      <Link
-                        to="/batches"
-                        onClick={() => handleNavItemClick('/batches')}
-                        className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/batches'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
-                          }`}
-                      >
-                        Batches
-                      </Link>
-                    </li>
-                  )}
-                  {!(auth?.role?.toLowerCase() === 'mentor' || localStorage.getItem("role")?.toLowerCase() === 'mentor') && (
-                    <li>
-                      <Link
-                        to="/timings"
-                        onClick={() => handleNavItemClick('/timings')}
-                        className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/timings'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
-                          }`}
-                      >
-                        Timings
-                      </Link>
-                    </li>
-                  )}
-                  {!(auth?.role?.toLowerCase() === 'mentor' || localStorage.getItem("role")?.toLowerCase() === 'mentor') && (
-                    <li>
-                      <Link
-                        to="/weekly-schedule"
-                        onClick={() => handleNavItemClick('/weekly-schedule')}
-                        className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/weekly-schedule'
-                          ? 'bg-orange-100 text-orange-600 font-semibold'
-                          : 'hover:text-orange-500 hover:bg-orange-50'
-                          }`}
-                      >
-                        Weekly Schedule
-                      </Link>
-                    </li>
-                  )}
+                  <li>
+                    <Link
+                      to="/batches"
+                      onClick={() => handleNavItemClick('/batches')}
+                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/batches'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
+                        }`}
+                    >
+                      Batches
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/timings"
+                      onClick={() => handleNavItemClick('/timings')}
+                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/timings'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
+                        }`}
+                    >
+                      Timings
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/weekly-schedule"
+                      onClick={() => handleNavItemClick('/weekly-schedule')}
+                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/weekly-schedule'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
+                        }`}
+                    >
+                      Weekly Schedule
+                    </Link>
+                  </li>
                   <li>
                     <Link
                       to="/mentor-batches"
@@ -467,18 +459,7 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                       Static Page
                     </Link>
                   </li>
-                  <li>
-                    <Link
-                      to="/notification"
-                      onClick={() => handleNavItemClick('/notification')}
-                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/notification'
-                        ? 'bg-orange-100 text-orange-600 font-semibold'
-                        : 'hover:text-orange-500 hover:bg-orange-50'
-                        }`}
-                    >
-                      Notification
-                    </Link>
-                  </li>
+
                   <li>
                     <Link
                       to="/branch"
@@ -489,6 +470,18 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                         }`}
                     >
                       Branch
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/notification"
+                      onClick={() => handleNavItemClick('/notification')}
+                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/notification'
+                        ? 'bg-orange-100 text-orange-600 font-semibold'
+                        : 'hover:text-orange-500 hover:bg-orange-50'
+                        }`}
+                    >
+                      Notification
                     </Link>
                   </li>
                 </ul>
