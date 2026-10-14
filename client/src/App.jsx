@@ -28,6 +28,7 @@ import { Notification } from "./pages/admin/settings/Notification";
 import { Branch } from "./pages/admin/settings/Branch";
 import { StudentAttendance } from "./pages/admin/attendance/studentAttendance";
 import SuperAdminProtectedRoute from "./components/protected-route/SuperAdminProtectedRoute";
+import StaffProtectedRoute from "./components/protected-route/StaffProtectedRoute";
 import Material from "./pages/admin/task-management/Material";
 import UserMaterial from "./pages/user/task-management/Material";
 import LeaveRequest from "./pages/admin/attendance/LeaveRequest";
@@ -59,6 +60,9 @@ function App() {
 
         <Route element={<SuperAdminProtectedRoute />} >
           <Route path="/" element={<RoleManagement />} />
+        </Route>
+
+        <Route element={<StaffProtectedRoute />} >
           <Route path="/staff-management" element={<StaffManagement />} />
         </Route>
 

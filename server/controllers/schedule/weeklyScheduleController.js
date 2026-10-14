@@ -5,7 +5,10 @@ const { Staff } = require("../../models/administration/staffModel");
 const { User } = require("../../models/administration/userModel");
 
 const getEffectiveBranchForUser = async (userId, requestedBranch) => {
-  if (!userId) return requestedBranch;
+  if (!userId) {
+    if (!requestedBranch || requestedBranch === 'all') return null;
+    return requestedBranch;
+  }
   
   try {
     let loggedInUser = await Staff.findById(userId).populate('role');
@@ -15,14 +18,35 @@ const getEffectiveBranchForUser = async (userId, requestedBranch) => {
     
     if (loggedInUser && loggedInUser.role) {
       const roleName = loggedInUser.role.role?.toLowerCase() || '';
-      if (roleName !== 'super admin') {
-        return loggedInUser.branch;
+      if (roleName === 'super admin') {
+        if (!requestedBranch || requestedBranch === 'all') return null;
+        return requestedBranch;
       }
+
+      const userBranchIds = [
+        loggedInUser.branch ? loggedInUser.branch.toString() : null,
+        ...(loggedInUser.isMultipleBranch && Array.isArray(loggedInUser.multipleBranches)
+          ? loggedInUser.multipleBranches.map(b => (b?._id || b).toString())
+          : [])
+      ].filter(Boolean);
+
+      if (requestedBranch && requestedBranch !== 'all') {
+        if (userBranchIds.includes(requestedBranch.toString())) {
+          return requestedBranch;
+        }
+      }
+
+      // If user has multiple branches and requested all / empty, return all user branches
+      if (userBranchIds.length > 1) {
+        return userBranchIds;
+      }
+      return loggedInUser.branch || null;
     }
   } catch (error) {
     console.error("Error getting effective branch for user:", error);
   }
   
+  if (!requestedBranch || requestedBranch === 'all') return null;
   return requestedBranch;
 };
 
@@ -67,13 +91,21 @@ const getWeeklySchedules = async (req, res) => {
       filter.endDate = { $lte: new Date(endDate) };
     }
     if (effectiveBranch) {
-      filter['schedule.sub_details.branch'] = effectiveBranch;
+      if (Array.isArray(effectiveBranch)) {
+        filter['schedule.sub_details.branch'] = { $in: effectiveBranch };
+      } else if (effectiveBranch !== 'all') {
+        filter['schedule.sub_details.branch'] = effectiveBranch;
+      }
     }
 
     const weeklySchedules = await WeeklySchedule.find(filter)
       .populate({
         path: 'mentor',
-        select: 'fullName email employmentStatus'
+        select: 'fullName email employmentStatus branch isMultipleBranch multipleBranches',
+        populate: [
+          { path: 'branch', select: 'branchName' },
+          { path: 'multipleBranches', select: 'branchName' }
+        ]
       })
       .populate({
         path: 'schedule.time',
@@ -437,22 +469,46 @@ const getAllMentorsWithBatches = async (req, res) => {
 
     let filter = {};
     if (effectiveBranch) {
-      filter['schedule.sub_details.branch'] = effectiveBranch;
+      if (Array.isArray(effectiveBranch)) {
+        filter['schedule.sub_details.branch'] = { $in: effectiveBranch };
+      } else if (effectiveBranch !== 'all') {
+        filter['schedule.sub_details.branch'] = effectiveBranch;
+      }
     }
     if (startDate && endDate) {
       filter.startDate = { $gte: new Date(startDate) };
       filter.endDate = { $lte: new Date(endDate) };
     }
 
+    if (req.userId) {
+      let loggedInUser = await Staff.findById(req.userId).populate('role');
+      if (!loggedInUser) {
+        loggedInUser = await User.findById(req.userId).populate('role');
+      }
+      if (loggedInUser?.role?.role?.toLowerCase() === 'mentor') {
+        filter.mentor = loggedInUser._id;
+      }
+    }
+
     // Get all weekly schedules with populated data
     const weeklySchedules = await WeeklySchedule.find(filter)
       .populate({
         path: 'mentor',
-        select: 'fullName email role branch',
-        populate: {
-          path: 'role',
-          select: 'role'
-        }
+        select: 'fullName email role branch isMultipleBranch multipleBranches',
+        populate: [
+          {
+            path: 'role',
+            select: 'role'
+          },
+          {
+            path: 'branch',
+            select: 'branchName'
+          },
+          {
+            path: 'multipleBranches',
+            select: 'branchName'
+          }
+        ]
       })
       .populate({
         path: 'schedule.time',
@@ -502,6 +558,9 @@ const getAllMentorsWithBatches = async (req, res) => {
           fullName: mentor.fullName,
           email: mentor.email,
           role: mentor.role?.role || 'mentor',
+          branch: mentor.branch,
+          isMultipleBranch: mentor.isMultipleBranch || false,
+          multipleBranches: mentor.multipleBranches || [],
           batches: new Set(),
           scheduleDetails: []
         });
@@ -554,7 +613,8 @@ const getAllMentorsWithBatches = async (req, res) => {
                 subDetailData.batches.push({
                   _id: batch._id,
                   batchName: batch.batchName,
-                  branchName: batch.branch?.branchName || 'N/A',
+                  branchName: batch.branch?.branchName || subDetail.branch?.branchName || 'N/A',
+                  branchId: batch.branch?._id || subDetail.branch?._id,
                   courseName: courseNames,
                   interns: internsList
                 });
@@ -604,7 +664,8 @@ const getAllMentorsWithBatches = async (req, res) => {
                   finalBatch = {
                     _id: batch._id,
                     batchName: batch.batchName,
-                    branchName: batch.branch?.branchName || 'N/A',
+                    branchName: batch.branch?.branchName || scheduleDoc.schedule?.sub_details?.branch?.branchName || 'N/A',
+                    branchId: batch.branch?._id || scheduleDoc.schedule?.sub_details?.branch?._id,
                     courseName: courseNames,
                     interns: internsList
                   };

@@ -30,6 +30,34 @@ const ChevronDown = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg
 const customOrange = "bg-[#E99732]";
 const customOrangeHover = "hover:bg-[#d98a2e]";
 
+// Helper to parse time string (e.g. "08:30 AM", "2:00 PM") to minutes from midnight
+const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr) return 9999;
+    const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (!match) return 9999;
+
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const ampm = match[3]?.toUpperCase();
+
+    if (ampm) {
+        if (ampm === 'PM' && hours !== 12) {
+            hours += 12;
+        } else if (ampm === 'AM' && hours === 12) {
+            hours = 0;
+        }
+    }
+    return hours * 60 + minutes;
+};
+
+// Helper to parse a time slot (e.g. "08:30 AM - 11:30 AM") to start minutes for ascending sort
+const parseTimeSlotToMinutes = (timeSlotStr) => {
+    if (!timeSlotStr) return 9999;
+    const parts = String(timeSlotStr).split(/[-–to]/);
+    const startTimeStr = parts[0]?.trim();
+    return parseTimeToMinutes(startTimeStr);
+};
+
 // Softronics Logo Component for Sidebar
 const SidebarLogo = () => (
     <div className="flex items-center space-x-2 p-5 border-b border-gray-100 select-none">
@@ -168,10 +196,10 @@ const ActionBar = ({
     batchesLoading,
     timings = [],
     selectedTiming = '',
-    onTimingChange = () => {},
+    onTimingChange = () => { },
     dayCombinations = [],
     selectedDayCombination = '',
-    onDayCombinationChange = () => {},
+    onDayCombinationChange = () => { },
     isStaffWithoutBranchControl = false
 }) => {
     return (
@@ -181,40 +209,47 @@ const ActionBar = ({
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 w-full lg:w-auto flex-wrap">
-                                {isMentor ? (
-                                    <>
-                                        {/* Day Combination Dropdown */}
-                                        <select
-                                            value={selectedDayCombination}
-                                            onChange={onDayCombinationChange}
-                                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
-                                        >
-                                            <option value="">All Day Combinations</option>
-                                            {dayCombinations.map((combo) => (
-                                                <option key={combo._id} value={combo._id}>
-                                                    {combo.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                
-                                        {/* Timing Dropdown */}
-                                        <select
-                                            value={selectedTiming}
-                                            onChange={onTimingChange}
-                                            disabled={batchesLoading}
-                                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
-                                        >
-                                            <option value="">
-                                                {batchesLoading ? 'Loading timings...' : 'All Timings'}
-                                            </option>
-                                            {timings.map((t) => (
-                                                <option key={t._id} value={t._id}>
-                                                    {t.timeSlot}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </>
-                                ) : (
+                {/* Day Combination Dropdown */}
+                <select
+                    value={selectedDayCombination}
+                    onChange={onDayCombinationChange}
+                    className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
+                >
+                    <option value="">All Day Combinations</option>
+                    {dayCombinations.map((combo) => (
+                        <option key={combo._id} value={combo._id}>
+                            {combo.name}
+                        </option>
+                    ))}
+                </select>
+
+                {isMentor ? (
+                    <>
+                        {/* Timing Dropdown */}
+                        <select
+                            value={selectedTiming}
+                            onChange={onTimingChange}
+                            disabled={batchesLoading}
+                            className="w-full sm:w-auto px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-medium"
+                        >
+                            <option value="">
+                                {batchesLoading ? 'Loading timings...' : 'All Timings'}
+                            </option>
+                            {[...timings]
+                                .sort((a, b) => {
+                                    const timeA = parseTimeSlotToMinutes(a.timeSlot);
+                                    const timeB = parseTimeSlotToMinutes(b.timeSlot);
+                                    if (timeA !== timeB) return timeA - timeB;
+                                    return (a.timeSlot || '').localeCompare(b.timeSlot || '');
+                                })
+                                .map((t) => (
+                                    <option key={t._id} value={t._id}>
+                                        {t.timeSlot}
+                                    </option>
+                                ))}
+                        </select>
+                    </>
+                ) : (
                     <>
                         {/* Branch Dropdown */}
                         <select
@@ -303,6 +338,215 @@ const AttendanceRow = ({ attendance, isPresent, onToggle }) => (
     </div>
 );
 
+// Helper to get day name safely from YYYY-MM-DD string without timezone offset issues
+const getDayNameFromDateString = (dateStr) => {
+    if (!dateStr) return '';
+    const parts = String(dateStr).split('-');
+    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    if (parts.length === 3) {
+        const [year, month, day] = parts.map(Number);
+        const dateObj = new Date(year, month - 1, day);
+        return daysOfWeek[dateObj.getDay()];
+    }
+    const dateObj = new Date(dateStr);
+    return daysOfWeek[dateObj.getDay()];
+};
+
+// Helper to find the matching DayCombination document for a given date
+const findMatchingDayCombination = (combos, dateStr) => {
+    if (!combos || !Array.isArray(combos) || combos.length === 0 || !dateStr) {
+        return null;
+    }
+
+    const currentDayName = getDayNameFromDateString(dateStr);
+    if (!currentDayName) return null;
+    const currentDayLower = currentDayName.toLowerCase();
+    const shortDay = currentDayLower.substring(0, 3); // "sun", "mon", "tue", "wed", "thu", "fri", "sat"
+
+    const dayObjMatches = (d) => {
+        if (!d) return false;
+        if (typeof d === 'string') {
+            return d.toLowerCase() === currentDayLower || d.toLowerCase() === shortDay;
+        }
+        if (typeof d === 'object') {
+            const dayStr = d.day ? d.day.toLowerCase() : '';
+            const nameStr = d.name ? d.name.toLowerCase() : '';
+            if (dayStr === currentDayLower) return true;
+            if (dayStr.includes(shortDay)) return true;
+            if (nameStr === currentDayLower || (nameStr.length > 1 && currentDayLower.startsWith(nameStr))) return true;
+        }
+        return false;
+    };
+
+    // 1. Single day match (exact day combination where only this day is present or name equals day)
+    const exactSingleMatch = combos.find(c => {
+        const nameLower = (c.name || '').trim().toLowerCase();
+        if (nameLower === currentDayLower) return true;
+        if (Array.isArray(c.dayCombination) && c.dayCombination.length === 1 && dayObjMatches(c.dayCombination[0])) {
+            return true;
+        }
+        return false;
+    });
+    if (exactSingleMatch) return exactSingleMatch;
+
+    // 2. Day combination populated array match (e.g. MWF or TTS containing this day)
+    const arrayMatch = combos.find(c => {
+        if (Array.isArray(c.dayCombination) && c.dayCombination.length > 0) {
+            return c.dayCombination.some(dayObjMatches);
+        }
+        return false;
+    });
+    if (arrayMatch) return arrayMatch;
+
+    // 3. Name contains the day name or short day
+    const nameMatch = combos.find(c => {
+        const nameLower = (c.name || '').trim().toLowerCase();
+        return nameLower.includes(currentDayLower) || nameLower.includes(shortDay);
+    });
+    if (nameMatch) return nameMatch;
+
+    // 4. Common acronym / grouping match
+    const acronymMatch = combos.find(c => {
+        const nameLower = (c.name || '').trim().toLowerCase();
+        if (["monday", "wednesday", "friday"].includes(currentDayLower) && nameLower.includes("mwf")) {
+            return true;
+        }
+        if (["tuesday", "thursday", "saturday"].includes(currentDayLower) && nameLower.includes("tts")) {
+            return true;
+        }
+        if (["saturday", "sunday"].includes(currentDayLower) && nameLower.includes("weekend")) {
+            return true;
+        }
+        if (nameLower.includes("daily") || nameLower.includes("regular")) {
+            return true;
+        }
+        return false;
+    });
+    if (acronymMatch) return acronymMatch;
+
+    return null;
+};
+
+const DAY_NAME_TO_INDEX = {
+    sunday: 0,
+    sun: 0,
+    monday: 1,
+    mon: 1,
+    tuesday: 2,
+    tue: 2,
+    wednesday: 3,
+    wed: 3,
+    thursday: 4,
+    thu: 4,
+    friday: 5,
+    fri: 5,
+    saturday: 6,
+    sat: 6
+};
+
+// Helper to extract day of week indices (0-6) from a DayCombination document
+const getDayIndicesFromCombination = (combo) => {
+    if (!combo) return [];
+    const indices = [];
+
+    // 1. Check combo.dayCombination array
+    if (Array.isArray(combo.dayCombination)) {
+        combo.dayCombination.forEach(d => {
+            if (!d) return;
+            if (typeof d === 'string') {
+                const lower = d.toLowerCase();
+                if (DAY_NAME_TO_INDEX[lower] !== undefined && !indices.includes(DAY_NAME_TO_INDEX[lower])) {
+                    indices.push(DAY_NAME_TO_INDEX[lower]);
+                }
+            } else if (typeof d === 'object') {
+                const dayStr = (d.day || '').toLowerCase();
+                if (DAY_NAME_TO_INDEX[dayStr] !== undefined && !indices.includes(DAY_NAME_TO_INDEX[dayStr])) {
+                    indices.push(DAY_NAME_TO_INDEX[dayStr]);
+                }
+                const nameStr = (d.name || '').toLowerCase();
+                if (DAY_NAME_TO_INDEX[nameStr] !== undefined && !indices.includes(DAY_NAME_TO_INDEX[nameStr])) {
+                    indices.push(DAY_NAME_TO_INDEX[nameStr]);
+                }
+            }
+        });
+    }
+
+    if (indices.length > 0) {
+        return indices;
+    }
+
+    // 2. Check combo.name full day names
+    const nameLower = (combo.name || '').toLowerCase();
+    const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    dayNames.forEach((name, idx) => {
+        if (nameLower.includes(name) && !indices.includes(idx)) {
+            indices.push(idx);
+        }
+    });
+
+    if (indices.length > 0) {
+        return indices;
+    }
+
+    // 3. Check combo.name short day names
+    const shortDays = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+    shortDays.forEach((short, idx) => {
+        if (nameLower.includes(short) && !indices.includes(idx)) {
+            indices.push(idx);
+        }
+    });
+
+    if (indices.length > 0) {
+        return indices;
+    }
+
+    // 4. Common acronyms
+    if (nameLower.includes("mwf")) {
+        return [1, 3, 5]; // Mon, Wed, Fri
+    }
+    if (nameLower.includes("tts")) {
+        return [2, 4, 6]; // Tue, Thu, Sat
+    }
+    if (nameLower.includes("weekend")) {
+        return [6, 0]; // Sat, Sun
+    }
+
+    return [];
+};
+
+// Helper to calculate the corresponding date in the current week for a given day combination
+const getDateForDayCombinationInCurrentWeek = (combo, referenceDate = new Date()) => {
+    const indices = getDayIndicesFromCombination(combo);
+    if (!indices || indices.length === 0) return null;
+
+    // Use current week from referenceDate (or today)
+    const refDate = referenceDate ? new Date(referenceDate) : new Date();
+    const refDayIndex = refDate.getDay();
+
+    // If reference day is already one of the days in the combination, keep it
+    let targetDayIndex = indices.includes(refDayIndex) ? refDayIndex : indices[0];
+
+    // Calculate Sunday (start of week)
+    const sunday = new Date(refDate);
+    sunday.setDate(refDate.getDate() - refDayIndex);
+
+    // Calculate target date
+    const targetDate = new Date(sunday);
+    targetDate.setDate(sunday.getDate() + targetDayIndex);
+
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(targetDate.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${dayStr}`;
+
+    const formattedDate = targetDate.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+
+    return { dateString, formattedDate, targetDate };
+};
 
 const AttendanceContent = ({ activeTab, setActiveTab }) => {
     const {
@@ -364,14 +608,14 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         if (isMentor) {
             let list = batches;
             if (selectedTiming) {
-                list = list.filter(batch => 
-                    Array.isArray(batch.timings) && 
+                list = list.filter(batch =>
+                    Array.isArray(batch.timings) &&
                     batch.timings.some(t => t._id === selectedTiming)
                 );
             }
             if (selectedDayCombination) {
-                list = list.filter(batch => 
-                    Array.isArray(batch.dayCombinations) && 
+                list = list.filter(batch =>
+                    Array.isArray(batch.dayCombinations) &&
                     batch.dayCombinations.some(d => d._id === selectedDayCombination)
                 );
             }
@@ -385,15 +629,21 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
             return branchId === selectedBranch;
         });
     }, [isMentor, batches, allBatches, selectedBranch, selectedTiming, selectedDayCombination]);
- 
-    // Filter timings reactive to the selected day combination (for mentor view)
+
+    // Filter timings reactive to the selected day combination (for mentor view) sorted in ascending order
     const filteredTimings = useMemo(() => {
-        if (!selectedDayCombination) {
-            return mentorTimings;
+        let list = mentorTimings;
+        if (selectedDayCombination) {
+            list = mentorTimings.filter(t =>
+                Array.isArray(t.days) && t.days.includes(selectedDayCombination)
+            );
         }
-        return mentorTimings.filter(t => 
-            Array.isArray(t.days) && t.days.includes(selectedDayCombination)
-        );
+        return [...list].sort((a, b) => {
+            const timeA = parseTimeSlotToMinutes(a.timeSlot);
+            const timeB = parseTimeSlotToMinutes(b.timeSlot);
+            if (timeA !== timeB) return timeA - timeB;
+            return (a.timeSlot || '').localeCompare(b.timeSlot || '');
+        });
     }, [mentorTimings, selectedDayCombination]);
 
     // State for pagination
@@ -421,7 +671,7 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                 if (response.data.length > 0) {
                     let initialBranchId = response.data[0]._id;
                     if (isSuperAdmin) {
-                        const calicutBranch = response.data.find(branch => 
+                        const calicutBranch = response.data.find(branch =>
                             branch.branchName && branch.branchName.toLowerCase().includes("calicut")
                         );
                         if (calicutBranch) {
@@ -487,7 +737,7 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         try {
             setLoading(true);
             setBatchesLoading(true);
-            
+
             // 1. Fetch batches and day combinations in parallel
             const [batchesRes, daysRes] = await Promise.all([
                 getMentorBatchesData(loggedInUserId, selectedDate).catch(() => null),
@@ -501,21 +751,15 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
             if (daysRes?.data) {
                 const combos = (daysRes.data?.data || daysRes.data || []).filter(c => c.isActive !== false && c.isDeleted !== true);
                 setDayCombinations(combos);
- 
-                // Find matching combo for today
-                const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-                const currentDayName = daysOfWeek[new Date().getDay()];
-                const matchingCombo = combos.find(c => 
-                    c.dayCombination && Array.isArray(c.dayCombination) && 
-                    c.dayCombination.some(d => d.day === currentDayName)
-                );
- 
+
+                // Find matching combo for selectedDate
+                const matchingCombo = findMatchingDayCombination(combos, selectedDate);
                 if (matchingCombo) {
                     defaultDayComboId = matchingCombo._id;
                     setSelectedDayCombination(defaultDayComboId);
                 }
             }
- 
+
             let defaultTimingId = null;
             // 2. Process batches and timings
             if (batchesRes?.data) {
@@ -523,18 +767,20 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                 const timingsData = batchesRes.data.timings || [];
                 setBatches(batchesData);
                 setMentorTimings(timingsData);
- 
-                // Default select first timing for the default day combination
-                const activeTimings = defaultDayComboId 
+
+                // Default select first timing for the default day combination (sorted in ascending order)
+                const activeTimings = defaultDayComboId
                     ? timingsData.filter(t => Array.isArray(t.days) && t.days.includes(defaultDayComboId))
                     : timingsData;
- 
-                if (activeTimings.length > 0) {
-                    defaultTimingId = activeTimings[0]._id;
+
+                const sortedTimings = [...activeTimings].sort((a, b) => parseTimeSlotToMinutes(a.timeSlot) - parseTimeSlotToMinutes(b.timeSlot));
+
+                if (sortedTimings.length > 0) {
+                    defaultTimingId = sortedTimings[0]._id;
                     setSelectedTiming(defaultTimingId);
                 }
             }
- 
+
             // 4. Fetch initial attendance using the resolved defaults
             await fetchAttendanceForDate(
                 selectedDate,
@@ -554,6 +800,26 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         }
     };
 
+    // Fetch day combinations from backend (for non-mentor view)
+    const fetchDayCombinations = async (targetDate = selectedDate) => {
+        try {
+            const res = await getDaysCombinationsData();
+            if (res?.data) {
+                const combos = (res.data?.data || res.data || []).filter(c => c.isActive !== false && c.isDeleted !== true);
+                setDayCombinations(combos);
+
+                const matchingCombo = findMatchingDayCombination(combos, targetDate);
+                if (matchingCombo) {
+                    setSelectedDayCombination(matchingCombo._id);
+                    return matchingCombo._id;
+                }
+            }
+        } catch (err) {
+            console.error('Failed to load day combinations:', err);
+        }
+        return '';
+    };
+
     // Fetch mentor batches from backend (for manual invocation if needed)
     const fetchMentorBatches = async (date = selectedDate) => {
         try {
@@ -565,17 +831,26 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                 const timingsData = response.data.timings || [];
                 setBatches(batchesData);
                 setMentorTimings(timingsData);
- 
-                // Default select first timing for the selected day combination
-                const activeTimings = selectedDayCombination 
-                    ? timingsData.filter(t => Array.isArray(t.days) && t.days.includes(selectedDayCombination))
+
+                // Automatically find matching day combination for this date
+                const matchingCombo = findMatchingDayCombination(dayCombinations, date);
+                const activeDayComboId = matchingCombo ? matchingCombo._id : selectedDayCombination;
+                if (matchingCombo) {
+                    setSelectedDayCombination(activeDayComboId);
+                }
+
+                // Default select first timing for the selected day combination (sorted in ascending order)
+                const activeTimings = activeDayComboId
+                    ? timingsData.filter(t => Array.isArray(t.days) && t.days.includes(activeDayComboId))
                     : timingsData;
- 
-                const nextTimingId = activeTimings.length > 0 ? activeTimings[0]._id : '';
+
+                const sortedTimings = [...activeTimings].sort((a, b) => parseTimeSlotToMinutes(a.timeSlot) - parseTimeSlotToMinutes(b.timeSlot));
+
+                const nextTimingId = sortedTimings.length > 0 ? sortedTimings[0]._id : '';
                 setSelectedTiming(nextTimingId);
-                
+
                 // Fetch attendance immediately
-                await fetchAttendanceForDate(selectedDate, null, null, 1, null, nextTimingId || null, selectedDayCombination || null);
+                await fetchAttendanceForDate(date, null, null, 1, null, nextTimingId || null, activeDayComboId || null);
             }
         } catch (err) {
             console.error('Failed to load mentor batches:', err);
@@ -686,13 +961,13 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                 await createDailyAttendanceForAllInterns(
                     selectedBranch || null,
                     null,
-                    null,
+                    selectedDayCombination || null,
                     null,
                     selectedDate,
                     selectedBatch || null
                 );
                 console.log('Daily attendance created successfully');
-                await fetchAttendanceForDate(selectedDate, selectedBranch || null, null, 1, selectedBatch || null); // Refresh attendance for selected date, branch, and batch
+                await fetchAttendanceForDate(selectedDate, selectedBranch || null, null, 1, selectedBatch || null, null, selectedDayCombination || null); // Refresh attendance for selected date, branch, and batch
             }
         } catch (err) {
             console.error('Failed to create daily attendance:', err);
@@ -763,23 +1038,58 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         }
     };
 
-    // Handle day combination selection (for mentor view)
+    // Handle day combination selection
     const handleDayCombinationChange = async (e) => {
         const dayComboId = e.target.value;
         setSelectedDayCombination(dayComboId);
         setCurrentPage(1); // Reset to first page when filter changes
- 
-        // Filter timings for the new day combination
-        const activeTimings = dayComboId 
-            ? mentorTimings.filter(t => Array.isArray(t.days) && t.days.includes(dayComboId))
-            : mentorTimings;
- 
-        // Default select first timing in listed
-        const nextTimingId = activeTimings.length > 0 ? activeTimings[0]._id : '';
-        setSelectedTiming(nextTimingId);
- 
-        // Fetch attendance records for the selected day combination and default timing
-        await fetchAttendanceForDate(selectedDate, null, null, 1, null, nextTimingId || null, dayComboId || null);
+
+        // Automatically determine corresponding date in current week for the selected day combination
+        let targetDateStr = selectedDate;
+        if (dayComboId) {
+            const selectedCombo = dayCombinations.find(c => c._id === dayComboId);
+            const dateInfo = getDateForDayCombinationInCurrentWeek(selectedCombo, new Date());
+            if (dateInfo) {
+                targetDateStr = dateInfo.dateString;
+                setSelectedDate(targetDateStr);
+                setCurrentDate(dateInfo.formattedDate);
+            }
+        }
+
+        if (isMentor) {
+            // Fetch batches and timings for the target date
+            let currentTimings = mentorTimings;
+            try {
+                setBatchesLoading(true);
+                const response = await getMentorBatchesData(loggedInUserId, targetDateStr);
+                const batchesData = response?.data?.batches || response?.data || [];
+                const timingsData = response?.data?.timings || [];
+                setBatches(batchesData);
+                setMentorTimings(timingsData);
+                currentTimings = timingsData;
+            } catch (err) {
+                console.error("Failed to load mentor batches on day combination change:", err);
+            } finally {
+                setBatchesLoading(false);
+            }
+
+            // Filter timings for the new day combination (sorted in ascending order)
+            const activeTimings = dayComboId
+                ? currentTimings.filter(t => Array.isArray(t.days) && t.days.includes(dayComboId))
+                : currentTimings;
+
+            const sortedTimings = [...activeTimings].sort((a, b) => parseTimeSlotToMinutes(a.timeSlot) - parseTimeSlotToMinutes(b.timeSlot));
+
+            // Default select first timing in listed
+            const nextTimingId = sortedTimings.length > 0 ? sortedTimings[0]._id : '';
+            setSelectedTiming(nextTimingId);
+
+            // Fetch attendance records for the resolved date, day combination, and timing
+            await fetchAttendanceForDate(targetDateStr, null, null, 1, null, nextTimingId || null, dayComboId || null);
+        } else {
+            // Fetch attendance for the resolved date and day combination with existing filters
+            await fetchAttendanceForDate(targetDateStr, selectedBranch || null, null, 1, selectedBatch || null, null, dayComboId || null);
+        }
     };
 
     // Load data when component mounts
@@ -789,12 +1099,14 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         } else {
             fetchBranches(selectedDate);
             fetchAllBatches();
+            fetchDayCombinations(selectedDate);
         }
     }, []);
 
     // Update currentDate when selectedDate changes
     useEffect(() => {
-        const dateObj = new Date(selectedDate);
+        const [y, m, d] = String(selectedDate).split('-').map(Number);
+        const dateObj = (y && m && d) ? new Date(y, m - 1, d) : new Date(selectedDate);
         const formattedDate = dateObj.toLocaleDateString('en-GB', {
             day: '2-digit',
             month: '2-digit',
@@ -830,7 +1142,7 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
         const timingId = e.target.value;
         setSelectedTiming(timingId);
         setCurrentPage(1); // Reset to first page when filter changes
- 
+
         // Fetch attendance records for the selected timing
         await fetchAttendanceForDate(selectedDate, null, null, 1, null, timingId || null, selectedDayCombination || null);
     };
@@ -1008,17 +1320,39 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                                     value={selectedDate}
                                     onChange={async (e) => {
                                         const newDate = e.target.value;
+                                        if (!newDate) return;
                                         setSelectedDate(newDate);
- 
+
                                         // Convert the selected date to the display format (DD/MM/YYYY)
-                                        const dateObj = new Date(newDate);
+                                        const [y, m, d] = newDate.split('-').map(Number);
+                                        const dateObj = (y && m && d) ? new Date(y, m - 1, d) : new Date(newDate);
                                         const formattedDate = dateObj.toLocaleDateString('en-GB', {
                                             day: '2-digit',
                                             month: '2-digit',
                                             year: 'numeric'
                                         });
                                         setCurrentDate(formattedDate);
- 
+
+                                        // Automatically determine and select the day combination for the selected date
+                                        let currentCombos = dayCombinations;
+                                        if (!currentCombos || currentCombos.length === 0) {
+                                            try {
+                                                const daysRes = await getDaysCombinationsData();
+                                                if (daysRes?.data) {
+                                                    currentCombos = (daysRes.data?.data || daysRes.data || []).filter(
+                                                        c => c.isActive !== false && c.isDeleted !== true
+                                                    );
+                                                    setDayCombinations(currentCombos);
+                                                }
+                                            } catch (err) {
+                                                console.error("Failed to load day combinations on date change:", err);
+                                            }
+                                        }
+
+                                        const matchingCombo = findMatchingDayCombination(currentCombos, newDate);
+                                        const nextDayComboId = matchingCombo ? matchingCombo._id : '';
+                                        setSelectedDayCombination(nextDayComboId);
+
                                         if (isMentor) {
                                             // Fetch batches and timings for the new date's week
                                             try {
@@ -1028,16 +1362,18 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                                                 const timingsData = response?.data?.timings || [];
                                                 setBatches(batchesData);
                                                 setMentorTimings(timingsData);
- 
-                                                // Find first timing for the selected day combination
-                                                const activeTimings = selectedDayCombination 
-                                                    ? timingsData.filter(t => Array.isArray(t.days) && t.days.includes(selectedDayCombination))
+
+                                                // Find first timing for the newly resolved day combination (sorted in ascending order)
+                                                const activeTimings = nextDayComboId
+                                                    ? timingsData.filter(t => Array.isArray(t.days) && t.days.includes(nextDayComboId))
                                                     : timingsData;
- 
-                                                const nextTimingId = activeTimings.length > 0 ? activeTimings[0]._id : '';
+
+                                                const sortedTimings = [...activeTimings].sort((a, b) => parseTimeSlotToMinutes(a.timeSlot) - parseTimeSlotToMinutes(b.timeSlot));
+
+                                                const nextTimingId = sortedTimings.length > 0 ? sortedTimings[0]._id : '';
                                                 setSelectedTiming(nextTimingId);
-                                                
-                                                // Fetch attendance for the new date
+
+                                                // Fetch attendance for the new date with updated day combination and timing
                                                 await fetchAttendanceForDate(
                                                     newDate,
                                                     null,
@@ -1045,7 +1381,7 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                                                     1,
                                                     null,
                                                     nextTimingId || null,
-                                                    selectedDayCombination || null
+                                                    nextDayComboId || null
                                                 );
                                             } catch (err) {
                                                 console.error("Failed to load mentor batches for new date:", err);
@@ -1053,13 +1389,15 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
                                                 setBatchesLoading(false);
                                             }
                                         } else {
-                                            // Fetch attendance for the new date with all selected filters
+                                            // Fetch attendance for the new date with all selected filters and auto-selected day combination
                                             await fetchAttendanceForDate(
                                                 newDate,
                                                 selectedBranch || null,
                                                 null,
                                                 1,
-                                                selectedBatch || null
+                                                selectedBatch || null,
+                                                null,
+                                                nextDayComboId || null
                                             );
                                         }
                                     }}

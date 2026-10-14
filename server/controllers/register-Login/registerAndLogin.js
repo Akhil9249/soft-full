@@ -105,7 +105,7 @@ const login = async (req, res, next) => {
     let userTypeName = '';
 
     // Auto-detect user type across User, Staff, and Intern collections
-    user = await User.findOne({ email, isActive: true }).populate('role', 'role');
+    user = await User.findOne({ email, isActive: true }).populate('role');
     if (user) {
       userTypeName = 'Admin';
       userData = {
@@ -114,9 +114,12 @@ const login = async (req, res, next) => {
         phone: user.phone,
         email: user.email,
         role: user.role?.role || 'Admin',
+        permissions: user.role?.permissions || null,
       };
     } else {
-      user = await Staff.findOne({ email, isActive: true, isDeleted: { $ne: true } }).populate('role', 'role');
+      user = await Staff.findOne({ email, isActive: true, isDeleted: { $ne: true } })
+        .populate('role')
+        .populate('multipleBranches', 'branchName');
       if (user) {
         if (user.employmentStatus !== 'Active') {
           const error = {
@@ -130,9 +133,12 @@ const login = async (req, res, next) => {
           id: user._id,
           name: user.fullName,
           role: user.role?.role || 'Staff',
+          permissions: user.role?.permissions || null,
           email: user.officialEmail,
           phone: user.staffPhoneNumber,
           branch: user.branch ? user.branch.toString() : "",
+          isMultipleBranch: user.isMultipleBranch || false,
+          multipleBranches: user.multipleBranches || [],
         };
       } else {
         // Query both personal email and officialEmail for interns

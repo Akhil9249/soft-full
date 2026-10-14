@@ -691,6 +691,148 @@ const downloadAttachment = async (req, res) => {
   }
 };
 
+// Helper to build a comprehensive query to list all materials accessible to a specific intern
+// according to batches, categories, courses, interns and individualInterns
+const buildInternMaterialsQuery = async (internId) => {
+  const Intern = require("../../models/administration/internModel");
+  const Batch = require("../../models/schedule/batchModel");
+  const Course = require("../../models/course-management/courseModel");
+
+  const intern = await Intern.findById(internId);
+  if (!intern) {
+    return { intern: null, query: null, baseConditions: [] };
+  }
+
+  let queryInternObjectId = null;
+  if (internId && mongoose.Types.ObjectId.isValid(internId)) {
+    queryInternObjectId = new mongoose.Types.ObjectId(internId);
+  }
+
+  const internIdList = [queryInternObjectId, internId ? internId.toString() : null].filter(Boolean);
+
+  const branchId = intern.branch;
+  let queryBranchObjectId = null;
+  if (branchId && mongoose.Types.ObjectId.isValid(branchId)) {
+    queryBranchObjectId = new mongoose.Types.ObjectId(branchId);
+  }
+  const branchIdList = [branchId, queryBranchObjectId].filter(Boolean);
+
+  // 1. Resolve all batches that this intern belongs to
+  const batchQueryOr = [
+    { interns: { $in: internIdList } }
+  ];
+
+  if (intern.batch) {
+    const rawBatch = intern.batch.toString().trim();
+    batchQueryOr.push({ batchName: rawBatch });
+    batchQueryOr.push({ batchName: { $regex: new RegExp(`^${rawBatch}$`, 'i') } });
+    if (mongoose.Types.ObjectId.isValid(rawBatch)) {
+      batchQueryOr.push({ _id: new mongoose.Types.ObjectId(rawBatch) });
+    }
+  }
+
+  const matchedBatches = await Batch.find({
+    $or: batchQueryOr,
+    isDeleted: { $ne: true }
+  }).select('_id');
+
+  const batchIdsSet = new Set(matchedBatches.map(b => b._id.toString()));
+  if (intern.batch && mongoose.Types.ObjectId.isValid(intern.batch)) {
+    batchIdsSet.add(intern.batch.toString());
+  }
+
+  const batchObjectIds = Array.from(batchIdsSet).map(id => new mongoose.Types.ObjectId(id));
+
+  // 2. Resolve intern's course category for By Category matching
+  let internCategoryId = null;
+  if (intern.course) {
+    const courseObj = await Course.findById(intern.course).select('category');
+    if (courseObj && courseObj.category) {
+      internCategoryId = courseObj.category;
+    }
+  }
+
+  // 3. Build comprehensive audience matching conditions
+  const baseConditions = [];
+
+  // Condition 1: All interns (respecting branch restriction if specified)
+  baseConditions.push({
+    audience: { $regex: /^all interns$/i },
+    ...(branchIdList.length > 0 ? {
+      $or: [
+        { branch: { $in: branchIdList } },
+        { branch: null },
+        { branch: { $size: 0 } }
+      ]
+    } : {})
+  });
+
+  // Condition 2: By batches (all batches associated with this intern)
+  if (batchObjectIds.length > 0) {
+    baseConditions.push({
+      audience: { $regex: /^by batches$/i },
+      batches: { $in: batchObjectIds }
+    });
+    baseConditions.push({
+      batches: { $in: batchObjectIds }
+    });
+  }
+
+  // Condition 3: By Category (category corresponding to intern's course)
+  if (internCategoryId) {
+    const categoryIds = [internCategoryId];
+    if (mongoose.Types.ObjectId.isValid(internCategoryId)) {
+      categoryIds.push(new mongoose.Types.ObjectId(internCategoryId));
+    }
+    baseConditions.push({
+      audience: { $regex: /^by category$/i },
+      categories: { $in: categoryIds }
+    });
+    baseConditions.push({
+      categories: { $in: categoryIds }
+    });
+  }
+
+  // Condition 4: By Courses (intern's enrolled course)
+  if (intern.course) {
+    const courseIds = [intern.course];
+    if (mongoose.Types.ObjectId.isValid(intern.course)) {
+      courseIds.push(new mongoose.Types.ObjectId(intern.course));
+    }
+    baseConditions.push({
+      audience: { $regex: /^by course(s)?$/i },
+      courses: { $in: courseIds }
+    });
+    baseConditions.push({
+      courses: { $in: courseIds }
+    });
+  }
+
+  // Condition 5: Individual interns (matching both individualInterns and interns fields)
+  baseConditions.push({
+    audience: { $regex: /^individual interns$/i },
+    $or: [
+      { individualInterns: { $in: internIdList } },
+      { interns: { $in: internIdList } }
+    ]
+  });
+  baseConditions.push({
+    individualInterns: { $in: internIdList }
+  });
+  baseConditions.push({
+    interns: { $in: internIdList }
+  });
+
+  const query = {
+    isActive: { $ne: false },
+    isDeleted: { $ne: true },
+    $or: baseConditions
+  };
+
+  return { intern, query, baseConditions, batchObjectIds, internCategoryId };
+};
+
+// Get materials for the logged-in intern
 const getMyMaterials = async (req, res) => {
   try {
     const internId = req.userId;
@@ -698,8 +840,7 @@ const getMyMaterials = async (req, res) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const Intern = require("../../models/administration/internModel");
-    const intern = await Intern.findById(internId);
+    const { intern, query, baseConditions } = await buildInternMaterialsQuery(internId);
     if (!intern) {
       return res.status(404).json({ message: "Intern not found" });
     }
@@ -709,105 +850,78 @@ const getMyMaterials = async (req, res) => {
     const limit = parseInt(req.query.limit) || 5;
     const skip = (page - 1) * limit;
 
-    // Search parameters
+    // Search and filter parameters
     const search = req.query.search || '';
     const mentor = req.query.mentor || '';
+    const audience = req.query.audience || '';
 
-    const branchId = intern.branch;
-    const batchName = intern.batch;
-    let batchObjectId = null;
-
-    if (batchName) {
-      const Batch = require("../../models/schedule/batchModel");
-      const foundBatch = await Batch.findOne({ batchName: batchName, isActive: true });
-      if (foundBatch) {
-        batchObjectId = foundBatch._id;
+    // Apply audience filter if provided
+    if (audience) {
+      if (audience === "By batches") {
+        query.audience = { $regex: /^by batches$/i };
+      } else if (audience === "By Category") {
+        query.audience = { $regex: /^by category$/i };
+      } else if (audience === "By Courses") {
+        query.audience = { $regex: /^by course(s)?$/i };
+      } else if (audience === "Individual interns") {
+        query.audience = { $regex: /^individual interns$/i };
+      } else if (audience === "All interns") {
+        query.audience = { $regex: /^all interns$/i };
+      } else {
+        query.audience = audience;
       }
     }
 
-    let internCategoryId = null;
-    if (intern.course) {
-      const Course = require("../../models/course-management/courseModel");
-      const courseObj = await Course.findById(intern.course);
-      if (courseObj && courseObj.category) {
-        internCategoryId = courseObj.category;
-      }
-    }
-
-    const baseConditions = [];
-
-    // Condition 1: All interns in the branch
-    if (branchId) {
-      baseConditions.push({
-        audience: "All interns",
-        branch: { $in: [branchId] }
-      });
-    }
-
-    // Condition 2: By batches (if intern has a batch)
-    if (batchObjectId) {
-      baseConditions.push({
-        audience: "By batches",
-        batches: { $in: [batchObjectId] }
-      });
-    }
-
-    // Condition 3: Individual interns
-    baseConditions.push({
-      audience: "Individual interns",
-      individualInterns: { $in: [internId] }
-    });
-
-    // Condition 4: By Category
-    if (internCategoryId) {
-      baseConditions.push({
-        audience: "By Category",
-        categories: { $in: [internCategoryId] }
-      });
-    }
-
-    // Condition 5: By Courses
-    if (intern.course) {
-      baseConditions.push({
-        audience: "By Courses",
-        courses: { $in: [intern.course] }
-      });
-    }
-
-    let query = {
-      isActive: true,
-      $or: baseConditions
-    };
-
-    // Add search functionality
+    // Apply search filter (title and attachment file name)
     if (search) {
       const searchRegex = new RegExp(search, 'i');
-      query.title = { $regex: searchRegex };
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: searchRegex } },
+          { attachments: { $regex: searchRegex } }
+        ]
+      });
     }
 
-    // Add mentor filter
+    // Apply mentor filter
     if (mentor) {
-      query.mentor = mentor;
+      if (mongoose.Types.ObjectId.isValid(mentor)) {
+        query.mentor = new mongoose.Types.ObjectId(mentor);
+      } else {
+        query.mentor = mentor;
+      }
     }
 
     // Get total count for pagination
     const totalCount = await Material.countDocuments(query);
     const totalPages = Math.ceil(totalCount / limit);
 
-    // Get paginated results
+    // Get paginated results with complete population
     const materials = await Material.find(query)
       .populate('mentor', 'fullName email')
       .populate('branch', 'branchName location')
       .populate('batches', 'batchName description branch')
       .populate('courses', 'courseName description')
       .populate('categories', 'categoryName')
+      .populate({
+        path: 'interns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
+      .populate({
+        path: 'individualInterns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
 
     // Also get distinct mentors for the filter dropdown
     const allAssignedMaterials = await Material.find({
-      isActive: true,
+      isActive: { $ne: false },
+      isDeleted: { $ne: true },
       $or: baseConditions
     }).populate('mentor', 'fullName email');
 
@@ -838,6 +952,91 @@ const getMyMaterials = async (req, res) => {
   }
 };
 
+// Get materials for a specific intern by internId (accessible with internId parameter)
+const getMaterialsByIntern = async (req, res) => {
+  try {
+    const { internId } = req.params;
+    if (!internId) {
+      return res.status(400).json({ message: "Intern ID is required" });
+    }
+
+    const { intern, query, baseConditions } = await buildInternMaterialsQuery(internId);
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found" });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const search = req.query.search || '';
+    const mentor = req.query.mentor || '';
+    const audience = req.query.audience || '';
+
+    if (audience) {
+      query.audience = { $regex: new RegExp(`^${audience}$`, 'i') };
+    }
+
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { title: { $regex: searchRegex } },
+          { attachments: { $regex: searchRegex } }
+        ]
+      });
+    }
+
+    if (mentor) {
+      if (mongoose.Types.ObjectId.isValid(mentor)) {
+        query.mentor = new mongoose.Types.ObjectId(mentor);
+      } else {
+        query.mentor = mentor;
+      }
+    }
+
+    const totalCount = await Material.countDocuments(query);
+    const totalPages = Math.ceil(totalCount / limit);
+
+    const materials = await Material.find(query)
+      .populate('mentor', 'fullName email')
+      .populate('branch', 'branchName location')
+      .populate('batches', 'batchName description branch')
+      .populate('courses', 'courseName description')
+      .populate('categories', 'categoryName')
+      .populate({
+        path: 'interns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
+      .populate({
+        path: 'individualInterns',
+        select: 'fullName email branch courseStatus',
+        match: { courseStatus: 'Ongoing' }
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.status(200).json({
+      message: "Materials retrieved successfully for intern",
+      data: materials,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalCount,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+        limit
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching materials by intern:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   createMaterial,
   getMaterials,
@@ -849,5 +1048,6 @@ module.exports = {
   getMaterialsByCourse,
   getMaterialsByAudience,
   downloadAttachment,
-  getMyMaterials
+  getMyMaterials,
+  getMaterialsByIntern
 };

@@ -16,16 +16,31 @@ const InternsMenorCard = () => {
     });
 
     const calculateStats = (cards) => {
-        if (!cards || !cards.length) return;
+        if (!cards || !cards.length) {
+            setStats({
+                avgTestScore: 0,
+                avgProjectScore: 0,
+                attendancePercent: 0
+            });
+            return;
+        }
 
         const testCards = cards.filter(c => c.isTest);
         const avgTestScore = testCards.length
-            ? Math.round(testCards.reduce((acc, c) => acc + (Number(c.test_marks) || 0), 0) / testCards.length)
+            ? Math.round(testCards.reduce((acc, c) => {
+                const total = Number(c.test_total) > 0 ? Number(c.test_total) : 100;
+                const marks = Number(c.test_marks) || 0;
+                return acc + (marks / total) * 100;
+            }, 0) / testCards.length)
             : 0;
 
         const projectCards = cards.filter(c => c.isProject);
         const avgProjectScore = projectCards.length
-            ? Math.round(projectCards.reduce((acc, c) => acc + (Number(c.project_marks) || 0), 0) / projectCards.length)
+            ? Math.round(projectCards.reduce((acc, c) => {
+                const total = Number(c.project_total) > 0 ? Number(c.project_total) : 100;
+                const marks = Number(c.project_marks) || 0;
+                return acc + (marks / total) * 100;
+            }, 0) / projectCards.length)
             : 0;
 
         // Attendance parsing

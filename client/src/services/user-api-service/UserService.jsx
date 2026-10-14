@@ -37,6 +37,13 @@ const UserService = () => {
         return response.data;
     };
 
+    const downloadTaskAttachment = async (taskId) => {
+        const response = await axiosPrivate.get(`/api/tasks/${taskId}/download`, {
+            responseType: 'blob'
+        });
+        return response;
+    };
+
     // ======================================== material management ========================================
     const getMyMaterialsData = async (paramsString = '') => {
         const response = await axiosPrivate.get(`/api/materials/my-materials?${paramsString}`);
@@ -84,6 +91,7 @@ const UserService = () => {
         getMySubmissionsData,
         downloadSubmissionAttachment,
         getMyTasksData,
+        downloadTaskAttachment,
         getMyMaterialsData,
         downloadMaterialAttachment,
         getMyLeaveRequests,

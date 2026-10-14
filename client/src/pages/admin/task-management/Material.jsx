@@ -4,6 +4,16 @@ import { Navbar } from '../../../components/admin/AdminNavBar';
 import AdminService from '../../../services/admin-api-service/AdminService';
 
 
+// Helper to compare arrays of objects or IDs for equality
+const areItemListsEqual = (listA = [], listB = []) => {
+  if (!listA && !listB) return true;
+  if (!listA || !listB) return false;
+  if (listA.length !== listB.length) return false;
+  const idsA = listA.map(item => (typeof item === 'object' && item !== null ? item._id : item)).filter(Boolean).map(String).sort().join(',');
+  const idsB = listB.map(item => (typeof item === 'object' && item !== null ? item._id : item)).filter(Boolean).map(String).sort().join(',');
+  return idsA === idsB;
+};
+
 const Material = () => {
   const [activeTab, setActiveTab] = useState('materialList');
   const [loading, setLoading] = useState(false);
@@ -47,6 +57,7 @@ const Material = () => {
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const defaultBranchSet = useRef(false);
+  const lastInternBranchIdsRef = useRef(null);
 
   // File upload - will store File object or URL string
   const [selectedFile, setSelectedFile] = useState(null);
@@ -153,53 +164,82 @@ const Material = () => {
 
   // Automatically clear selected audience items (batches, interns, courses, categories) that do not belong to the selected branches
   useEffect(() => {
+    // Only run audience/branch alignment when on the new-material tab
+    if (activeTab !== 'new-material') return;
+
     if (selectedBranches.length > 0) {
-      // Clear batches
-      setSelectedBatches(prev => prev.filter(batch => {
-        const branchId = batch.branch?._id || batch.branch;
-        return selectedBranches.some(b => b._id === branchId);
-      }));
-
-      // Clear interns
-      setSelectedInterns(prev => prev.filter(intern => {
-        const branchId = intern.branch?._id || intern.branch;
-        return selectedBranches.some(b => b._id === branchId);
-      }));
-
-      // Clear categories
-      setSelectedCategories(prev => prev.filter(category => {
-        const catBranches = category.branch || [];
-        if (catBranches.length === 0) return true; // Global category/No branch restriction
-        return catBranches.some(cb => {
-          const cbId = cb?._id || cb;
-          return selectedBranches.some(b => b._id === cbId);
+      // Clear batches that do not match selected branches
+      setSelectedBatches(prev => {
+        const next = prev.filter(batch => {
+          const branchId = batch.branch?._id || batch.branch;
+          return selectedBranches.some(b => b._id === branchId);
         });
-      }));
+        return next.length === prev.length ? prev : next;
+      });
 
-      // Clear courses
-      setSelectedCourses(prev => prev.filter(course => {
-        const branchId = course.branch?._id || course.branch;
-        if (!branchId) return true;
-        return selectedBranches.some(b => b._id === branchId);
-      }));
+      // Clear interns that do not match selected branches
+      setSelectedInterns(prev => {
+        const next = prev.filter(intern => {
+          const branchId = intern.branch?._id || intern.branch;
+          return selectedBranches.some(b => b._id === branchId);
+        });
+        return next.length === prev.length ? prev : next;
+      });
+
+      // Clear categories that do not match selected branches
+      setSelectedCategories(prev => {
+        const next = prev.filter(category => {
+          const catBranches = category.branch || [];
+          if (catBranches.length === 0) return true; // Global category/No branch restriction
+          return catBranches.some(cb => {
+            const cbId = cb?._id || cb;
+            return selectedBranches.some(b => b._id === cbId);
+          });
+        });
+        return next.length === prev.length ? prev : next;
+      });
+
+      // Clear courses that do not match selected branches
+      setSelectedCourses(prev => {
+        const next = prev.filter(course => {
+          const branchId = course.branch?._id || course.branch;
+          if (!branchId) return true;
+          return selectedBranches.some(b => b._id === branchId);
+        });
+        return next.length === prev.length ? prev : next;
+      });
 
       // Fetch filtered data based on active audience type when branches are toggled
       if (formData.audience === 'Individual interns' || formData.audience === 'All interns') {
-        loadInterns();
+        const branchIds = selectedBranches.map(b => b._id).sort().join(',');
+        if (lastInternBranchIdsRef.current !== branchIds) {
+          lastInternBranchIdsRef.current = branchIds;
+          loadInterns();
+        }
       } else if (formData.audience === 'By batches') {
-        loadBatches();
+        if (batches.length === 0) {
+          loadBatches();
+        }
       } else if (formData.audience === 'By Category') {
-        loadCategories();
+        if (categories.length === 0) {
+          loadCategories();
+        }
+      } else if (formData.audience === 'By Courses') {
+        if (courses.length === 0) {
+          loadCourses();
+        }
       }
     } else {
-      // If no branches are selected, clear all audience selections
-      setSelectedBatches([]);
-      setSelectedInterns([]);
-      setSelectedCourses([]);
-      setSelectedCategories([]);
-      setFormData(prev => ({ ...prev, audience: '' }));
+      // If no branches are selected and we are creating a new material (not editing), clear audience selections
+      if (!editingMaterial) {
+        setSelectedBatches(prev => (prev.length === 0 ? prev : []));
+        setSelectedInterns(prev => (prev.length === 0 ? prev : []));
+        setSelectedCourses(prev => (prev.length === 0 ? prev : []));
+        setSelectedCategories(prev => (prev.length === 0 ? prev : []));
+        setFormData(prev => (prev.audience ? { ...prev, audience: '' } : prev));
+      }
     }
-  }, [selectedBranches, formData.audience]);
+  }, [selectedBranches, formData.audience, activeTab]);
 
   // Set default branch filter based on user role and details once mentors/staff list and branches are loaded
   useEffect(() => {
@@ -377,7 +417,7 @@ const Material = () => {
         const matchesBranch = selectedBranches.some(b => b._id === branchId);
         return intern.courseStatus === 'Ongoing' && matchesBranch;
       });
-      setSelectedInterns(ongoingInterns);
+      setSelectedInterns(prev => (areItemListsEqual(prev, ongoingInterns) ? prev : ongoingInterns));
     }
   }, [formData.audience, interns, selectedBranches]);
 
@@ -723,6 +763,7 @@ const Material = () => {
     setSelectedFile(null);
     setFileName('');
     setEditingMaterial(null);
+    lastInternBranchIdsRef.current = null;
   };
 
   const handleTabChange = (tabName) => {
@@ -744,7 +785,7 @@ const Material = () => {
           return batches.find(b => b._id === batchId) || (typeof batch === 'object' ? batch : null);
         }).filter(Boolean);
         if (selectedBatchObjects.length > 0) {
-          setSelectedBatches(selectedBatchObjects);
+          setSelectedBatches(prev => (areItemListsEqual(prev, selectedBatchObjects) ? prev : selectedBatchObjects));
         }
       }
 
@@ -754,7 +795,7 @@ const Material = () => {
           return categories.find(c => c._id === catId) || (typeof cat === 'object' ? cat : null);
         }).filter(Boolean);
         if (selectedCategoryObjects.length > 0) {
-          setSelectedCategories(selectedCategoryObjects);
+          setSelectedCategories(prev => (areItemListsEqual(prev, selectedCategoryObjects) ? prev : selectedCategoryObjects));
         }
       }
 
@@ -764,7 +805,7 @@ const Material = () => {
           return courses.find(c => c._id === courseId) || (typeof course === 'object' ? course : null);
         }).filter(Boolean);
         if (selectedCourseObjects.length > 0) {
-          setSelectedCourses(selectedCourseObjects);
+          setSelectedCourses(prev => (areItemListsEqual(prev, selectedCourseObjects) ? prev : selectedCourseObjects));
         }
       }
 
@@ -775,7 +816,7 @@ const Material = () => {
           return interns.find(i => i._id === internId) || (typeof intern === 'object' ? intern : null);
         }).filter(Boolean);
         if (selectedInternObjects.length > 0) {
-          setSelectedInterns(selectedInternObjects);
+          setSelectedInterns(prev => (areItemListsEqual(prev, selectedInternObjects) ? prev : selectedInternObjects));
         }
       }
 
@@ -785,7 +826,7 @@ const Material = () => {
           return branches.find(b => b._id === branchId) || (typeof br === 'object' ? br : null);
         }).filter(Boolean);
         if (selectedBranchObjects.length > 0) {
-          setSelectedBranches(selectedBranchObjects);
+          setSelectedBranches(prev => (areItemListsEqual(prev, selectedBranchObjects) ? prev : selectedBranchObjects));
         }
       }
     }
@@ -801,10 +842,10 @@ const Material = () => {
     setErrors({});
     setEditingMaterial(material);
     setFormData({
-      title: material.title,
-      mentor: material.mentor._id,
+      title: material.title || '',
+      mentor: material.mentor?._id || material.mentor || '',
       attachments: material.attachments || null, // Store as URL string or null
-      audience: material.audience,
+      audience: material.audience || '',
       allowDownload: material.allowDownload !== undefined ? material.allowDownload : true,
     });
 
@@ -819,19 +860,61 @@ const Material = () => {
       setFileName('');
     }
 
-    // Set selections based on material data
-    setSelectedBatches(material.batches || []);
-    setSelectedInterns(material.individualInterns || material.interns || []);
-    setSelectedCourses(material.courses || []);
-    setSelectedCategories(material.categories || []);
-    setSelectedBranches([]);
-
+    // Resolve branch objects directly without intermediate empty array
+    let selectedBranchObjects = [];
     if (material.branch && material.branch.length > 0) {
-      const selectedBranchObjects = material.branch.map(br => {
+      selectedBranchObjects = material.branch.map(br => {
         const branchId = typeof br === 'object' ? br._id : br;
         return branches.find(b => b._id === branchId) || (typeof br === 'object' ? br : null);
       }).filter(Boolean);
-      setSelectedBranches(selectedBranchObjects);
+    }
+    setSelectedBranches(selectedBranchObjects);
+
+    // Keep track of branch ids for interns
+    if (selectedBranchObjects.length > 0) {
+      lastInternBranchIdsRef.current = selectedBranchObjects.map(b => b._id).sort().join(',');
+    }
+
+    // Resolve audience-specific selections
+    if (material.audience === 'By batches' && material.batches?.length > 0) {
+      const selectedBatchObjects = material.batches.map(batch => {
+        const batchId = typeof batch === 'object' ? batch._id : batch;
+        return batches.find(b => b._id === batchId) || (typeof batch === 'object' ? batch : null);
+      }).filter(Boolean);
+      setSelectedBatches(selectedBatchObjects.length > 0 ? selectedBatchObjects : material.batches);
+    } else {
+      setSelectedBatches(material.batches || []);
+    }
+
+    const sourceInterns = material.individualInterns || material.interns || [];
+    if ((material.audience === 'Individual interns' || material.audience === 'All interns') && sourceInterns.length > 0) {
+      const selectedInternObjects = sourceInterns.map(intern => {
+        const internId = typeof intern === 'object' ? intern._id : intern;
+        return interns.find(i => i._id === internId) || (typeof intern === 'object' ? intern : null);
+      }).filter(Boolean);
+      setSelectedInterns(selectedInternObjects.length > 0 ? selectedInternObjects : sourceInterns);
+    } else {
+      setSelectedInterns(sourceInterns);
+    }
+
+    if (material.audience === 'By Courses' && material.courses?.length > 0) {
+      const selectedCourseObjects = material.courses.map(course => {
+        const courseId = typeof course === 'object' ? course._id : course;
+        return courses.find(c => c._id === courseId) || (typeof course === 'object' ? course : null);
+      }).filter(Boolean);
+      setSelectedCourses(selectedCourseObjects.length > 0 ? selectedCourseObjects : material.courses);
+    } else {
+      setSelectedCourses(material.courses || []);
+    }
+
+    if (material.audience === 'By Category' && material.categories?.length > 0) {
+      const selectedCategoryObjects = material.categories.map(cat => {
+        const catId = typeof cat === 'object' ? cat._id : cat;
+        return categories.find(c => c._id === catId) || (typeof cat === 'object' ? cat : null);
+      }).filter(Boolean);
+      setSelectedCategories(selectedCategoryObjects.length > 0 ? selectedCategoryObjects : material.categories);
+    } else {
+      setSelectedCategories(material.categories || []);
     }
 
     if (material.audience === 'By Category' && categories.length === 0) {
@@ -839,6 +922,9 @@ const Material = () => {
     }
     if (material.audience === 'By Courses' && courses.length === 0) {
       loadCourses();
+    }
+    if (material.audience === 'By batches' && batches.length === 0) {
+      loadBatches();
     }
 
     setActiveTab('new-material');

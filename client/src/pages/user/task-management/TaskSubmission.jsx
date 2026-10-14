@@ -3,6 +3,17 @@ import AdminService from '../../../services/admin-api-service/AdminService';
 import UserService from '../../../services/user-api-service/UserService';
 import { Navbar } from '../../../components/user/UserNavBar';
 import Tabs from '../../../components/button/Tabs';
+import {
+  Eye,
+  FileText,
+  Calendar,
+  User,
+  Download,
+  ExternalLink,
+  Info,
+  X,
+  Paperclip
+} from 'lucide-react';
 
 export const TaskSubmission = () => {
   const [activeTab, setActiveTab] = useState('tasks-list');
@@ -34,8 +45,15 @@ export const TaskSubmission = () => {
     { value: 'submissions-list', label: 'My Submissions' }
   ];
 
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [viewingTaskDetails, setViewingTaskDetails] = useState(null);
+
   const handleTabChange = (value) => {
     setViewingSubmission(null);
+    setViewingTaskDetails(null);
+    if (value === 'tasks-list') {
+      setSelectedTask(null);
+    }
     setActiveTab(value);
   };
   const [loading, setLoading] = useState(false);
@@ -74,7 +92,8 @@ export const TaskSubmission = () => {
     getMyTasksData,
     getMySubmissionsData,
     postTaskSubmissionData,
-    downloadSubmissionAttachment
+    downloadSubmissionAttachment,
+    downloadTaskAttachment
   } = UserService();
 
   const showNotification = (type, title, message) => {
@@ -173,6 +192,7 @@ export const TaskSubmission = () => {
   // Handle task selection to auto-populate module/marks/due date
   const handleFormTaskChange = (taskId) => {
     const taskObj = tasks.find(t => t._id === taskId);
+    setSelectedTask(taskObj || null);
     if (taskObj) {
       setFormData(prev => ({
         ...prev,
@@ -194,6 +214,8 @@ export const TaskSubmission = () => {
 
   const handleStartSubmission = (task) => {
     setViewingSubmission(null);
+    setViewingTaskDetails(null);
+    setSelectedTask(task);
     setSelectedFiles([]);
     setFormData({
       task: task._id,
@@ -210,6 +232,30 @@ export const TaskSubmission = () => {
       reviewedDate: ''
     });
     setActiveTab('submission-form');
+  };
+
+  const handleViewTaskDetails = (task) => {
+    setViewingTaskDetails(task);
+  };
+
+  const closeViewTaskDetails = () => {
+    setViewingTaskDetails(null);
+  };
+
+  const handleDownloadTaskAttachment = async (taskId, originalName) => {
+    try {
+      const response = await downloadTaskAttachment(taskId);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', originalName || 'task_attachment.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error('Task attachment download error:', err);
+      showNotification('error', 'Download Failed', 'Could not download task attachment');
+    }
   };
 
   const handleInputChange = (e) => {
@@ -241,7 +287,9 @@ export const TaskSubmission = () => {
   // Inspect existing submission (read-only view matching form layout)
   const handleViewClick = (submission) => {
     setViewingSubmission(submission);
-    const taskObj = submission.task || {};
+    setViewingTaskDetails(null);
+    const taskObj = submission.task && typeof submission.task === 'object' ? submission.task : {};
+    setSelectedTask(taskObj);
     const graderObj = submission.gradedBy || {};
     
     setFormData({
@@ -309,9 +357,13 @@ export const TaskSubmission = () => {
       reviewedDate: ''
     });
     setSelectedFiles([]);
+    setSelectedTask(null);
     setViewingSubmission(null);
+    setViewingTaskDetails(null);
     setActiveTab('submissions-list');
   };
+
+  const currentTask = selectedTask || tasks.find(t => t._id === formData.task) || (viewingSubmission?.task && typeof viewingSubmission.task === 'object' ? viewingSubmission.task : null);
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-6 font-sans text-gray-800">
@@ -380,8 +432,13 @@ export const TaskSubmission = () => {
                         {tasks.map((task, idx) => (
                           <tr key={task._id} className="hover:bg-gray-50/50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
+                            <td className="px-6 py-4">
                               <div className="text-sm font-semibold text-gray-900">{task.title}</div>
+                              {task.description && (
+                                <div className="text-xs text-gray-500 line-clamp-1 max-w-xs mt-0.5" title={task.description}>
+                                  {task.description}
+                                </div>
+                              )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
@@ -400,12 +457,22 @@ export const TaskSubmission = () => {
                               {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button
-                                onClick={() => handleStartSubmission(task)}
-                                className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-colors"
-                              >
-                                Submit Task
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => handleViewTaskDetails(task)}
+                                  className="text-gray-700 hover:text-orange-600 hover:bg-orange-50 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-orange-200 transition-colors inline-flex items-center gap-1.5"
+                                  title="View Mentor Description & Details"
+                                >
+                                  <Eye className="w-4 h-4 text-gray-500" />
+                                  <span>View Task</span>
+                                </button>
+                                <button
+                                  onClick={() => handleStartSubmission(task)}
+                                  className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 transition-colors"
+                                >
+                                  Submit Task
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -417,19 +484,33 @@ export const TaskSubmission = () => {
                   <div className="md:hidden space-y-4">
                     {tasks.map((task, idx) => (
                       <div key={task._id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <h3 className="text-base font-semibold text-gray-900 mb-2">{task.title}</h3>
+                        <h3 className="text-base font-semibold text-gray-900 mb-1">{task.title}</h3>
+                        {task.description && (
+                          <p className="text-xs text-gray-600 line-clamp-2 mb-2 italic bg-white p-2 rounded border border-gray-200">
+                            "{task.description}"
+                          </p>
+                        )}
                         <div className="space-y-1 text-sm text-gray-600 mb-3">
                           <div><span className="font-medium">Type:</span> {task.taskType}</div>
                           <div><span className="font-medium">Module:</span> {task.module}</div>
                           <div><span className="font-medium">Mentor:</span> {task.assignedMentor?.fullName || 'N/A'}</div>
                           <div><span className="font-medium">Due Date:</span> {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}</div>
                         </div>
-                        <button
-                          onClick={() => handleStartSubmission(task)}
-                          className="w-full text-center text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg border border-blue-200 transition-colors font-medium text-sm"
-                        >
-                          Submit Task
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleViewTaskDetails(task)}
+                            className="flex-1 text-center text-gray-700 bg-white hover:bg-gray-100 px-3 py-2 rounded-lg border border-gray-300 transition-colors font-medium text-sm flex items-center justify-center gap-1.5"
+                          >
+                            <Eye className="w-4 h-4 text-gray-500" />
+                            <span>View Task</span>
+                          </button>
+                          <button
+                            onClick={() => handleStartSubmission(task)}
+                            className="flex-1 text-center text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg border border-blue-200 transition-colors font-medium text-sm"
+                          >
+                            Submit Task
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -618,6 +699,82 @@ export const TaskSubmission = () => {
             /* Tab: Submission Form */
             <div className="bg-white rounded-lg p-2 max-w-6xl mx-auto">
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Mentor's Task Overview & Instructions Card */}
+                {currentTask && (
+                  <div className="bg-gradient-to-br from-orange-50/80 via-amber-50/40 to-white border border-orange-200 rounded-xl p-5 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-orange-200/80 gap-2 mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-gray-900 leading-tight">
+                            {currentTask.title || 'Task Details'}
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Mentor: <span className="font-semibold text-gray-800">{currentTask.assignedMentor?.fullName || 'Assigned Mentor'}</span>
+                            {currentTask.dueDate && (
+                              <> • Due: <span className="font-semibold text-red-600">{new Date(currentTask.dueDate).toLocaleDateString()}</span></>
+                            )}
+                            {currentTask.totalMarks ? (
+                              <> • Total Marks: <span className="font-semibold text-gray-800">{currentTask.totalMarks} pts</span></>
+                            ) : null}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="self-start sm:self-center px-3 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-800 border border-orange-300 uppercase tracking-wider">
+                        Mentor's Instructions
+                      </span>
+                    </div>
+
+                    {/* Description Box */}
+                    <div className="bg-white border border-orange-200/80 rounded-lg p-4 shadow-sm mb-3">
+                      <div className="flex items-center gap-1.5 mb-2 text-xs font-bold text-orange-600 uppercase tracking-wider">
+                        <Info className="w-4 h-4" />
+                        <span>Description Added by Mentor</span>
+                      </div>
+                      <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                        {currentTask.description ? currentTask.description : (
+                          <span className="italic text-gray-400">No description was added by the mentor for this task.</span>
+                        )}
+                      </p>
+                    </div>
+
+                    {/* Attachment from Mentor if any */}
+                    {currentTask.attachments && (
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white border border-orange-200/80 rounded-lg text-xs">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Paperclip className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                          <span className="font-medium text-gray-700 truncate">
+                            {currentTask.attachments.split('/').pop()?.split('?')[0] || 'Mentor_Attachment.pdf'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <a
+                            href={currentTask.attachments}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 px-2.5 py-1 rounded bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Preview Document
+                          </a>
+                          {currentTask._id && (
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadTaskAttachment(currentTask._id, currentTask.attachments.split('/').pop()?.split('?')[0])}
+                              className="text-orange-600 hover:text-orange-800 font-semibold flex items-center gap-1 px-2.5 py-1 rounded bg-orange-50 border border-orange-200 hover:bg-orange-100 transition-colors ml-1"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              Download
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Row 1 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="flex flex-col">
@@ -967,6 +1124,130 @@ export const TaskSubmission = () => {
             </div>
           )}
         </div>
-      </div>
+
+      {/* View Task Details Modal */}
+      {viewingTaskDetails && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-100">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-orange-50/60 via-white to-white">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold text-gray-900 truncate">{viewingTaskDetails.title}</h2>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
+                    {viewingTaskDetails.taskType || 'Task'}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={closeViewTaskDetails}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-5 overflow-y-auto space-y-5">
+              {/* Meta Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 p-4 rounded-xl border border-gray-100">
+                <div>
+                  <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">Module</span>
+                  <span className="text-sm font-semibold text-gray-900 truncate block">{viewingTaskDetails.module || 'General'}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">Assigned Mentor</span>
+                  <span className="text-sm font-semibold text-gray-900 truncate block">
+                    {viewingTaskDetails.assignedMentor?.fullName || 'Mentor'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">Due Date</span>
+                  <span className="text-sm font-semibold text-red-600 block">
+                    {viewingTaskDetails.dueDate ? new Date(viewingTaskDetails.dueDate).toLocaleDateString() : 'N/A'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">Total Marks</span>
+                  <span className="text-sm font-semibold text-gray-900 block">{viewingTaskDetails.totalMarks || 0} pts</span>
+                </div>
+              </div>
+
+              {/* Mentor's Description Section */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="w-4 h-4 text-orange-500" />
+                  <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Task Description (From Mentor)
+                  </h3>
+                </div>
+                <div className="bg-amber-50/40 border border-amber-200/80 rounded-xl p-4 text-sm text-gray-800 whitespace-pre-line leading-relaxed shadow-sm">
+                  {viewingTaskDetails.description ? viewingTaskDetails.description : (
+                    <span className="italic text-gray-400">No description provided for this task.</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Task Attachments Section */}
+              {viewingTaskDetails.attachments && (
+                <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Paperclip className="w-4 h-4 text-orange-500" />
+                    <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Task Document / Attachment</h4>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-lg border border-gray-200">
+                    <span className="text-xs font-medium text-gray-700 truncate max-w-sm">
+                      {viewingTaskDetails.attachments.split('/').pop()?.split('?')[0] || 'Task_Attachment.pdf'}
+                    </span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <a
+                        href={viewingTaskDetails.attachments}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Preview
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadTaskAttachment(viewingTaskDetails._id, viewingTaskDetails.attachments.split('/').pop()?.split('?')[0])}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-3">
+              <button
+                onClick={closeViewTaskDetails}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  const taskToSubmit = viewingTaskDetails;
+                  closeViewTaskDetails();
+                  handleStartSubmission(taskToSubmit);
+                }}
+                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
+              >
+                Submit Task
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };

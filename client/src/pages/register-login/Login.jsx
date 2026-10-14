@@ -101,6 +101,9 @@ const Login = () => {
         const image = response?.data?.userData?.image || "";
         const name = response?.data?.userData?.name || "";
         const branch = response?.data?.userData?.branch || "";
+        const permissions = response?.data?.userData?.permissions || null;
+        const isMultipleBranch = response?.data?.userData?.isMultipleBranch || false;
+        const multipleBranches = response?.data?.userData?.multipleBranches || [];
 
         localStorage.setItem("accessToken", accessToken)
         localStorage.setItem("role", role)
@@ -110,8 +113,20 @@ const Login = () => {
         if (branch) {
           localStorage.setItem("branch", branch)
         }
+        if (isMultipleBranch) {
+          localStorage.setItem("isMultipleBranch", "true");
+          localStorage.setItem("multipleBranches", JSON.stringify(multipleBranches));
+        } else {
+          localStorage.removeItem("isMultipleBranch");
+          localStorage.removeItem("multipleBranches");
+        }
+        if (permissions) {
+          localStorage.setItem("permissions", JSON.stringify(permissions));
+        } else {
+          localStorage.removeItem("permissions");
+        }
 
-        setAuth({ accessToken, role, id, image, name, branch })
+        setAuth({ accessToken, role, id, image, name, branch, permissions, isMultipleBranch, multipleBranches })
 
         // Show success modal
         showModal('success', 'Login Successful!', `Welcome back, ${name}! Redirecting to your dashboard...`);

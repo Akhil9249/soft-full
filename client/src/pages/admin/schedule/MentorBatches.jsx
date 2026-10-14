@@ -93,8 +93,10 @@ export const MentorBatches = () => {
 
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState('');
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
+  const [mentorBranches, setMentorBranches] = useState([]);
 
-  const { getAllMentorsWithBatches, getBranchesData } = AdminService();
+  const { getAllMentorsWithBatches, getBranchesData, getUserProfile } = AdminService();
   const navigate = useNavigate();
   const hoverTimeoutRef = useRef(null);
 
@@ -107,37 +109,110 @@ export const MentorBatches = () => {
   }, []);
 
   useEffect(() => {
-    const fetchBranches = async () => {
+    const fetchBranchesAndProfile = async () => {
       try {
-        const response = await getBranchesData();
-        const branchesData = response?.data || response || [];
+        const [branchRes, profileRes] = await Promise.allSettled([
+          getBranchesData(),
+          getUserProfile()
+        ]);
+
+        const branchesData = branchRes.status === 'fulfilled' ? (branchRes.value?.data || branchRes.value || []) : [];
         const branchesList = Array.isArray(branchesData) ? branchesData : [];
         setBranches(branchesList);
-        
-        // Default to calicut branch if super admin, or logged-in user's branch, or first branch if not set
-        if (!selectedBranch && branchesList.length > 0) {
-          const isSuperAdmin = userRole?.toLowerCase() === 'super admin';
-          let defaultBranchId = '';
-          if (isSuperAdmin) {
-            const calicutBranch = branchesList.find(b => b.branchName?.toLowerCase().includes('calicut'));
-            if (calicutBranch) {
-              defaultBranchId = calicutBranch._id;
+
+        const profileData = profileRes.status === 'fulfilled' ? (profileRes.value?.data?.user || null) : null;
+        setCurrentUserProfile(profileData);
+
+        const roleLower = userRole?.toLowerCase();
+        const isSuperAdmin = roleLower === 'super admin';
+        const isMentor = roleLower === 'mentor';
+
+        if (isMentor) {
+          // Identify mentor's primary and multiple branches
+          const primaryBranchId = profileData?.branch?._id || profileData?.branch || auth?.branch || localStorage.getItem("branch");
+          const multiBranches = (profileData?.isMultipleBranch && Array.isArray(profileData?.multipleBranches))
+            ? profileData.multipleBranches
+            : (auth?.isMultipleBranch && Array.isArray(auth?.multipleBranches))
+              ? auth.multipleBranches
+              : [];
+
+          const resolvedPrimary = branchesList.find(b => String(b._id) === String(primaryBranchId)) || 
+            (typeof profileData?.branch === 'object' && profileData?.branch ? profileData.branch : null);
+
+          const resolvedMulti = multiBranches.map(mb => {
+            const mbId = typeof mb === 'object' && mb !== null ? mb._id : mb;
+            return branchesList.find(b => String(b._id) === String(mbId)) || (typeof mb === 'object' ? mb : null);
+          }).filter(Boolean);
+
+          const allMyBranches = [resolvedPrimary, ...resolvedMulti].filter(Boolean);
+          const uniqueMyBranches = [];
+          const seenBranchIds = new Set();
+          allMyBranches.forEach(b => {
+            const bId = String(b._id);
+            if (!seenBranchIds.has(bId)) {
+              seenBranchIds.add(bId);
+              uniqueMyBranches.push(b);
             }
-          } else {
-            defaultBranchId = auth?.branch || localStorage.getItem("branch") || '';
+          });
+
+          setMentorBranches(uniqueMyBranches);
+
+          // If mentor has multiple branches, default to "" (All Branches) so both primary and additional branches' batches are listed!
+          // If only 1 branch, select that branch.
+          if (uniqueMyBranches.length > 1) {
+            setSelectedBranch('');
+          } else if (uniqueMyBranches.length === 1) {
+            setSelectedBranch(uniqueMyBranches[0]._id);
           }
-          
-          if (!defaultBranchId || !branchesList.some(b => b._id === defaultBranchId)) {
-            defaultBranchId = branchesList[0]._id;
+        } else if (isSuperAdmin) {
+          setMentorBranches(branchesList);
+          if (!selectedBranch && branchesList.length > 0) {
+            const calicutBranch = branchesList.find(b => b.branchName?.toLowerCase().includes('calicut'));
+            setSelectedBranch(calicutBranch ? calicutBranch._id : branchesList[0]._id);
           }
-          setSelectedBranch(defaultBranchId);
+        } else {
+          // Regular Admin / Branch Admin
+          const primaryBranchId = profileData?.branch?._id || profileData?.branch || auth?.branch || localStorage.getItem("branch");
+          const multiBranches = (profileData?.isMultipleBranch && Array.isArray(profileData?.multipleBranches))
+            ? profileData.multipleBranches
+            : (auth?.isMultipleBranch && Array.isArray(auth?.multipleBranches))
+              ? auth.multipleBranches
+              : [];
+
+          const resolvedPrimary = branchesList.find(b => String(b._id) === String(primaryBranchId));
+          const resolvedMulti = multiBranches.map(mb => {
+            const mbId = typeof mb === 'object' && mb !== null ? mb._id : mb;
+            return branchesList.find(b => String(b._id) === String(mbId));
+          }).filter(Boolean);
+
+          const allMyBranches = [resolvedPrimary, ...resolvedMulti].filter(Boolean);
+          const uniqueMyBranches = [];
+          const seen = new Set();
+          allMyBranches.forEach(b => {
+            const bId = String(b._id);
+            if (!seen.has(bId)) {
+              seen.add(bId);
+              uniqueMyBranches.push(b);
+            }
+          });
+
+          setMentorBranches(uniqueMyBranches);
+          if (!selectedBranch) {
+            if (uniqueMyBranches.length > 1) {
+              setSelectedBranch('');
+            } else if (uniqueMyBranches.length === 1) {
+              setSelectedBranch(uniqueMyBranches[0]._id);
+            } else if (branchesList.length > 0) {
+              setSelectedBranch(branchesList[0]._id);
+            }
+          }
         }
       } catch (err) {
-        console.error('Error fetching branches:', err);
+        console.error('Error fetching branches and user profile in MentorBatches:', err);
       }
     };
-    fetchBranches();
-  }, [auth, selectedBranch]);
+    fetchBranchesAndProfile();
+  }, [auth, userRole]);
 
   const selectedMentorRef = useRef(selectedMentor);
   useEffect(() => {
@@ -171,7 +246,7 @@ export const MentorBatches = () => {
       
       if (userRole?.toLowerCase() === 'mentor') {
         mentorList = mentorList.filter(
-          m => m._id === userId || m.fullName?.toLowerCase() === userName?.toLowerCase()
+          m => String(m._id) === String(userId) || m.fullName?.toLowerCase() === userName?.toLowerCase()
         );
       }
       setAllMentors(mentorList);
@@ -181,7 +256,7 @@ export const MentorBatches = () => {
       // Try to preserve the selected mentor if possible
       const currentSelected = selectedMentorRef.current;
       if (currentSelected) {
-        initialMentor = mentorList.find(m => m._id === currentSelected._id);
+        initialMentor = mentorList.find(m => String(m._id) === String(currentSelected._id));
       }
 
       if (!initialMentor && searchMentor) {
@@ -226,9 +301,11 @@ export const MentorBatches = () => {
       (slot.subDetails || []).forEach(sub => {
         const dayName = (sub.day?.name || 'N/A').trim();
         const dayKey = dayName.toLowerCase();
+        const branchKey = sub.branch?._id || (typeof sub.branch === 'string' ? sub.branch : '');
+        const compositeKey = `${dayKey}_${branchKey}`;
         
-        if (!groups[timeSlotKey].subDetailsMap[dayKey]) {
-          groups[timeSlotKey].subDetailsMap[dayKey] = {
+        if (!groups[timeSlotKey].subDetailsMap[compositeKey]) {
+          groups[timeSlotKey].subDetailsMap[compositeKey] = {
             day: { name: dayName },
             batches: [],
             branch: sub.branch,
@@ -238,7 +315,7 @@ export const MentorBatches = () => {
         }
 
         if (sub.batches && Array.isArray(sub.batches)) {
-          groups[timeSlotKey].subDetailsMap[dayKey].batches.push(...sub.batches);
+          groups[timeSlotKey].subDetailsMap[compositeKey].batches.push(...sub.batches);
         }
       });
     });
@@ -510,7 +587,24 @@ export const MentorBatches = () => {
             </div>
 
             {/* Branch Selector */}
-            {userRole?.toLowerCase() !== 'mentor' && (
+            {userRole?.toLowerCase() === 'mentor' ? (
+              mentorBranches.length > 1 && (
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <select
+                    value={selectedBranch}
+                    onChange={(e) => setSelectedBranch(e.target.value)}
+                    className="min-w-[190px] px-3.5 py-2.5 border border-slate-200/80 rounded-xl text-sm bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-colors flex-shrink-0"
+                  >
+                    <option value="">All Branches ({mentorBranches.length})</option>
+                    {mentorBranches.map(b => (
+                      <option key={b._id} value={b._id}>
+                        {b.branchName} {String(b._id) === String(currentUserProfile?.branch?._id || currentUserProfile?.branch || auth?.branch) ? '(Primary)' : '(Additional)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )
+            ) : (
               userRole?.toLowerCase() === 'super admin' ? (
                 <select
                   value={selectedBranch}
@@ -519,6 +613,7 @@ export const MentorBatches = () => {
                   }}
                   className="min-w-[180px] px-4 py-2.5 border border-slate-200/80 rounded-xl text-sm bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-colors flex-shrink-0"
                 >
+                  <option value="">All Branches</option>
                   {branches.map(b => (
                     <option key={b._id} value={b._id}>{b.branchName}</option>
                   ))}
@@ -526,10 +621,12 @@ export const MentorBatches = () => {
               ) : (
                 <select
                   value={selectedBranch}
-                  disabled
-                  className="min-w-[180px] px-4 py-2.5 border border-slate-200/80 bg-gray-50 rounded-xl text-sm text-slate-500 font-medium cursor-not-allowed shadow-sm flex-shrink-0"
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  disabled={mentorBranches.length <= 1}
+                  className="min-w-[180px] px-4 py-2.5 border border-slate-200/80 rounded-xl text-sm bg-white text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-slate-300 transition-colors flex-shrink-0 disabled:bg-gray-50 disabled:text-slate-500 disabled:cursor-not-allowed"
                 >
-                  {branches.filter(b => b._id === (auth?.branch || selectedBranch)).map(b => (
+                  {mentorBranches.length > 1 && <option value="">All My Branches ({mentorBranches.length})</option>}
+                  {mentorBranches.map(b => (
                     <option key={b._id} value={b._id}>{b.branchName}</option>
                   ))}
                 </select>
@@ -588,13 +685,13 @@ export const MentorBatches = () => {
 
               {/* Profile Card */}
               <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
-                <div className="flex items-center gap-4 mb-6">
+                <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 bg-orange-100/80 rounded-2xl flex items-center justify-center text-orange-600 shadow-sm border border-orange-100 flex-shrink-0">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <span className={`inline-flex px-2.5 py-0.5 text-[10px] font-bold rounded-full mb-1.5 uppercase tracking-wider ${getRoleBadgeColor(selectedMentor.role)}`}>
                       {selectedMentor.role || 'Mentor'}
                     </span>
@@ -602,6 +699,31 @@ export const MentorBatches = () => {
                     <p className="text-xs text-slate-600 mt-1 font-medium truncate">{selectedMentor.email}</p>
                   </div>
                 </div>
+
+                {/* Branches Display */}
+                {(selectedMentor?.branch || (selectedMentor?.isMultipleBranch && selectedMentor?.multipleBranches?.length > 0)) && (
+                  <div className="mb-4 pt-3 border-t border-slate-100">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+                      Assigned Branches
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedMentor.branch && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-100">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                          <span>{selectedMentor.branch.branchName || 'Primary Branch'}</span>
+                          <span className="text-[10px] text-blue-500 font-normal">(Primary)</span>
+                        </span>
+                      )}
+                      {selectedMentor.isMultipleBranch && Array.isArray(selectedMentor.multipleBranches) && selectedMentor.multipleBranches.map(b => (
+                        <span key={b._id || b} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 text-purple-700 text-xs font-semibold rounded-lg border border-purple-100">
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                          <span>{b.branchName || 'Additional Branch'}</span>
+                          <span className="text-[10px] text-purple-500 font-normal">(Additional)</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4.5">
                   <div className="bg-slate-50/50 rounded-2xl p-4.5 text-center border border-slate-100">
@@ -647,7 +769,7 @@ export const MentorBatches = () => {
                         >
                           <div className="flex items-center justify-between mb-2">
                             <h5 className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{batch?.batchName}</h5>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap justify-end">
                               {scheduledToday && (
                                 <span className="px-2 py-0.5 bg-orange-500 text-white text-[9px] rounded-full font-bold animate-pulse">
                                   Today
@@ -658,12 +780,17 @@ export const MentorBatches = () => {
                                   {batch?.dayCombination}
                                 </span>
                               )}
+                              {batch?.branchName && batch?.branchName !== 'N/A' && (
+                                <span className="px-2 py-0.5 bg-purple-50 text-purple-700 text-[10px] rounded-full font-bold border border-purple-100">
+                                  {batch.branchName}
+                                </span>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center space-x-2 text-[11px] text-slate-600 font-medium">
                             <span className="truncate max-w-[150px]">{batch?.courseName}</span>
                             <span>•</span>
-                            <span className="truncate">{batch?.branchName}</span>
+                            <span className="truncate font-semibold text-slate-700">{batch?.branchName}</span>
                           </div>
 
                           {/* Hover hint */}
@@ -732,13 +859,18 @@ export const MentorBatches = () => {
                                 }`}
                               >
                                 <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="inline-flex items-center px-2 py-0.5 bg-slate-200 text-slate-800 text-[10px] font-bold rounded-md uppercase tracking-wider">
                                       {subDetail?.day?.name || 'N/A'}
                                     </span>
                                     {isToday && (
                                       <span className="inline-flex items-center px-2 py-0.5 bg-orange-500 text-white text-[10px] font-bold rounded-md uppercase tracking-wider animate-pulse">
                                         Today
+                                      </span>
+                                    )}
+                                    {subDetail?.branch?.branchName && (
+                                      <span className="inline-flex items-center px-2 py-0.5 bg-purple-50 text-purple-700 text-[10px] font-bold rounded-md border border-purple-100">
+                                        {subDetail.branch.branchName}
                                       </span>
                                     )}
                                   </div>
@@ -752,13 +884,18 @@ export const MentorBatches = () => {
                                     {subDetail.batches.map((b, bIdx) => (
                                       <span
                                         key={b?._id || bIdx}
-                                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors border ${
+                                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors border inline-flex items-center gap-1.5 ${
                                           isToday
                                             ? 'bg-orange-500 text-white border-orange-600 shadow-sm'
                                             : 'bg-blue-50/50 border-blue-100/70 text-blue-700 hover:bg-blue-100/80'
                                         }`}
                                       >
-                                        {b?.batchName || 'N/A'}
+                                        <span>{b?.batchName || 'N/A'}</span>
+                                        {b?.branchName && b?.branchName !== 'N/A' && (
+                                          <span className={`text-[10px] font-medium px-1 rounded ${isToday ? 'bg-orange-600 text-white' : 'bg-blue-100 text-blue-800'}`}>
+                                            {b.branchName}
+                                          </span>
+                                        )}
                                       </span>
                                     ))}
                                   </div>

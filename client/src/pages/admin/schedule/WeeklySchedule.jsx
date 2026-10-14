@@ -77,6 +77,29 @@ export const WeeklySchedule = () => {
   const [endDate, setEndDate] = useState(defaultDates.endDate);
   const { getBatchesData, getAllBatchesData, getWeeklySchedulesData, postWeeklySchedulesData, putWeeklySchedulesData, deleteWeeklySchedulesData, deleteWeeklyScheduleDocument, getAllActiveStaffData, getModulesData, getTopicsData, updateWeeklyScheduleSubject, updateWeeklyScheduleNote, getBranchesData, getTimingsData, getDaysCombinationsData, getUserProfile } = AdminService();
 
+  const getMentorTimingsForBranch = (mentor, branchId) => {
+    if (!mentor || !mentor.time || mentor.time.length === 0) return [];
+    const allMentorTimings = mentor.time
+      .map(mt => {
+        const id = typeof mt === 'object' && mt !== null ? mt._id : mt;
+        return timings.find(t => String(t._id) === String(id));
+      })
+      .filter(Boolean);
+
+    if (!branchId) return allMentorTimings;
+
+    // Filter timings specifically assigned to this branch
+    const branchSpecificTimings = allMentorTimings.filter(t => {
+      if (!t.branch) return false;
+      const tBranchId = typeof t.branch === 'object' && t.branch !== null ? t.branch._id : t.branch;
+      return String(tBranchId) === String(branchId);
+    });
+
+    // If mentor has timings explicitly configured for this branch, show them;
+    // otherwise fallback to all mentor timings so the mentor can still be scheduled.
+    return branchSpecificTimings.length > 0 ? branchSpecificTimings : allMentorTimings;
+  };
+
   const showModalMessage = (message, type = 'info') => {
     setModalMessage(message);
     setModalType(type);
@@ -248,31 +271,40 @@ export const WeeklySchedule = () => {
           }
           setBranches(fetchedBranches);
         } else {
-          // Regular staff member
+          // Regular staff member or branch admin
           let staffBranchId = localStorage.getItem("branch");
-          if (!staffBranchId || staffBranchId === "undefined" || staffBranchId === "null") {
-            try {
-              const profileRes = await getUserProfile();
-              const profileBranch = profileRes?.data?.user?.branch;
-              if (profileBranch) {
-                staffBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
-                localStorage.setItem("branch", staffBranchId);
+          let allowedBranches = [];
+          try {
+            const profileRes = await getUserProfile();
+            const user = profileRes?.data?.user;
+            if (user) {
+              const primaryId = typeof user.branch === 'object' ? user.branch?._id : user.branch;
+              const multiIds = (user.isMultipleBranch && Array.isArray(user.multipleBranches))
+                ? user.multipleBranches.map(b => typeof b === 'object' ? b._id : b)
+                : [];
+              const myBranchIds = [primaryId, ...multiIds].filter(Boolean).map(String);
+              allowedBranches = fetchedBranches.filter(b => myBranchIds.includes(String(b._id)));
+              if (!staffBranchId && primaryId) {
+                staffBranchId = primaryId;
+                localStorage.setItem("branch", primaryId);
               }
-            } catch (e) {
-              console.error("Failed to fetch staff profile for branch selection:", e);
             }
+          } catch (e) {
+            console.error("Failed to fetch staff profile for branch selection:", e);
           }
 
-          if (staffBranchId && staffBranchId !== "undefined" && staffBranchId !== "null") {
-            const exists = fetchedBranches.some(b => b._id === staffBranchId);
-            if (exists) {
+          if (allowedBranches.length > 0) {
+            setBranches(allowedBranches);
+            if (staffBranchId && allowedBranches.some(b => String(b._id) === String(staffBranchId))) {
               initialBranchId = staffBranchId;
+            } else {
+              initialBranchId = allowedBranches[0]._id;
             }
+          } else {
+            const staffBranch = fetchedBranches.find(b => b._id === staffBranchId);
+            setBranches(staffBranch ? [staffBranch] : fetchedBranches);
+            if (staffBranch) initialBranchId = staffBranch._id;
           }
-
-          // Filter branches array to only include the staff's branch
-          const staffBranch = fetchedBranches.find(b => b._id === initialBranchId);
-          setBranches(staffBranch ? [staffBranch] : fetchedBranches);
         }
         setSelectedBranch(initialBranchId);
       } else {
@@ -337,6 +369,8 @@ export const WeeklySchedule = () => {
         _id: staff._id,
         name: staff.fullName,
         branch: staff.branch,
+        isMultipleBranch: staff.isMultipleBranch || false,
+        multipleBranches: staff.multipleBranches || [],
         time: staff.time || []
       }));
       setAllMentors(transformedMentors);
@@ -402,19 +436,26 @@ export const WeeklySchedule = () => {
     let filteredBatches = allBatches;
     let filteredMentors = allMentors;
 
-    const effectiveBranch = isStaffWithoutBranchControl ? (localStorage.getItem("branch") || selectedBranch) : selectedBranch;
+    const effectiveBranch = selectedBranch || (isStaffWithoutBranchControl ? localStorage.getItem("branch") : "");
 
     if (effectiveBranch && effectiveBranch !== 'undefined' && effectiveBranch !== 'null') {
       filteredBatches = allBatches.filter(batch => {
         const branchId = typeof batch.branch === 'object' && batch.branch !== null ? batch.branch._id : batch.branch;
-        return branchId === effectiveBranch;
+        return String(branchId) === String(effectiveBranch);
       });
 
       filteredMentors = allMentors.filter(mentor => {
-        const branchId = typeof mentor.branch === 'object' && mentor.branch !== null ? mentor.branch._id : mentor.branch;
-        return branchId === effectiveBranch;
+        const primaryBranchId = typeof mentor.branch === 'object' && mentor.branch !== null ? mentor.branch._id : mentor.branch;
+        if (String(primaryBranchId) === String(effectiveBranch)) return true;
+        if (mentor.isMultipleBranch && Array.isArray(mentor.multipleBranches)) {
+          return mentor.multipleBranches.some(b => {
+            const bId = typeof b === 'object' && b !== null ? b._id : b;
+            return String(bId) === String(effectiveBranch);
+          });
+        }
+        return false;
       });
-    } else if (isStaffWithoutBranchControl) {
+    } else if (isStaffWithoutBranchControl && branches.length === 0) {
       filteredBatches = [];
       filteredMentors = [];
     }
@@ -427,7 +468,7 @@ export const WeeklySchedule = () => {
 
     setBatches(filteredBatches);
     setMentors(filteredMentors);
-  }, [selectedBranch, allBatches, allMentors, searchTerm, isStaffWithoutBranchControl]);
+  }, [selectedBranch, allBatches, allMentors, searchTerm, isStaffWithoutBranchControl, branches.length]);
 
   useEffect(() => {
     fetchBatches();
@@ -715,15 +756,8 @@ export const WeeklySchedule = () => {
         }
 
         const mentor = mentors[mentorIndex];
-        let mentorTimings = [];
-        if (mentor.time && mentor.time.length > 0) {
-          mentorTimings = mentor.time
-            .map(mt => {
-              const id = typeof mt === 'object' && mt !== null ? mt._id : mt;
-              return timings.find(t => String(t._id) === String(id));
-            })
-            .filter(Boolean);
-        }
+        const effectiveBranch = selectedBranch || (isStaffWithoutBranchControl ? localStorage.getItem("branch") : "");
+        const mentorTimings = getMentorTimingsForBranch(mentor, effectiveBranch);
         const timeSlot = mentorTimings[slotIndex];
         const targetDaysName = dayCombo.name;
 
@@ -1047,10 +1081,10 @@ export const WeeklySchedule = () => {
                 <select
                   value={selectedBranch}
                   onChange={(e) => setSelectedBranch(e.target.value)}
-                  disabled={branchesLoading || isStaffWithoutBranchControl}
+                  disabled={branchesLoading || (isStaffWithoutBranchControl && branches.length <= 1)}
                   className="w-full sm:w-auto p-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 disabled:opacity-75 disabled:cursor-not-allowed"
                 >
-                  {!isStaffWithoutBranchControl && (
+                  {(isSuperAdmin || branches.length > 1) && (
                     <option value="">{branchesLoading ? 'Loading branches...' : 'Choose Branch'}</option>
                   )}
                   {branches.map(branch => (
@@ -1107,27 +1141,25 @@ export const WeeklySchedule = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {mentors.map((mentor, mentorIndex) => {
-                    let mentorTimings = [];
-                    if (mentor.time && mentor.time.length > 0) {
-                      mentorTimings = mentor.time
-                        .map(mt => {
-                          const id = typeof mt === 'object' && mt !== null ? mt._id : mt;
-                          return timings.find(t => String(t._id) === String(id));
-                        })
-                        .filter(Boolean);
-                    }
+                    const effectiveBranch = selectedBranch || (isStaffWithoutBranchControl ? localStorage.getItem("branch") : "");
+                    const mentorTimings = getMentorTimingsForBranch(mentor, effectiveBranch);
 
                     if (mentorTimings.length === 0) {
                       return (
                         <tr key={mentorIndex}>
                           <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 border-r border-gray-200 sticky left-0 bg-gray-50 z-10 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px] truncate max-w-[120px] sm:max-w-[150px]" title={mentor.name}>
-                            {mentor.name}
+                            <div className="font-medium text-gray-900 truncate">{mentor.name}</div>
+                            {mentor.isMultipleBranch && mentor.multipleBranches?.length > 0 && (
+                              <div className="text-[10px] text-orange-600 font-normal truncate" title={`Additional Branches: ${mentor.multipleBranches.map(b => typeof b === 'object' ? b.branchName : b).join(', ')}`}>
+                                +{mentor.multipleBranches.map(b => typeof b === 'object' ? b.branchName : b).join(', ')}
+                              </div>
+                            )}
                           </td>
                           <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 italic sticky left-[120px] sm:left-[150px] bg-gray-50 z-10 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                             -
                           </td>
                           <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 italic" colSpan={displayedDayCombinations.length * 2}>
-                            No timings assigned to this mentor
+                            No timings assigned for this branch
                           </td>
                         </tr>
                       );
@@ -1140,7 +1172,12 @@ export const WeeklySchedule = () => {
                             <tr key={`${mentorIndex}-${slotIndex}`} data-mentor-slot={`${mentorIndex}-${slotIndex}`}>
                               {slotIndex === 0 && (
                                 <td rowSpan={mentorTimings.length} className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 border-r border-gray-200 align-top sticky left-0 bg-white z-10 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px] truncate max-w-[120px] sm:max-w-[150px]" title={mentor.name}>
-                                  {mentor.name}
+                                  <div className="font-medium text-gray-900 truncate">{mentor.name}</div>
+                                  {mentor.isMultipleBranch && mentor.multipleBranches?.length > 0 && (
+                                    <div className="text-[10px] text-orange-600 font-normal truncate" title={`Additional Branches: ${mentor.multipleBranches.map(b => typeof b === 'object' ? b.branchName : b).join(', ')}`}>
+                                      +{mentor.multipleBranches.map(b => typeof b === 'object' ? b.branchName : b).join(', ')}
+                                    </div>
+                                  )}
                                 </td>
                               )}
                               <td className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 border-r border-gray-200 sticky left-[120px] sm:left-[150px] bg-white z-10 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">

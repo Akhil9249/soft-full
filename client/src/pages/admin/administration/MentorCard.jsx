@@ -45,16 +45,31 @@ const MenorCard = () => {
     });
 
     const calculateStats = (cards) => {
-        if (!cards || !cards.length) return;
+        if (!cards || !cards.length) {
+            setStats({
+                avgTestScore: 0,
+                avgProjectScore: 0,
+                attendancePercent: 0
+            });
+            return;
+        }
 
         const testCards = cards.filter(c => c.isTest);
         const avgTestScore = testCards.length
-            ? Math.round(testCards.reduce((acc, c) => acc + (Number(c.test_marks) || 0), 0) / testCards.length)
+            ? Math.round(testCards.reduce((acc, c) => {
+                const total = Number(c.test_total) > 0 ? Number(c.test_total) : 100;
+                const marks = Number(c.test_marks) || 0;
+                return acc + (marks / total) * 100;
+            }, 0) / testCards.length)
             : 0;
 
         const projectCards = cards.filter(c => c.isProject);
         const avgProjectScore = projectCards.length
-            ? Math.round(projectCards.reduce((acc, c) => acc + (Number(c.project_marks) || 0), 0) / projectCards.length)
+            ? Math.round(projectCards.reduce((acc, c) => {
+                const total = Number(c.project_total) > 0 ? Number(c.project_total) : 100;
+                const marks = Number(c.project_marks) || 0;
+                return acc + (marks / total) * 100;
+            }, 0) / projectCards.length)
             : 0;
 
         // Attendance parsing
@@ -314,21 +329,26 @@ const MenorCard = () => {
                                                     {row.mentorId?.fullName || '-'}
                                                 </td>
  
-                                                <td className="p-4 flex gap-2">
-                                                    <button
-                                                        onClick={() => handleEdit(row)}
-                                                        className="flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-all text-[10px] font-bold"
-                                                        title="Edit Entry"
-                                                    >
-                                                        EDIT
-                                                    </button>
+                                                <td className="p-4 align-middle">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => handleEdit(row)}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50/70 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 border border-indigo-200 hover:border-indigo-300 rounded-lg shadow-xs hover:shadow-sm transition-all text-xs font-semibold tracking-wide active:scale-95"
+                                                            title="Edit Entry"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                            </svg>
+                                                            <span>Edit</span>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ));
                                     })()
                                 ) : (
                                     <tr>
-                                        <td colSpan="9" className="p-10 text-center text-gray-500">No data available for this intern.</td>
+                                        <td colSpan="10" className="p-10 text-center text-gray-500">No data available for this intern.</td>
                                     </tr>
                                 )}
                             </tbody>

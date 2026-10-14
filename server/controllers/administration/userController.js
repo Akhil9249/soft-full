@@ -156,12 +156,15 @@ const getUserById = async (req, res) => {
     }
 
     // Find the user first
-    let userData = await User.findById(userId);
+    let userData = await User.findById(userId).populate('role');
     let userType = "User";
 
     if (!userData) {
       const { Staff } = require("../../models/administration/staffModel");
-      userData = await Staff.findById(userId);
+      userData = await Staff.findById(userId)
+        .populate('role')
+        .populate('branch')
+        .populate('multipleBranches', 'branchName');
       userType = "Staff";
     }
 
@@ -172,12 +175,19 @@ const getUserById = async (req, res) => {
       });
     }
 
+    const roleName = userData?.role?.role || (typeof userData?.role === 'string' ? userData.role : null);
+    const permissions = userData?.role?.permissions || null;
+
     const user = {
       name: userData?.name || userData?.fullName,
       email: userData?.email || userData?.officialEmail,
       phone: userData?.phone || userData?.staffPhoneNumber,
       image: userData?.image || userData?.photo,
       branch: userData?.branch || null,
+      isMultipleBranch: userData?.isMultipleBranch || false,
+      multipleBranches: userData?.multipleBranches || [],
+      role: roleName,
+      permissions,
       userType,
     };
 

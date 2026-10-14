@@ -11,6 +11,9 @@ export const handleLogout = (navigate, setAuth, dispatch) => {
     localStorage.removeItem("role");
     localStorage.removeItem("profileImage");
     localStorage.removeItem("name");
+    localStorage.removeItem("branch");
+    localStorage.removeItem("isMultipleBranch");
+    localStorage.removeItem("multipleBranches");
     
     // Clear Context API auth state
     if (setAuth) {

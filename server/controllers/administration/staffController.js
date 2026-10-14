@@ -101,6 +101,8 @@ const addStaff = async (req, res) => {
       district,
       state,
       photo,
+      isMultipleBranch,
+      multipleBranches,
       department,
       branch,
       yearsOfExperience,
@@ -174,6 +176,23 @@ const addStaff = async (req, res) => {
     // Hash password
     const hashedPassword = await generatePasswordHash(password);
 
+    // Parse isMultipleBranch and multipleBranches
+    const hasMultipleBranch = isMultipleBranch === 'true' || isMultipleBranch === true;
+    let parsedMultipleBranches = [];
+    if (hasMultipleBranch && multipleBranches) {
+      if (Array.isArray(multipleBranches)) {
+        parsedMultipleBranches = multipleBranches;
+      } else if (typeof multipleBranches === 'string') {
+        try {
+          parsedMultipleBranches = JSON.parse(multipleBranches);
+        } catch (e) {
+          parsedMultipleBranches = multipleBranches.split(',').map(s => s.trim());
+        }
+      }
+      parsedMultipleBranches = (Array.isArray(parsedMultipleBranches) ? parsedMultipleBranches : [parsedMultipleBranches])
+        .filter(b => b && mongoose.Types.ObjectId.isValid(b));
+    }
+
     // Create staff
     const newStaff = await Staff.create({
       fullName,
@@ -186,6 +205,8 @@ const addStaff = async (req, res) => {
       district,
       state,
       photo: photoUrl,
+      isMultipleBranch: hasMultipleBranch,
+      multipleBranches: parsedMultipleBranches,
       department,
       branch,
       yearsOfExperience: yearsOfExperience || 0,
@@ -205,6 +226,7 @@ const addStaff = async (req, res) => {
     // Populate branch and role fields for response
     const populatedStaff = await Staff.findById(newStaff._id)
       .populate('branch', 'branchName')
+      .populate('multipleBranches', 'branchName')
       .populate('role', 'role description')
       .select('-password');
 
@@ -277,7 +299,22 @@ const getStaff = async (req, res) => {
     if (branch) {
       // Validate that branch is a valid ObjectId
       if (mongoose.Types.ObjectId.isValid(branch)) {
-        query.branch = branch;
+        const branchObjId = new mongoose.Types.ObjectId(branch);
+        const branchCondition = {
+          $or: [
+            { branch: branchObjId },
+            { isMultipleBranch: true, multipleBranches: branchObjId }
+          ]
+        };
+        if (query.$or) {
+          query.$and = [
+            { $or: query.$or },
+            branchCondition
+          ];
+          delete query.$or;
+        } else {
+          query.$or = branchCondition.$or;
+        }
       }
     }
 
@@ -288,6 +325,7 @@ const getStaff = async (req, res) => {
     // Get paginated results
     const staff = await Staff.find(query)
       .populate('branch', 'branchName')
+      .populate('multipleBranches', 'branchName')
       .populate('role', 'role description')
       .select('-password')
       .sort({ createdAt: -1 })
@@ -319,13 +357,17 @@ const getAllStaff = async (req, res) => {
     if (req.userId) {
       const loggedInUser = await Staff.findById(req.userId).populate('role');
       if (loggedInUser && loggedInUser.role && (loggedInUser.role.role.toLowerCase() === 'admin' || loggedInUser.role.role.toLowerCase() === 'branch admin')) {
-        query.branch = loggedInUser.branch;
+        query.$or = [
+          { branch: loggedInUser.branch },
+          { isMultipleBranch: true, multipleBranches: loggedInUser.branch }
+        ];
         query._id = { $ne: req.userId };
       }
     }
 
     const staff = await Staff.find(query)
       .populate('branch', 'branchName')
+      .populate('multipleBranches', 'branchName')
       .populate('role', 'role description')
       .select('-password')
       .sort({ createdAt: -1 });
@@ -352,7 +394,10 @@ const getAllActiveStaff = async (req, res) => {
       if (loggedInUser && loggedInUser.role) {
         const roleName = loggedInUser.role.role.toLowerCase();
         if (roleName !== 'super admin') {
-          query.branch = loggedInUser.branch;
+          query.$or = [
+            { branch: loggedInUser.branch },
+            { isMultipleBranch: true, multipleBranches: loggedInUser.branch }
+          ];
         }
         query._id = { $ne: req.userId };
       }
@@ -360,6 +405,7 @@ const getAllActiveStaff = async (req, res) => {
 
     const staff = await Staff.find(query)
       .populate('branch', 'branchName')
+      .populate('multipleBranches', 'branchName')
       .populate('role', 'role description')
       .select('-password')
       .sort({ createdAt: -1 });
@@ -379,6 +425,7 @@ const getStaffById = async (req, res) => {
   try {
     const staff = await Staff.findOne({ _id: req.params.id, isDeleted: { $ne: true } })
       .populate('branch', 'branchName')
+      .populate('multipleBranches', 'branchName')
       .populate('role', 'role description')
       .select('-password');
     if (!staff) {
@@ -407,6 +454,8 @@ const updateStaff = async (req, res) => {
       district,
       state,
       photo,
+      isMultipleBranch,
+      multipleBranches,
       department,
       branch,
       yearsOfExperience,
@@ -519,6 +568,31 @@ const updateStaff = async (req, res) => {
       isMentor: isMentor !== undefined ? (isMentor === 'true' || isMentor === true) : undefined,
     };
 
+    if (isMultipleBranch !== undefined) {
+      const hasMultiple = isMultipleBranch === 'true' || isMultipleBranch === true;
+      updateData.isMultipleBranch = hasMultiple;
+      if (!hasMultiple) {
+        updateData.multipleBranches = [];
+      }
+    }
+
+    if (multipleBranches !== undefined) {
+      let parsedMultipleBranches = [];
+      if (Array.isArray(multipleBranches)) {
+        parsedMultipleBranches = multipleBranches;
+      } else if (typeof multipleBranches === 'string') {
+        try {
+          parsedMultipleBranches = JSON.parse(multipleBranches);
+        } catch (e) {
+          parsedMultipleBranches = multipleBranches.split(',').map(s => s.trim());
+        }
+      }
+      parsedMultipleBranches = (Array.isArray(parsedMultipleBranches) ? parsedMultipleBranches : [parsedMultipleBranches])
+        .filter(b => b && mongoose.Types.ObjectId.isValid(b));
+
+      updateData.multipleBranches = parsedMultipleBranches;
+    }
+
     if (time !== undefined) {
       try {
         updateData.time = Array.isArray(time) ? time : JSON.parse(time || "[]").filter(Boolean);
@@ -544,6 +618,7 @@ const updateStaff = async (req, res) => {
       runValidators: true,
     })
       .populate('branch', 'branchName')
+      .populate('multipleBranches', 'branchName')
       .populate('role', 'role description')
       .select('-password');
 

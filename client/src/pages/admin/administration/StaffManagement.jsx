@@ -1,10 +1,10 @@
 // import React from 'react'
+// import api from "../../../axios";
 
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import useAuth from '../../../hooks/useAuth';
-// import api from "../../../axios";
 import Tabs from "../../../components/button/Tabs";
 import { Navbar } from "../../../components/admin/AdminNavBar";
 import AdminService from "../../../services/admin-api-service/AdminService";
@@ -13,11 +13,42 @@ import autoTable from 'jspdf-autotable';
 
 export const StaffManagement = () => {
     const navigate = useNavigate();
-    const { getStaffData, putStaffData, postStaffData, getBranchesData, deleteStaffData, getRolesData, getTimingsData, downloadStaffResume } = AdminService();
-
+    const { getStaffData, putStaffData, postStaffData, getBranchesData, deleteStaffData, getRolesData, getTimingsData, downloadStaffResume, getUserProfile } = AdminService();
 
     const [activeTab, setActiveTab] = useState('staffList');
-    const { auth } = useAuth();
+    const { auth, setAuth } = useAuth();
+    const [permissions, setPermissions] = useState(() => {
+        try {
+            const saved = localStorage.getItem("permissions");
+            return saved ? JSON.parse(saved) : (auth?.permissions || null);
+        } catch {
+            return null;
+        }
+    });
+
+    const userRole = (auth?.role || localStorage.getItem("role") || "").toLowerCase().trim();
+    const isSuperAdminOrAdmin = ["super admin", "admin", "branch admin"].includes(userRole);
+
+    useEffect(() => {
+        const token = localStorage.getItem("accessToken");
+        if (!isSuperAdminOrAdmin && !permissions && token) {
+            getUserProfile().then((res) => {
+                const userPerms = res?.data?.user?.permissions;
+                if (userPerms) {
+                    setPermissions(userPerms);
+                    localStorage.setItem("permissions", JSON.stringify(userPerms));
+                    if (setAuth) setAuth((prev) => ({ ...prev, permissions: userPerms }));
+                }
+            }).catch((err) => {
+                console.error("Error fetching permissions in StaffManagement:", err);
+            });
+        }
+    }, [isSuperAdminOrAdmin, permissions]);
+
+    const canAddStaff = isSuperAdminOrAdmin || Boolean(permissions?.mentorManagement?.addMentor);
+    const canEditStaff = isSuperAdminOrAdmin || Boolean(permissions?.mentorManagement?.editMentor);
+    const canDeleteStaff = isSuperAdminOrAdmin || Boolean(permissions?.mentorManagement?.deleteMentor);
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -76,6 +107,8 @@ export const StaffManagement = () => {
         // Professional Details
         department: "",
         branch: "",
+        isMultipleBranch: false,
+        multipleBranches: [],
         role: "",
         yearsOfExperience: "",
         dateOfJoining: "",
@@ -356,10 +389,19 @@ export const StaffManagement = () => {
 
     // No client-side filtering needed - server handles it
 
-    const tabOptions = [
-        { value: "staffList", label: "Staff List" },
-        { value: "newStaff", label: isEditMode ? "Edit Staff" : "New Staff" }
-    ];
+    const tabOptions = isEditMode
+        ? [
+            { value: "staffList", label: "Staff List" },
+            { value: "newStaff", label: "Edit Staff" }
+          ]
+        : canAddStaff
+            ? [
+                { value: "staffList", label: "Staff List" },
+                { value: "newStaff", label: "New Staff" }
+              ]
+            : [
+                { value: "staffList", label: "Staff List" }
+              ];
 
     const departments = ['Choose Department', 'HR', 'Accounting', 'Front Office', 'Sales', 'UI/UX', 'Mern', 'Flutter', 'Python', 'Digital Marketing', 'Data Science', 'Data Analytics', 'Business Development'];
     const employmentStatus = ['Choose Employment Status', 'Active', 'Pause', 'Inactive'];
@@ -369,12 +411,17 @@ export const StaffManagement = () => {
         setFormData((prev) => {
             const updated = { ...prev, [name]: value };
             if (name === 'branch') {
-                // If branch changes, filter out any selected timings that do not belong to the new branch
+                // If branch changes, remove this branch from multipleBranches if it was selected
+                const updatedMultipleBranches = (prev.multipleBranches || []).filter(bId => bId !== value);
+                updated.multipleBranches = updatedMultipleBranches;
+
+                // Filter out any selected timings that do not belong to the allowed branches
+                const allowedBranchIds = [value, ...(prev.isMultipleBranch ? updatedMultipleBranches : [])].map(String);
                 const validTimeSlots = prev.time.filter(tId => {
                     const timingObj = timings.find(t => t._id === tId);
                     if (!timingObj) return false;
                     const timingBranchId = typeof timingObj.branch === 'object' && timingObj.branch ? timingObj.branch._id : timingObj.branch;
-                    return String(timingBranchId) === String(value);
+                    return allowedBranchIds.includes(String(timingBranchId));
                 });
                 updated.time = validTimeSlots;
             }
@@ -415,6 +462,8 @@ export const StaffManagement = () => {
             photo: staffMember.photo || null, // Keep existing URL if available
             department: staffMember.department || "",
             branch: staffMember.branch?._id || staffMember.branch || "",
+            isMultipleBranch: staffMember.isMultipleBranch || false,
+            multipleBranches: (staffMember.multipleBranches || []).map(b => typeof b === 'object' ? b._id : b),
             role: staffMember.role?._id || staffMember.role || "",
             yearsOfExperience: staffMember.yearsOfExperience || "",
             dateOfJoining: formatDateForInput(staffMember.dateOfJoining),
@@ -450,6 +499,8 @@ export const StaffManagement = () => {
             photo: null,
             department: "",
             branch: "",
+            isMultipleBranch: false,
+            multipleBranches: [],
             role: "",
             yearsOfExperience: "",
             dateOfJoining: "",
@@ -532,14 +583,20 @@ export const StaffManagement = () => {
             doc.text(`Total Staff: ${allStaff.length}`, 14, 35);
 
             // Prepare table data with only specified columns
-            const tableData = allStaff.map(staffMember => [
-                staffMember.fullName || 'N/A',
-                staffMember.email || 'N/A',
-                staffMember.department || 'N/A',
-                staffMember.role?.role || 'N/A',
-                staffMember.branch?.branchName || 'N/A',
-                staffMember.employmentStatus || 'N/A'
-            ]);
+            const tableData = allStaff.map(staffMember => {
+                const primaryBranch = staffMember.branch?.branchName || 'N/A';
+                const additionalBranches = (staffMember.isMultipleBranch && staffMember.multipleBranches?.length > 0)
+                    ? ` (+${staffMember.multipleBranches.map(mb => typeof mb === 'object' ? mb.branchName : mb).join(', ')})`
+                    : '';
+                return [
+                    staffMember.fullName || 'N/A',
+                    staffMember.email || 'N/A',
+                    staffMember.department || 'N/A',
+                    staffMember.role?.role || 'N/A',
+                    primaryBranch + additionalBranches,
+                    staffMember.employmentStatus || 'N/A'
+                ];
+            });
 
             // Add table to PDF
             autoTable(doc, {
@@ -723,6 +780,12 @@ export const StaffManagement = () => {
         if (formData.state) payload.append('state', formData.state);
         payload.append('department', formData.department);
         payload.append('branch', formData.branch);
+        payload.append('isMultipleBranch', formData.isMultipleBranch);
+        if (formData.isMultipleBranch && formData.multipleBranches && formData.multipleBranches.length > 0) {
+            payload.append('multipleBranches', JSON.stringify(formData.multipleBranches));
+        } else {
+            payload.append('multipleBranches', JSON.stringify([]));
+        }
         payload.append('role', formData.role);
         payload.append('yearsOfExperience', formData.yearsOfExperience ? Number(formData.yearsOfExperience) : 0);
         if (formData.dateOfJoining) payload.append('dateOfJoining', formData.dateOfJoining);
@@ -788,6 +851,8 @@ export const StaffManagement = () => {
                 photo: null,
                 department: "",
                 branch: "",
+                isMultipleBranch: false,
+                multipleBranches: [],
                 role: "",
                 yearsOfExperience: "",
                 dateOfJoining: "",
@@ -940,7 +1005,26 @@ export const StaffManagement = () => {
                                             <div className="text-sm text-gray-500">{staffMember.officialEmail}</div>
                                         </td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{staffMember.role?.role || 'N/A'}</td>
-                                        <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{staffMember.branch?.branchName || 'N/A'}</td>
+                                        <td className="px-4 lg:px-6 py-4 text-sm text-gray-900">
+                                            <div className="font-medium">{staffMember.branch?.branchName || 'N/A'}</div>
+                                            {staffMember.isMultipleBranch && staffMember.multipleBranches && staffMember.multipleBranches.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-1 max-w-xs">
+                                                    {staffMember.multipleBranches.map((mb) => {
+                                                        const name = typeof mb === 'object' ? mb.branchName : mb;
+                                                        const id = typeof mb === 'object' ? mb._id : mb;
+                                                        return (
+                                                            <span
+                                                                key={id}
+                                                                className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-orange-50 text-orange-700 border border-orange-200"
+                                                                title={`Additional Branch: ${name}`}
+                                                            >
+                                                                +{name}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                                             {staffMember.role?.role?.toLowerCase() === 'mentor' ? (
                                                 staffMember.isMentor ? (
@@ -965,20 +1049,24 @@ export const StaffManagement = () => {
                                                 >
                                                     View
                                                 </button>
-                                                <button
-                                                    onClick={() => handleEditStaff(staffMember)}
-                                                    className="text-orange-600 hover:text-orange-900"
-                                                    title="Edit Staff"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteStaff(staffMember)}
-                                                    className="text-red-600 hover:text-red-900"
-                                                    title="Delete Staff"
-                                                >
-                                                    Delete
-                                                </button>
+                                                {canEditStaff && (
+                                                    <button
+                                                        onClick={() => handleEditStaff(staffMember)}
+                                                        className="text-orange-600 hover:text-orange-900"
+                                                        title="Edit Staff"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                )}
+                                                {canDeleteStaff && (
+                                                    <button
+                                                        onClick={() => handleDeleteStaff(staffMember)}
+                                                        className="text-red-600 hover:text-red-900"
+                                                        title="Delete Staff"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -1016,7 +1104,14 @@ export const StaffManagement = () => {
                                 <div className="space-y-2 text-sm text-gray-600 mb-3">
                                     <div><span className="font-medium">Department:</span> {staffMember.department || 'N/A'}</div>
                                     <div><span className="font-medium">Role:</span> {staffMember.role?.role || 'N/A'}</div>
-                                    <div><span className="font-medium">Branch:</span> {staffMember.branch?.branchName || 'N/A'}</div>
+                                    <div>
+                                        <span className="font-medium">Branch:</span> {staffMember.branch?.branchName || 'N/A'}
+                                        {staffMember.isMultipleBranch && staffMember.multipleBranches?.length > 0 && (
+                                            <span className="text-orange-600 text-xs ml-1 font-medium">
+                                                (+{staffMember.multipleBranches.map(mb => typeof mb === 'object' ? mb.branchName : mb).join(', ')})
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-200">
                                     <button
@@ -1025,18 +1120,22 @@ export const StaffManagement = () => {
                                     >
                                         View
                                     </button>
-                                    <button
-                                        onClick={() => handleEditStaff(staffMember)}
-                                        className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 transition-colors"
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteStaff(staffMember)}
-                                        className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
-                                    >
-                                        Delete
-                                    </button>
+                                    {canEditStaff && (
+                                        <button
+                                            onClick={() => handleEditStaff(staffMember)}
+                                            className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 transition-colors"
+                                        >
+                                            Edit
+                                        </button>
+                                    )}
+                                    {canDeleteStaff && (
+                                        <button
+                                            onClick={() => handleDeleteStaff(staffMember)}
+                                            className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+                                        >
+                                            Delete
+                                        </button>
+                                    )}
                                     {staffMember.role?.role?.toLowerCase() === 'mentor' && staffMember.isMentor && (
                                         <button
                                             onClick={() => navigate('/mentor-batches', { state: { searchMentor: staffMember.fullName } })}
@@ -1255,7 +1354,101 @@ export const StaffManagement = () => {
                         ))}
                     </select>
                     {errors.branch && <p className="text-red-500 text-xs mt-1">{errors.branch}</p>}
+
+                    {/* Multiple Branches Checkbox */}
+                    <div className="flex items-center space-x-2 mt-3">
+                        <input
+                            type="checkbox"
+                            id="isMultipleBranch"
+                            name="isMultipleBranch"
+                            checked={Boolean(formData.isMultipleBranch)}
+                            onChange={(e) => {
+                                const checked = e.target.checked;
+                                setFormData(prev => ({
+                                    ...prev,
+                                    isMultipleBranch: checked,
+                                    multipleBranches: checked ? prev.multipleBranches : []
+                                }));
+                            }}
+                            className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded cursor-pointer"
+                        />
+                        <label htmlFor="isMultipleBranch" className="text-sm font-medium text-gray-700 cursor-pointer select-none">
+                            Allow Additional Branches
+                        </label>
+                    </div>
                 </div>
+
+                {formData.isMultipleBranch && (
+                    <div className="col-span-1 md:col-span-2 lg:col-span-3 bg-gradient-to-r from-orange-50/70 to-amber-50/50 p-4 rounded-lg border border-orange-200">
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-gray-800 font-semibold text-sm">
+                                Additional Branches
+                                <span className="text-xs font-normal text-gray-500 ml-2">
+                                    (Select all additional branches this staff member can access)
+                                </span>
+                            </label>
+                            {formData.multipleBranches?.length > 0 && (
+                                <span className="text-xs bg-orange-200 text-orange-800 font-medium px-2 py-0.5 rounded-full">
+                                    {formData.multipleBranches.length} selected
+                                </span>
+                            )}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
+                            {branches
+                                .filter(b => b._id !== formData.branch)
+                                .map((b) => {
+                                    const isSelected = formData.multipleBranches?.includes(b._id);
+                                    return (
+                                        <label
+                                            key={b._id}
+                                            className={`flex items-center space-x-2 p-2.5 rounded-md border text-xs sm:text-sm cursor-pointer transition-all ${
+                                                isSelected
+                                                    ? 'bg-orange-100 border-orange-400 text-orange-950 font-medium shadow-sm'
+                                                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={Boolean(isSelected)}
+                                                onChange={(e) => {
+                                                    const bId = b._id;
+                                                    setFormData(prev => {
+                                                        const current = prev.multipleBranches || [];
+                                                        const nextList = e.target.checked
+                                                            ? [...current, bId]
+                                                            : current.filter(id => id !== bId);
+
+                                                        // If removing a branch, also filter out timings from that branch
+                                                        let nextTime = prev.time;
+                                                        if (!e.target.checked) {
+                                                            const allowed = [prev.branch, ...nextList].map(String);
+                                                            nextTime = prev.time.filter(tId => {
+                                                                const timingObj = timings.find(t => t._id === tId);
+                                                                if (!timingObj) return false;
+                                                                const tBranch = typeof timingObj.branch === 'object' && timingObj.branch ? timingObj.branch._id : timingObj.branch;
+                                                                return allowed.includes(String(tBranch));
+                                                            });
+                                                        }
+
+                                                        return {
+                                                            ...prev,
+                                                            multipleBranches: nextList,
+                                                            time: nextTime
+                                                        };
+                                                    });
+                                                }}
+                                                className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300 rounded"
+                                            />
+                                            <span className="truncate">{b.branchName}</span>
+                                        </label>
+                                    );
+                                })}
+                        </div>
+                        {branches.filter(b => b._id !== formData.branch).length === 0 && (
+                            <p className="text-xs text-gray-500 italic">No other branches available to add.</p>
+                        )}
+                    </div>
+                )}
                 <div>
                     <label className="block text-gray-700 font-medium mb-2">Years of Experience</label>
                     <input name="yearsOfExperience" value={formData.yearsOfExperience} onChange={handleInputChange} type="number" min="0" placeholder="Enter years of experience" className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent" />
@@ -1420,17 +1613,26 @@ export const StaffManagement = () => {
                                             {timings
                                                 .filter(t => {
                                                     const timingBranchId = typeof t.branch === 'object' && t.branch ? t.branch._id : t.branch;
-                                                    return String(timingBranchId) === String(formData.branch) && !formData.time.includes(t._id);
+                                                    const allowedBranchIds = [formData.branch, ...(formData.isMultipleBranch ? formData.multipleBranches : [])].map(String);
+                                                    return allowedBranchIds.includes(String(timingBranchId)) && !formData.time.includes(t._id);
                                                 })
-                                                .map(t => (
-                                                    <option key={t._id} value={t._id}>{t.timeSlot}</option>
-                                                ))}
+                                                .map(t => {
+                                                    const timingBranchId = typeof t.branch === 'object' && t.branch ? t.branch._id : t.branch;
+                                                    const branchObj = branches.find(b => String(b._id) === String(timingBranchId));
+                                                    const branchTag = (formData.isMultipleBranch && formData.multipleBranches?.length > 0 && branchObj)
+                                                        ? ` (${branchObj.branchName})`
+                                                        : '';
+                                                    return (
+                                                        <option key={t._id} value={t._id}>{t.timeSlot}{branchTag}</option>
+                                                    );
+                                                })}
                                         </select>
                                         {timings.filter(t => {
                                             const timingBranchId = typeof t.branch === 'object' && t.branch ? t.branch._id : t.branch;
-                                            return String(timingBranchId) === String(formData.branch);
+                                            const allowedBranchIds = [formData.branch, ...(formData.isMultipleBranch ? formData.multipleBranches : [])].map(String);
+                                            return allowedBranchIds.includes(String(timingBranchId));
                                         }).length === 0 && (
-                                            <p className="text-sm text-gray-500 mt-2">No timings available for this branch. Please add timings for this branch in the system.</p>
+                                            <p className="text-sm text-gray-500 mt-2">No timings available for the selected branch(es). Please add timings in the system.</p>
                                         )}
                                     </>
                                 )}
@@ -1784,6 +1986,21 @@ export const StaffManagement = () => {
                                                 <p className="leading-6"><span className="font-semibold text-gray-900">ID:</span> <span className="text-gray-600">{viewingStaff._id?.slice(-4) || 'N/A'}</span></p>
                                                 <p className="leading-6"><span className="font-semibold text-gray-900">Department:</span> <span className="text-gray-600">{viewingStaff.department || 'N/A'}</span></p>
                                                 <p className="leading-6"><span className="font-semibold text-gray-900">Branch:</span> <span className="text-gray-600">{viewingStaff.branch?.branchName || 'N/A'}</span></p>
+                                                {viewingStaff.isMultipleBranch && viewingStaff.multipleBranches && viewingStaff.multipleBranches.length > 0 && (
+                                                    <div className="col-span-1 sm:col-span-2 leading-6">
+                                                        <span className="font-semibold text-gray-900">Additional Branches:</span>
+                                                        <div className="inline-flex flex-wrap gap-1.5 ml-2 mt-1 align-middle">
+                                                            {viewingStaff.multipleBranches.map(mb => (
+                                                                <span
+                                                                    key={typeof mb === 'object' ? mb._id : mb}
+                                                                    className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 border border-orange-200"
+                                                                >
+                                                                    {typeof mb === 'object' ? mb.branchName : mb}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 <p className="leading-6"><span className="font-semibold text-gray-900">Role:</span> <span className="text-gray-600">{viewingStaff.role?.role || 'N/A'}</span></p>
                                                 <p className="leading-6"><span className="font-semibold text-gray-900">Years of Experience:</span> <span className="text-gray-600">{viewingStaff.yearsOfExperience || 'N/A'}</span></p>
                                                 <p className="leading-6"><span className="font-semibold text-gray-900">Date of Joining:</span> <span className="text-gray-600">{viewingStaff.dateOfJoining ? new Date(viewingStaff.dateOfJoining).toLocaleDateString('en-GB').replace(/\//g, ' / ') : 'N/A'}</span></p>
@@ -1866,15 +2083,17 @@ export const StaffManagement = () => {
                             {/* Modal Footer */}
                             <div className="px-4 sm:px-8 py-4 sm:py-6 border-t border-gray-200 print-hide">
                                 <div className="flex flex-col sm:flex-row justify-end gap-3">
-                                    <button
-                                        onClick={() => {
-                                            closeViewModal();
-                                            handleEditStaff(viewingStaff);
-                                        }}
-                                        className="w-full sm:w-auto bg-gray-100 border border-gray-300 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-200 transition-colors"
-                                    >
-                                        Edit
-                                    </button>
+                                    {canEditStaff && (
+                                        <button
+                                            onClick={() => {
+                                                closeViewModal();
+                                                handleEditStaff(viewingStaff);
+                                            }}
+                                            className="w-full sm:w-auto bg-gray-100 border border-gray-300 text-gray-700 px-5 py-2 rounded-lg hover:bg-gray-200 transition-colors"
+                                        >
+                                            Edit
+                                        </button>
+                                    )}
                                     {viewingStaff.isMentor && (
                                         <button
                                             onClick={() => {

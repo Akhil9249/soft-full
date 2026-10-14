@@ -4,6 +4,7 @@ import { RxPerson } from "react-icons/rx";
 import useAuth from "../../hooks/useAuth";
 import { useAppDispatch } from "../../redux/hooks";
 import { logoutUser, clearCredentials } from "../../redux/slices/authSlice";
+import AdminService from "../../services/admin-api-service/AdminService";
 import logo from "../../assets/image/soft-log.png";
 
 import {
@@ -35,16 +36,46 @@ const Icon = ({ path, className, viewBox = "0 0 24 24" }) => (
 const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setAuth } = useAuth();
-  const { auth } = useAuth();
-  // console.log("Auth object:", auth);
-  // console.log("User role:", auth?.role);
+  const { auth, setAuth } = useAuth();
   const dispatch = useAppDispatch();
+  const { getUserProfile } = AdminService();
 
-  console.log("Auth object:", auth);
+  const [permissions, setPermissions] = useState(() => {
+    try {
+      const saved = localStorage.getItem("permissions");
+      return saved ? JSON.parse(saved) : (auth?.permissions || null);
+    } catch {
+      return null;
+    }
+  });
 
-  // const [isOpen, setIsOpen] = useState(false);
-  // const [isCatalogOpen, setIsCatalogOpen] = useState(false);
+  const userRole = (auth?.role || localStorage.getItem("role") || "").toLowerCase().trim();
+  const isSuperAdminOrAdmin = ["super admin", "admin", "branch admin"].includes(userRole);
+
+  // Fetch permissions if not already present and user is a staff member
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!isSuperAdminOrAdmin && !permissions && token) {
+      getUserProfile().then((res) => {
+        const userPerms = res?.data?.user?.permissions;
+        if (userPerms) {
+          setPermissions(userPerms);
+          localStorage.setItem("permissions", JSON.stringify(userPerms));
+          setAuth((prev) => ({ ...prev, permissions: userPerms }));
+        }
+      }).catch((err) => {
+        console.error("Error fetching user permissions in Sidebar:", err);
+      });
+    }
+  }, [isSuperAdminOrAdmin, permissions, setAuth]);
+
+  const canAccessStaff = isSuperAdminOrAdmin || Boolean(
+    permissions?.mentorManagement?.viewMentor ||
+    permissions?.mentorManagement?.addMentor ||
+    permissions?.mentorManagement?.editMentor ||
+    permissions?.mentorManagement?.deleteMentor
+  );
+
   const [openSections, setOpenSections] = useState({
     administration: true,
     course: false,
@@ -86,6 +117,7 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
       localStorage.removeItem("role");
       localStorage.removeItem("profileImage");
       localStorage.removeItem("name");
+      localStorage.removeItem("permissions");
 
       // Clear Context API auth state
       setAuth({});
@@ -173,19 +205,21 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                     </li>
                   )}
 
-                  {/* Staff Management */}
-                  <li>
-                    <Link
-                      to="/staff-management"
-                      onClick={() => handleNavItemClick('/staff-management')}
-                      className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/staff-management'
-                        ? 'bg-orange-100 text-orange-600 font-semibold'
-                        : 'hover:text-orange-500 hover:bg-orange-50'
-                        }`}
-                    >
-                      Staff Management
-                    </Link>
-                  </li>
+                  {/* Staff Management - Accessible if staff's role is permitted */}
+                  {canAccessStaff && (
+                    <li>
+                      <Link
+                        to="/staff-management"
+                        onClick={() => handleNavItemClick('/staff-management')}
+                        className={`block py-1 px-2 rounded-md transition-colors duration-200 ${activeNavItem === '/staff-management'
+                          ? 'bg-orange-100 text-orange-600 font-semibold'
+                          : 'hover:text-orange-500 hover:bg-orange-50'
+                          }`}
+                      >
+                        Staff Management
+                      </Link>
+                    </li>
+                  )}
 
                   {/* Intern Management - Available for all roles */}
                   <li>
@@ -533,6 +567,7 @@ const Navbar = ({ headData, activeTab, children }) => {
       localStorage.removeItem("role");
       localStorage.removeItem("profileImage");
       localStorage.removeItem("name");
+      localStorage.removeItem("permissions");
 
       // Clear Context API auth state
       setAuth({});

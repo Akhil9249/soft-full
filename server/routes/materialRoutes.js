@@ -29,6 +29,7 @@ router.get("/mentor/:mentorId", checkAuth, checkPermission('materialManagement',
 router.get("/batch/:batchId", checkAuth, checkPermission('materialManagement', 'viewMaterial'), asyncHandler(materialController.getMaterialsByBatch));
 router.get("/course/:courseId", checkAuth, checkPermission('materialManagement', 'viewMaterial'), asyncHandler(materialController.getMaterialsByCourse));
 router.get("/audience/:audience", checkAuth, checkPermission('materialManagement', 'viewMaterial'), asyncHandler(materialController.getMaterialsByAudience));
+router.get("/intern/:internId", checkAuth, asyncHandler(materialController.getMaterialsByIntern));
 router.get("/:id/download", checkAuth, checkRoles(["super admin", "admin", "mentor", "intern"]), asyncHandler(materialController.downloadAttachment));
 
 // ID-based routes (must be last)

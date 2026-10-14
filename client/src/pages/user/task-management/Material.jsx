@@ -70,7 +70,7 @@ const Material = () => {
     branch: ''
   });
 
-  const audiences = ['All interns', 'By batches', 'Individual interns'];
+  const audiences = ['All interns', 'By batches', 'By Category', 'By Courses', 'Individual interns'];
   const tabOptions = [
     { value: "materialList", label: "Material List" },
     { value: "new-material", label: "New Material" }
@@ -102,7 +102,7 @@ const Material = () => {
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setPagination(prev => ({ ...prev, currentPage: newPage }));
-      loadMaterials(newPage, searchTerm, filters.mentor);
+      loadMaterials(newPage, searchTerm, filters.audience, filters.mentor);
     }
   };
 
@@ -119,7 +119,7 @@ const Material = () => {
 
   // Load initial data
   useEffect(() => {
-    loadMaterials(pagination.currentPage, searchTerm, filters.mentor);
+    loadMaterials(pagination.currentPage, searchTerm, filters.audience, filters.mentor);
   }, []);
 
   // Close branch dropdown on click outside
@@ -166,14 +166,14 @@ const Material = () => {
     }
 
     const timeoutId = setTimeout(() => {
-      loadMaterials(1, searchTerm, filters.mentor);
+      loadMaterials(1, searchTerm, filters.audience, filters.mentor);
     }, 500); // 500ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, filters.mentor]);
+  }, [searchTerm, filters.audience, filters.mentor]);
 
   // Load materials
-  const loadMaterials = async (page = 1, search = '', mentor = '') => {
+  const loadMaterials = async (page = 1, search = '', audience = '', mentor = '') => {
     try {
       setLoading(true);
 
@@ -184,6 +184,7 @@ const Material = () => {
       });
 
       if (search) queryParams.append('search', search);
+      if (audience) queryParams.append('audience', audience);
       if (mentor) queryParams.append('mentor', mentor);
 
       const response = await userService.getMyMaterialsData(queryParams.toString());
@@ -737,41 +738,83 @@ const Material = () => {
             <div className="space-y-2">
               <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Audience Type</h4>
               <div className="flex items-center">
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${material.audience === 'All interns' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                  material.audience === 'All interns' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
                   material.audience === 'By batches' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                    material.audience === 'By Branches' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
-                      'bg-green-100 text-green-800 border border-green-200'
-                  }`}>
+                  (material.audience === 'By Category' || material.audience === 'By category') ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                  (material.audience === 'By Courses' || material.audience === 'By courses' || material.audience === 'By Course') ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                  material.audience === 'By Branches' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
+                  'bg-green-100 text-green-800 border border-green-200'
+                }`}>
                   {material.audience}
                 </span>
               </div>
             </div>
 
-            {/* Assigned Scope Details */}
+            {/* Assigned Batches */}
             {material.audience === 'By batches' && material.batches?.length > 0 && (
               <div className="space-y-2">
                 <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Assigned Batches ({material.batches.length})</h4>
                 <div className="flex flex-wrap gap-2">
                   {material.batches.map((batch, index) => (
                     <span key={index} className="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-lg border border-purple-100">
-                      {batch.batchName}
+                      {batch.batchName || batch}
                     </span>
                   ))}
                 </div>
               </div>
             )}
 
-            {(material.audience === 'Individual interns' || material.audience === 'Individual Interns') && material.individualInterns?.length > 0 && (
+            {/* Assigned Categories */}
+            {(material.audience === 'By Category' || material.audience === 'By category') && material.categories?.length > 0 && (
               <div className="space-y-2">
-                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Assigned Interns ({material.individualInterns.length})</h4>
-                <div className="max-h-40 overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-50">
-                  {material.individualInterns.map((intern, index) => (
-                    <div key={index} className="p-2.5 flex items-center justify-between hover:bg-gray-50 animate-fade-in">
-                      <div className="font-medium text-gray-900">{intern.fullName}</div>
-                      <div className="text-xs text-gray-500">{intern.email}</div>
-                    </div>
+                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Assigned Categories ({material.categories.length})</h4>
+                <div className="flex flex-wrap gap-2">
+                  {material.categories.map((cat, index) => (
+                    <span key={index} className="px-3 py-1 bg-amber-50 text-amber-700 text-xs font-medium rounded-lg border border-amber-100">
+                      {cat.categoryName || cat}
+                    </span>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Assigned Courses */}
+            {(material.audience === 'By Courses' || material.audience === 'By courses' || material.audience === 'By Course') && material.courses?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Assigned Courses ({material.courses.length})</h4>
+                <div className="flex flex-wrap gap-2">
+                  {material.courses.map((course, index) => (
+                    <span key={index} className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-lg border border-emerald-100">
+                      {course.courseName || course}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Assigned Interns */}
+            {(material.audience === 'Individual interns' || material.audience === 'Individual Interns') &&
+              ((material.individualInterns && material.individualInterns.length > 0) || (material.interns && material.interns.length > 0)) && (
+              <div className="space-y-2">
+                {(() => {
+                  const targetInterns = (material.individualInterns && material.individualInterns.length > 0)
+                    ? material.individualInterns
+                    : (material.interns || []);
+                  return (
+                    <>
+                      <h4 className="font-bold text-gray-800 text-xs uppercase tracking-wider">Assigned Interns ({targetInterns.length})</h4>
+                      <div className="max-h-40 overflow-y-auto border border-gray-100 rounded-xl divide-y divide-gray-50">
+                        {targetInterns.map((intern, index) => (
+                          <div key={index} className="p-2.5 flex items-center justify-between hover:bg-gray-50 animate-fade-in">
+                            <div className="font-medium text-gray-900">{intern.fullName || intern}</div>
+                            {intern.email && <div className="text-xs text-gray-500">{intern.email}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
@@ -946,12 +989,24 @@ const Material = () => {
                       </svg>
                     </div>
                   </div>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:space-y-0">
+                </div>                <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:space-y-0">
+                  <select
+                    value={filters.audience}
+                    onChange={(e) => handleFilterChange('audience', e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                  >
+                    <option value="">All Audiences</option>
+                    {audiences.map(aud => (
+                      <option key={aud} value={aud}>
+                        {aud}
+                      </option>
+                    ))}
+                  </select>
+
                   <select
                     value={filters.mentor}
                     onChange={(e) => handleFilterChange('mentor', e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
                   >
                     <option value="">All Mentors</option>
                     {mentors.map(mentor => (
@@ -997,7 +1052,7 @@ const Material = () => {
                             Branch
                           </th>
                           <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Audience
+                            Audience & Scope
                           </th>
                           <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Attachments
@@ -1005,215 +1060,332 @@ const Material = () => {
                           <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Created Date
                           </th>
+                          <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Action
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {materials.map((material) => (
-                          <tr key={material._id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">
-                                {material.title}
-                              </div>
-                            </td>
-                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
-                              <div className="text-sm text-gray-900">
-                                {material.mentor?.fullName || 'N/A'}
-                              </div>
-                            </td>
-                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
-                              <div className="flex flex-wrap justify-center gap-1 max-w-[150px] mx-auto">
-                                {material.branch && material.branch.length > 0 ? (
-                                  material.branch.slice(0, 2).map((b, index) => (
-                                    <span key={index} className="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded-full border border-orange-100">
-                                      {b.branchName}
+                        {materials.map((material) => {
+                          const targetInterns = (material.individualInterns && material.individualInterns.length > 0)
+                            ? material.individualInterns
+                            : (material.interns || []);
+
+                          return (
+                            <tr key={material._id} className="hover:bg-gray-50 transition-colors">
+                              <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-medium text-gray-900 max-w-[200px] truncate" title={material.title}>
+                                  {material.title}
+                                </div>
+                              </td>
+                              <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
+                                <div className="text-sm text-gray-900">
+                                  {material.mentor?.fullName || 'N/A'}
+                                </div>
+                              </td>
+                              <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
+                                <div className="flex flex-wrap justify-center gap-1 max-w-[150px] mx-auto">
+                                  {material.branch && material.branch.length > 0 ? (
+                                    material.branch.slice(0, 2).map((b, index) => (
+                                      <span key={index} className="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded-full border border-orange-100">
+                                        {b.branchName}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                  {material.branch && material.branch.length > 2 && (
+                                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                      +{material.branch.length - 2} more
                                     </span>
-                                  ))
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                                {material.branch && material.branch.length > 2 && (
-                                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                    +{material.branch.length - 2} more
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 lg:px-6 py-4 text-center">
+                                <div className="flex flex-col items-center justify-center space-y-1">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    material.audience === 'All interns' ? 'bg-blue-100 text-blue-800' :
+                                    material.audience === 'By batches' ? 'bg-purple-100 text-purple-800' :
+                                    (material.audience === 'By Category' || material.audience === 'By category') ? 'bg-amber-100 text-amber-800' :
+                                    (material.audience === 'By Courses' || material.audience === 'By courses' || material.audience === 'By Course') ? 'bg-emerald-100 text-emerald-800' :
+                                    'bg-indigo-100 text-indigo-800'
+                                  }`}>
+                                    {material.audience}
                                   </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
-                              <div className="flex flex-col items-center justify-center space-y-1">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {material.audience}
-                                </span>
 
-                                {/* Audience-specific details */}
-                                {/* {material.audience === 'By batches' && material.batches?.length > 0 && (
-                                <div className="flex flex-wrap justify-center gap-1">
-                                  {material.batches.slice(0, 2).map((batch, index) => (
-                                    <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                      {batch.batchName}
-                                    </span>
-                                  ))}
-                                  {material.batches.length > 2 && (
-                                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                      +{material.batches.length - 2} more
-                                    </span>
+                                  {/* Batches details */}
+                                  {material.audience === 'By batches' && material.batches?.length > 0 && (
+                                    <div className="flex flex-wrap justify-center gap-1 max-w-[180px]">
+                                      {material.batches.slice(0, 2).map((batch, index) => (
+                                        <span key={index} className="px-2 py-0.5 bg-purple-50 text-purple-700 text-[11px] rounded-full border border-purple-200">
+                                          {batch.batchName || batch}
+                                        </span>
+                                      ))}
+                                      {material.batches.length > 2 && (
+                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[11px] rounded-full">
+                                          +{material.batches.length - 2}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Category details */}
+                                  {(material.audience === 'By Category' || material.audience === 'By category') && material.categories?.length > 0 && (
+                                    <div className="flex flex-wrap justify-center gap-1 max-w-[180px]">
+                                      {material.categories.slice(0, 2).map((cat, index) => (
+                                        <span key={index} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-[11px] rounded-full border border-amber-200">
+                                          {cat.categoryName || cat}
+                                        </span>
+                                      ))}
+                                      {material.categories.length > 2 && (
+                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[11px] rounded-full">
+                                          +{material.categories.length - 2}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Course details */}
+                                  {(material.audience === 'By Courses' || material.audience === 'By courses' || material.audience === 'By Course') && material.courses?.length > 0 && (
+                                    <div className="flex flex-wrap justify-center gap-1 max-w-[180px]">
+                                      {material.courses.slice(0, 2).map((c, index) => (
+                                        <span key={index} className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[11px] rounded-full border border-emerald-200">
+                                          {c.courseName || c}
+                                        </span>
+                                      ))}
+                                      {material.courses.length > 2 && (
+                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[11px] rounded-full">
+                                          +{material.courses.length - 2}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Individual interns details */}
+                                  {(material.audience === 'Individual interns' || material.audience === 'Individual Interns') && targetInterns.length > 0 && (
+                                    <div className="flex flex-wrap justify-center gap-1 max-w-[180px]">
+                                      {targetInterns.slice(0, 2).map((intern, index) => (
+                                        <span key={index} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[11px] rounded-full border border-indigo-200">
+                                          {intern.fullName || intern}
+                                        </span>
+                                      ))}
+                                      {targetInterns.length > 2 && (
+                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[11px] rounded-full">
+                                          +{targetInterns.length - 2}
+                                        </span>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
-                              )}
-
-                              {material.audience === 'Individual interns' && material.individualInterns?.length > 0 && (
-                                <div className="flex flex-wrap justify-center gap-1">
-                                  {material.individualInterns.slice(0, 2).map((intern, index) => (
-                                    <span key={index} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                                      {intern.fullName}
-                                    </span>
-                                  ))}
-                                  {material.individualInterns.length > 2 && (
-                                    <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                      +{material.individualInterns.length - 2} more
-                                    </span>
-                                  )}
-                                </div>
-                              )} */}
-                              </div>
-                            </td>
-                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
-                              <div className="flex items-center justify-center">
-                                {material.attachments ? (
-                                  <>
-                                    <button
-                                      onClick={() => handleViewAttachment(material)}
-                                      className="text-green-600 hover:text-green-800 transition-colors cursor-pointer p-1 rounded hover:bg-green-50 mr-2"
-                                      title="View attachment"
-                                    >
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                      </svg>
-                                    </button>
-                                    {material.allowDownload !== false && (
+                              </td>
+                              <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
+                                <div className="flex items-center justify-center">
+                                  {material.attachments ? (
+                                    <>
                                       <button
-                                        onClick={() => handleDownloadAttachment(material)}
-                                        className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer p-1 rounded hover:bg-blue-50"
-                                        title="Download attachment"
+                                        onClick={() => handleViewAttachment(material)}
+                                        className="text-green-600 hover:text-green-800 transition-colors cursor-pointer p-1 rounded hover:bg-green-50 mr-2"
+                                        title="View attachment"
                                       >
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                         </svg>
                                       </button>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
-                              <div className="text-sm text-gray-900">
-                                {new Date(material.createdAt).toLocaleDateString()}
-                              </div>
-                            </td>
-
-                          </tr>
-                        ))}
+                                      {material.allowDownload !== false && (
+                                        <button
+                                          onClick={() => handleDownloadAttachment(material)}
+                                          className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer p-1 rounded hover:bg-blue-50"
+                                          title="Download attachment"
+                                        >
+                                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                          </svg>
+                                        </button>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <span className="text-gray-400">-</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
+                                <div className="text-sm text-gray-900">
+                                  {new Date(material.createdAt).toLocaleDateString()}
+                                </div>
+                              </td>
+                              <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-center">
+                                <button
+                                  onClick={() => handleView(material)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 transition-colors shadow-sm"
+                                  title="View Details"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                  Details
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
 
                   {/* Mobile Card View */}
                   <div className="md:hidden space-y-4">
-                    {materials.map((material) => (
-                      <div key={material._id} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-base font-semibold text-gray-900 truncate">{material.title}</h3>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {new Date(material.createdAt).toLocaleDateString()}
-                            </p>
-                          </div>
+                    {materials.map((material) => {
+                      const targetInterns = (material.individualInterns && material.individualInterns.length > 0)
+                        ? material.individualInterns
+                        : (material.interns || []);
 
-                        </div>
-                        <div className="space-y-2 text-sm text-gray-600">
-                          <div><span className="font-medium">Mentor:</span> {material.mentor?.fullName || 'N/A'}</div>
-                          {material.branch && material.branch.length > 0 && (
+                      return (
+                        <div key={material._id} className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-base font-semibold text-gray-900 truncate">{material.title}</h3>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {new Date(material.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleView(material)}
+                              className="px-2.5 py-1 text-xs font-medium text-orange-700 bg-orange-100/60 rounded-md hover:bg-orange-200 transition-colors"
+                            >
+                              Details
+                            </button>
+                          </div>
+                          <div className="space-y-2 text-sm text-gray-600">
+                            <div><span className="font-medium">Mentor:</span> {material.mentor?.fullName || 'N/A'}</div>
+                            {material.branch && material.branch.length > 0 && (
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium">Branches:</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {material.branch.map((b, index) => (
+                                    <span key={index} className="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded-full border border-orange-100">
+                                      {b.branchName}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium">Branches:</span>
-                              <div className="flex flex-wrap gap-1">
-                                {material.branch.map((b, index) => (
-                                  <span key={index} className="px-2 py-0.5 bg-orange-50 text-orange-700 text-xs rounded-full border border-orange-100">
-                                    {b.branchName}
+                              <span className="font-medium">Audience:</span>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                material.audience === 'All interns' ? 'bg-blue-100 text-blue-800' :
+                                material.audience === 'By batches' ? 'bg-purple-100 text-purple-800' :
+                                (material.audience === 'By Category' || material.audience === 'By category') ? 'bg-amber-100 text-amber-800' :
+                                (material.audience === 'By Courses' || material.audience === 'By courses' || material.audience === 'By Course') ? 'bg-emerald-100 text-emerald-800' :
+                                'bg-indigo-100 text-indigo-800'
+                              }`}>
+                                {material.audience}
+                              </span>
+                            </div>
+
+                            {/* Batches details */}
+                            {material.audience === 'By batches' && material.batches?.length > 0 && (
+                              <div className="flex flex-wrap gap-1 items-center">
+                                <span className="font-medium text-xs">Batches:</span>
+                                {material.batches.slice(0, 3).map((batch, index) => (
+                                  <span key={index} className="px-2 py-0.5 bg-purple-50 text-purple-700 text-xs rounded-full border border-purple-200">
+                                    {batch.batchName || batch}
                                   </span>
                                 ))}
+                                {material.batches.length > 3 && (
+                                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                    +{material.batches.length - 3} more
+                                  </span>
+                                )}
                               </div>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium">Audience:</span>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {material.audience}
-                            </span>
-                          </div>
-                          {/* Audience-specific details */}
-                          {material.audience === 'By batches' && material.batches?.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {material.batches.slice(0, 3).map((batch, index) => (
-                                <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                  {batch.batchName}
-                                </span>
-                              ))}
-                              {material.batches.length > 3 && (
-                                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                  +{material.batches.length - 3} more
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          {material.audience === 'Individual interns' && material.individualInterns?.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {material.individualInterns.slice(0, 3).map((intern, index) => (
-                                <span key={index} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                                  {intern.fullName}
-                                </span>
-                              ))}
-                              {material.individualInterns.length > 3 && (
-                                <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                                  +{material.individualInterns.length - 3} more
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
-                            <span className="font-medium">Attachments:</span>
-                            {material.attachments ? (
-                              <>
-                                <button
-                                  onClick={() => handleViewAttachment(material)}
-                                  className="text-green-600 hover:text-green-800 transition-colors cursor-pointer p-1 rounded hover:bg-green-50 mr-1"
-                                  title="View attachment"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                  </svg>
-                                </button>
-                                {material.allowDownload !== false && (
+                            )}
+
+                            {/* Category details */}
+                            {(material.audience === 'By Category' || material.audience === 'By category') && material.categories?.length > 0 && (
+                              <div className="flex flex-wrap gap-1 items-center">
+                                <span className="font-medium text-xs">Categories:</span>
+                                {material.categories.slice(0, 3).map((cat, index) => (
+                                  <span key={index} className="px-2 py-0.5 bg-amber-50 text-amber-700 text-xs rounded-full border border-amber-200">
+                                    {cat.categoryName || cat}
+                                  </span>
+                                ))}
+                                {material.categories.length > 3 && (
+                                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                    +{material.categories.length - 3} more
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Course details */}
+                            {(material.audience === 'By Courses' || material.audience === 'By courses' || material.audience === 'By Course') && material.courses?.length > 0 && (
+                              <div className="flex flex-wrap gap-1 items-center">
+                                <span className="font-medium text-xs">Courses:</span>
+                                {material.courses.slice(0, 3).map((c, index) => (
+                                  <span key={index} className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-xs rounded-full border border-emerald-200">
+                                    {c.courseName || c}
+                                  </span>
+                                ))}
+                                {material.courses.length > 3 && (
+                                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                    +{material.courses.length - 3} more
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Individual interns details */}
+                            {(material.audience === 'Individual interns' || material.audience === 'Individual Interns') && targetInterns.length > 0 && (
+                              <div className="flex flex-wrap gap-1 items-center">
+                                <span className="font-medium text-xs">Interns:</span>
+                                {targetInterns.slice(0, 3).map((intern, index) => (
+                                  <span key={index} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs rounded-full border border-indigo-200">
+                                    {intern.fullName || intern}
+                                  </span>
+                                ))}
+                                {targetInterns.length > 3 && (
+                                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                    +{targetInterns.length - 3} more
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
+                              <span className="font-medium">Attachments:</span>
+                              {material.attachments ? (
+                                <>
                                   <button
-                                    onClick={() => handleDownloadAttachment(material)}
-                                    className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer p-1 rounded hover:bg-blue-50"
-                                    title="Download attachment"
+                                    onClick={() => handleViewAttachment(material)}
+                                    className="text-green-600 hover:text-green-800 transition-colors cursor-pointer p-1 rounded hover:bg-green-50 mr-1"
+                                    title="View attachment"
                                   >
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                     </svg>
                                   </button>
-                                )}
-                              </>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
+                                  {material.allowDownload !== false && (
+                                    <button
+                                      onClick={() => handleDownloadAttachment(material)}
+                                      className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer p-1 rounded hover:bg-blue-50"
+                                      title="Download attachment"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                      </svg>
+                                    </button>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               )}

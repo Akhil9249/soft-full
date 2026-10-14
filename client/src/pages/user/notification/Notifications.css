@@ -468,24 +468,38 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .notification-toolbar {
     flex-wrap: wrap;
+    gap: 12px;
   }
 
-  .filter-list {
+  .notification-search {
     width: 100%;
     order: 1;
   }
 
-  .notification-search {
+  .filter-list {
     flex: 1;
+    min-width: 0;
     order: 2;
+    overflow-x: auto;
+    padding-bottom: 3px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .filter-list::-webkit-scrollbar {
+    display: none;
   }
 
   .filter-settings {
     order: 3;
+    flex-shrink: 0;
   }
+}
+
+@media (max-width: 900px) {
 
   .notification-card {
     grid-template-columns: 55px 1fr auto;

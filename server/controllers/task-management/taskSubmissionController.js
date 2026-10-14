@@ -151,7 +151,10 @@ const getMySubmissions = async (req, res) => {
       const totalPages = Math.ceil(totalCount / limit);
 
       const submissions = await TaskSubmission.find({ intern: internId })
-        .populate("task")
+        .populate({
+          path: "task",
+          populate: { path: "assignedMentor", select: "fullName" }
+        })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -170,7 +173,10 @@ const getMySubmissions = async (req, res) => {
       });
     } else {
       const submissions = await TaskSubmission.find({ intern: internId })
-        .populate("task")
+        .populate({
+          path: "task",
+          populate: { path: "assignedMentor", select: "fullName" }
+        })
         .sort({ createdAt: -1 });
 
       return res.status(200).json({

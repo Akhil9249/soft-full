@@ -13,7 +13,7 @@ router.get("/my-tasks", checkAuth, taskController.getMyTasks);
 router.get("/",checkAuth, checkPermission('taskManagement', 'viewTask'), taskController.getTasks);
 router.post("/",checkAuth, checkPermission('taskManagement', 'addTask'), upload.single('attachments'), taskController.createTask);
 router.get("/:id",checkAuth, checkPermission('taskManagement', 'viewTask'), taskController.getTaskById);
-router.get("/:id/download",checkAuth, checkPermission('taskManagement', 'downloadTask'), taskController.downloadTaskAttachment);
+router.get("/:id/download", checkAuth, taskController.downloadTaskAttachment);
 router.put("/:id",checkAuth, checkPermission('taskManagement', 'editTask'), upload.single('attachments'), taskController.updateTask);
 router.delete("/:id",checkAuth, checkPermission('taskManagement', 'deleteTask'), taskController.deleteTask);
 router.get("/batch/:batchName",checkAuth, checkPermission('taskManagement', 'viewTask'), taskController.getTasksByBatch);

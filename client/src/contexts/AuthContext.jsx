@@ -14,9 +14,24 @@ export const AuthProvider = ({ children }) => {
     const role = localStorage.getItem("role");
     const id = localStorage.getItem("userId");
     const branch = localStorage.getItem("branch");
+    const isMultipleBranch = localStorage.getItem("isMultipleBranch") === "true";
+    let multipleBranches = [];
+    try {
+        const savedMb = localStorage.getItem("multipleBranches");
+        if (savedMb) multipleBranches = JSON.parse(savedMb);
+    } catch {
+        multipleBranches = [];
+    }
+    let permissions = null;
+    try {
+        const savedPerms = localStorage.getItem("permissions");
+        if (savedPerms) permissions = JSON.parse(savedPerms);
+    } catch {
+        permissions = null;
+    }
 
     if (accessToken && role && !auth.accessToken) {
-        setAuth({ accessToken, role, image, name, id, branch });
+        setAuth({ accessToken, role, image, name, id, branch, permissions, isMultipleBranch, multipleBranches });
     };
 
     useEffect(() => {
