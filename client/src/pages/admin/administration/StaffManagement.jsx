@@ -1204,7 +1204,24 @@ export const StaffManagement = () => {
     );
 
     const renderNewStaffForm = () => (
-        <form onSubmit={handleCreateStaff} className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex-grow">
+        <form onSubmit={handleCreateStaff} autoComplete="off" className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex-grow">
+            {/* Hidden dummy inputs to prevent browser autofill heuristics from filling saved admin credentials */}
+            <input
+                type="text"
+                name="prevent_autofill_email"
+                tabIndex={-1}
+                aria-hidden="true"
+                autoComplete="off"
+                style={{ position: 'absolute', opacity: 0, height: 0, width: 0, pointerEvents: 'none', zIndex: -1 }}
+            />
+            <input
+                type="password"
+                name="prevent_autofill_password"
+                tabIndex={-1}
+                aria-hidden="true"
+                autoComplete="new-password"
+                style={{ position: 'absolute', opacity: 0, height: 0, width: 0, pointerEvents: 'none', zIndex: -1 }}
+            />
             <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4 sm:mb-6">
                 {isEditMode ? `Edit Staff - ${editingStaff?.fullName}` : 'Create New Staff'}
             </h2>
@@ -1232,7 +1249,7 @@ export const StaffManagement = () => {
                 </div>
                 <div>
                     <label className="block text-gray-700 font-medium mb-2">Email Address <span className="text-red-500">*</span></label>
-                    <input name="email" value={formData.email} onChange={handleInputChange} type="email" placeholder="Enter Email Address" className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} />
+                    <input name="email" value={formData.email} onChange={handleInputChange} type="email" placeholder="Enter Email Address" autoComplete="off" className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} />
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                 </div>
                 <div>
@@ -1690,7 +1707,7 @@ export const StaffManagement = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 <div>
                     <label className="block text-gray-700 font-medium mb-2">Staff's Official Email Address <span className="text-red-500">*</span></label>
-                    <input name="officialEmail" value={formData.officialEmail} onChange={handleInputChange} type="email" placeholder="Enter Staff's Official Email Address" className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.officialEmail ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} />
+                    <input name="officialEmail" value={formData.officialEmail} onChange={handleInputChange} type="email" placeholder="Enter Staff's Official Email Address" autoComplete="off" className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.officialEmail ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} />
                     {errors.officialEmail && <p className="text-red-500 text-xs mt-1">{errors.officialEmail}</p>}
                 </div>
                 <div>
@@ -1705,6 +1722,7 @@ export const StaffManagement = () => {
                             onChange={handleInputChange}
                             type={showPassword ? "text" : "password"}
                             placeholder={isEditMode ? "Enter new password (optional)" : "Create A Password"}
+                            autoComplete="new-password"
                             className={`w-full pl-4 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                         />
                         <button
@@ -1733,6 +1751,7 @@ export const StaffManagement = () => {
                             onChange={handleInputChange}
                             type={showConfirmPassword ? "text" : "password"}
                             placeholder={isEditMode ? "Re-enter new password (optional)" : "Re-Enter The Password"}
+                            autoComplete="new-password"
                             className={`w-full pl-4 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
                         />
                         <button

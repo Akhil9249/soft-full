@@ -1149,7 +1149,24 @@ export const StudentManagement = () => {
   );
 
   const renderNewStudentForm = () => (
-    <form onSubmit={handleCreateStudent} className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex-grow">
+    <form onSubmit={handleCreateStudent} autoComplete="off" className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex-grow">
+      {/* Hidden dummy inputs to prevent browser autofill heuristics from filling saved admin credentials */}
+      <input
+        type="text"
+        name="prevent_autofill_email"
+        tabIndex={-1}
+        aria-hidden="true"
+        autoComplete="off"
+        style={{ position: 'absolute', opacity: 0, height: 0, width: 0, pointerEvents: 'none', zIndex: -1 }}
+      />
+      <input
+        type="password"
+        name="prevent_autofill_password"
+        tabIndex={-1}
+        aria-hidden="true"
+        autoComplete="new-password"
+        style={{ position: 'absolute', opacity: 0, height: 0, width: 0, pointerEvents: 'none', zIndex: -1 }}
+      />
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
         <h2 className="text-lg sm:text-xl font-bold text-gray-800">
           {isEditMode ? `Edit Student - ${editingStudent?.fullName}` : 'Create New Student'}
@@ -1210,6 +1227,7 @@ export const StudentManagement = () => {
             name="email"
             type="email"
             placeholder="Enter Email Address"
+            autoComplete="off"
             value={formData.email || ''}
             onChange={handleInputChange}
             className={`w-full px-4 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
@@ -1677,6 +1695,7 @@ export const StudentManagement = () => {
             name="officialEmail"
             type="email"
             placeholder="Enter Student Email Address"
+            autoComplete="off"
             value={formData.officialEmail || ''}
             onChange={handleInputChange}
             className={`w-full px-4 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.officialEmail ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
@@ -1693,6 +1712,7 @@ export const StudentManagement = () => {
               name="password"
               type={showPassword ? "text" : "password"}
               placeholder={isEditMode ? "Enter new password (optional)" : "Create A Password"}
+              autoComplete="new-password"
               value={formData.password || ''}
               onChange={handleInputChange}
               className={`w-full pl-4 pr-10 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
@@ -1721,6 +1741,7 @@ export const StudentManagement = () => {
               name="confirmPassword"
               type={showConfirmPassword ? "text" : "password"}
               placeholder={isEditMode ? "Re-enter new password (optional)" : "Re-Enter The Password"}
+              autoComplete="new-password"
               value={formData.confirmPassword || ''}
               onChange={handleInputChange}
               className={`w-full pl-4 pr-10 py-2 text-black border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
