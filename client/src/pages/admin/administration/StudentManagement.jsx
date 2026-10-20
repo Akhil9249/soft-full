@@ -113,8 +113,26 @@ export const StudentManagement = () => {
   const placementStatus = ['Choose Placement Status', 'To be started', 'In Progress', 'Offer Declined', 'Placed', 'Not Placed'];
   const roles = ['Choose Role', 'super admin', 'admin', 'mentor', 'intern'];
 
+  // Track last fetched parameters to prevent duplicate calls on page load
+  const lastFetchedRef = useRef({
+    page: null,
+    search: null,
+    courseStatus: null,
+    course: null,
+    branch: null,
+    batch: null
+  });
+
   const fetchInterns = async (page = 1, search = '', courseStatus = '', course = '', branch = '', batch = '') => {
     try {
+      lastFetchedRef.current = {
+        page,
+        search: search || '',
+        courseStatus: courseStatus || '',
+        course: course || '',
+        branch: branch || '',
+        batch: batch || ''
+      };
       setLoading(true);
       setError('');
 
@@ -318,6 +336,19 @@ export const StudentManagement = () => {
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      return;
+    }
+
+    // Avoid re-fetching if parameters haven't changed (prevents double load when initial branch is set)
+    const last = lastFetchedRef.current;
+    if (
+      last.page === 1 &&
+      last.search === (searchTerm || '') &&
+      last.courseStatus === (filters.courseStatus || '') &&
+      last.course === (filters.course || '') &&
+      last.branch === (filters.branch || '') &&
+      last.batch === (filters.batch || '')
+    ) {
       return;
     }
 

@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  Download, Filter, RotateCcw, Calendar as CalendarIcon,
-  CheckCircle2, Clock, Percent, Table, CalendarDays, MoreHorizontal,
-  ChevronLeft, ChevronRight, FileText, Bell, MoreVertical, Pin, Tag,
-  ChevronUp, ChevronDown
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  Clock,
+  Percent,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Users,
+  BarChart2
 } from 'lucide-react';
+import UserService from '../../../services/user-api-service/UserService';
+import { Navbar } from '../../../components/user/UserNavBar';
 
 const monthsList = [
   { name: 'January', value: '1' },
@@ -21,21 +27,6 @@ const monthsList = [
   { name: 'November', value: '11' },
   { name: 'December', value: '12' }
 ];
-import UserService from '../../../services/user-api-service/UserService';
-import { Navbar } from '../../../components/user/UserNavBar';
-
-const StatusBadge = ({ status }) => {
-  const styles = {
-    Present: 'bg-green-100 text-green-800 border-green-200',
-    Absent: 'bg-red-100 text-red-800 border-red-200',
-    Late: 'bg-yellow-100 text-yellow-800 border-yellow-200'
-  };
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${styles[status] || 'bg-gray-100 text-gray-800 border-gray-200'}`}>
-      {status}
-    </span>
-  );
-};
 
 export default function AttendanceDashboard() {
   const { getMyAttendanceData } = UserService();
@@ -78,7 +69,6 @@ export default function AttendanceDashboard() {
           absentDays: 0,
           attendancePercentage: '0.00'
         });
-        // Only set mentors list if we don't have them yet, or when not filtering
         if (mentors.length === 0 || (!filterParams.mentor && !filterParams.month && !filterParams.year)) {
           setMentors(response.data.mentors || []);
         }
@@ -94,34 +84,19 @@ export default function AttendanceDashboard() {
     fetchAttendance(filters);
   }, []);
 
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleApplyFilters = () => {
-    setActiveFilters(filters);
-    fetchAttendance(filters);
-  };
-
-  const handleResetFilters = () => {
-    const reset = { mentor: '', month: currentMonth, year: currentYear };
-    setFilters(reset);
-    setActiveFilters(reset);
-    fetchAttendance(reset);
-  };
-
-  const getDayName = (dateStr) => {
-    if (!dateStr) return '';
-    const dateObj = new Date(dateStr);
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return days[dateObj.getDay()];
-  };
-
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const [year, month, day] = dateStr.split('-');
     return `${month}/${day}/${year}`;
+  };
+
+  const isTodayDate = (dateStr) => {
+    if (!dateStr) return false;
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return dateStr === `${y}-${m}-${d}`;
   };
 
   const daysOfWeek = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -143,13 +118,26 @@ export default function AttendanceDashboard() {
 
   const handleMonthChange = (dir) => {
     let currentM = parseInt(filters.month || (new Date().getMonth() + 1));
+    let currentY = parseInt(filters.year || new Date().getFullYear());
     currentM += dir;
     if (currentM < 1) {
       currentM = 12;
+      currentY -= 1;
     } else if (currentM > 12) {
       currentM = 1;
+      currentY += 1;
     }
-    const updatedFilters = { ...filters, month: currentM.toString() };
+    const updatedFilters = { ...filters, month: currentM.toString(), year: currentY.toString() };
+    setFilters(updatedFilters);
+    setActiveFilters(updatedFilters);
+    fetchAttendance(updatedFilters);
+  };
+
+  const handleTodayClick = () => {
+    const now = new Date();
+    const m = (now.getMonth() + 1).toString();
+    const y = now.getFullYear().toString();
+    const updatedFilters = { ...filters, month: m, year: y };
     setFilters(updatedFilters);
     setActiveFilters(updatedFilters);
     fetchAttendance(updatedFilters);
@@ -167,9 +155,8 @@ export default function AttendanceDashboard() {
     const activeIdx = parseInt(activeMonthVal || (new Date().getMonth() + 1)) - 1; // 0-11
     const list = [];
     for (let i = -2; i <= 2; i++) {
-      let idx = activeIdx + i;
+      let idx = (activeIdx + i) % 12;
       if (idx < 0) idx += 12;
-      if (idx > 11) idx -= 12;
       list.push(monthsList[idx]);
     }
     return list;
@@ -218,39 +205,55 @@ export default function AttendanceDashboard() {
   };
 
   const renderCalendarDay = (day, index) => {
-    let wrapperClass = "w-full h-12 flex justify-center items-center relative text-sm rounded-xl hover:bg-gray-50 transition-colors duration-200";
-    let innerClass = "flex justify-center items-center w-8 h-8 rounded-full transition-all duration-200 z-10";
-    let textClass = "text-gray-700 font-semibold";
-    let tooltip = "";
-    let style = {};
-
+    // Adjacent month padding days
     if (day.type === 'prev' || day.type === 'next') {
-      textClass = "text-gray-300 font-medium";
       return (
-        <div key={`empty-${index}`} className="w-full h-12 flex justify-center items-center text-sm">
-          <span className={textClass}>{day.date}</span>
+        <div
+          key={`pad-${index}`}
+          className="min-h-[58px] sm:min-h-[64px] border border-gray-100/70 rounded-xl p-1 flex flex-col items-center justify-center bg-gray-50/30"
+        >
+          <span className="text-gray-300 font-normal text-xs sm:text-sm">{day.date}</span>
         </div>
       );
     }
 
     const dayRecords = attendance.filter(r => r.date === day.dateStr);
 
+    // If attendance record exists
     if (dayRecords.length > 0) {
-      // Map statuses to colors
-      const colors = dayRecords.map(r => r.status === true ? '#22c55e' : '#ef4444');
+      const colors = dayRecords.map(r => r.status === true ? '#10b981' : '#f43f5e');
+      const isPresent = dayRecords[0].status === true;
+      const isSingle = colors.length === 1;
 
-      if (colors.length === 1) {
-        // Single session - solid background
-        const isPresent = dayRecords[0].status === true;
-        if (isPresent) {
-          innerClass += " bg-[#22c55e] text-white ring-4 ring-green-100 shadow-[0_4px_12px_rgba(34,197,94,0.35)] scale-110";
-        } else {
-          innerClass += " bg-[#ef4444] text-white ring-4 ring-red-100 shadow-[0_4px_12px_rgba(239,68,68,0.35)] scale-110";
-        }
-        textClass = "text-white font-bold";
+      let tooltip = "";
+      if (isSingle) {
         tooltip = `Date: ${formatDate(day.dateStr)} | Status: ${isPresent ? 'Present' : 'Absent'} | Mentor: ${dayRecords[0].mentor?.fullName || 'N/A'}`;
       } else {
-        // Multiple sessions - partitioned background
+        tooltip = `Date: ${formatDate(day.dateStr)} | ` + dayRecords.map((r, i) => `Session ${i + 1}: ${r.status ? 'Present' : 'Absent'} (${r.mentor?.fullName || 'N/A'})`).join(' / ');
+      }
+
+      if (isSingle) {
+        return (
+          <div
+            key={day.dateStr}
+            title={tooltip}
+            className="min-h-[58px] sm:min-h-[64px] border border-gray-100 rounded-xl p-1 flex flex-col items-center justify-center relative hover:border-gray-200 hover:shadow-xs transition bg-white"
+          >
+            <div
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white font-bold text-xs sm:text-sm flex items-center justify-center shadow-xs transition-transform hover:scale-105 ${
+                isPresent ? 'bg-[#10b981]' : 'bg-[#f43f5e]'
+              }`}
+            >
+              {day.date}
+            </div>
+            <span
+              className={`w-1.5 h-1.5 rounded-full mt-1 ${
+                isPresent ? 'bg-[#10b981]' : 'bg-[#f43f5e]'
+              }`}
+            />
+          </div>
+        );
+      } else {
         const percentageStep = 100 / colors.length;
         const gradientStops = colors.map((color, idx) => {
           const start = (idx * percentageStep).toFixed(1);
@@ -258,236 +261,322 @@ export default function AttendanceDashboard() {
           return `${color} ${start}% ${end}%`;
         });
 
-        style = {
-          background: `conic-gradient(${gradientStops.join(', ')})`,
-          textShadow: '0 1px 2px rgba(0, 0, 0, 0.4)'
+        const conicStyle = {
+          background: `conic-gradient(${gradientStops.join(', ')})`
         };
 
-        // Add shadow and ring styles to make it look premium
-        innerClass += " text-white ring-4 ring-gray-100 shadow-md scale-110";
-        textClass = "text-white font-bold";
-
-        tooltip = `Date: ${formatDate(day.dateStr)} | ` + dayRecords.map((r, i) => `Session ${i + 1}: ${r.status ? 'Present' : 'Absent'} (Mentor: ${r.mentor?.fullName || 'N/A'})`).join(' / ');
+        return (
+          <div
+            key={day.dateStr}
+            title={tooltip}
+            className="min-h-[58px] sm:min-h-[64px] border border-gray-100 rounded-xl p-1 flex flex-col items-center justify-center relative hover:border-gray-200 hover:shadow-xs transition bg-white"
+          >
+            <div
+              style={conicStyle}
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full text-white font-bold text-xs sm:text-sm flex items-center justify-center shadow-xs transition-transform hover:scale-105"
+            >
+              {day.date}
+            </div>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#10b981] mt-1" />
+          </div>
+        );
       }
+    }
 
+    // Today without attendance record
+    if (isTodayDate(day.dateStr)) {
       return (
         <div
           key={day.dateStr}
-          className={wrapperClass}
-          title={tooltip}
+          title={`Today: ${formatDate(day.dateStr)} (No record)`}
+          className="min-h-[58px] sm:min-h-[64px] border border-blue-200 rounded-xl p-1 flex flex-col items-center justify-center relative hover:border-blue-300 transition bg-blue-50/20"
         >
-          <div className={innerClass} style={style}>
-            <span className={textClass}>{day.date}</span>
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#3b82f6] text-white font-bold text-xs sm:text-sm flex items-center justify-center shadow-xs">
+            {day.date}
           </div>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#3b82f6] mt-1" />
         </div>
       );
     }
 
+    // Default unmarked day
     return (
       <div
         key={day.dateStr}
-        className={wrapperClass}
+        className="min-h-[58px] sm:min-h-[64px] border border-gray-100 rounded-xl p-1 flex flex-col items-center justify-center relative hover:bg-gray-50/70 transition bg-white"
       >
-        <div className={innerClass}>
-          <span className={textClass}>{day.date}</span>
-        </div>
+        <span className="text-gray-700 font-medium text-xs sm:text-sm">{day.date}</span>
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 font-sans text-gray-800">
+    <div className="min-h-screen bg-[#f4f7fb] p-4 sm:p-6 font-sans text-gray-800">
       <div className="max-w-7xl mx-auto space-y-6">
-        <Navbar headData="Attendance" activeTab="Attendance Details">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          </div>
-        </Navbar>
+        <Navbar headData="Student Attendance" activeTab="Attendance Details" />
 
+        {/* Top Metric Cards (Compact & Clean) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: Total Days */}
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-shadow">
+            <div className="w-11 h-11 rounded-xl bg-[#eff4ff] text-[#3b82f6] flex items-center justify-center flex-shrink-0">
+              <CalendarIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500">Total Days</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5">
+                {summary.totalDays}
+              </p>
+              <p className="text-[11px] text-gray-400 font-medium">Days</p>
+            </div>
+          </div>
 
+          {/* Card 2: Present Days */}
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-shadow">
+            <div className="w-11 h-11 rounded-xl bg-[#ecfdf3] text-[#10b981] flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500">Present Days</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5">
+                {summary.presentDays}
+              </p>
+              <p className="text-[11px] text-gray-400 font-medium">Days</p>
+            </div>
+          </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white py-3 px-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="bg-blue-50 p-3 rounded-lg text-blue-600">
-              <CalendarDays size={24} />
+          {/* Card 3: Absent Days */}
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-shadow">
+            <div className="w-11 h-11 rounded-xl bg-[#fef3f2] text-[#f43f5e] flex items-center justify-center flex-shrink-0">
+              <Clock className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 font-medium">Total Days</p>
-              <p className="text-2xl font-bold text-gray-900 mt-0.5">{summary.totalDays}</p>
-              <p className="text-xs text-gray-400">Days</p>
+              <p className="text-xs font-medium text-gray-500">Absent Days</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5">
+                {summary.absentDays}
+              </p>
+              <p className="text-[11px] text-gray-400 font-medium">Days</p>
             </div>
           </div>
-          <div className="bg-white py-3 px-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="bg-green-50 p-3 rounded-lg text-green-600">
-              <CheckCircle2 size={24} />
+
+          {/* Card 4: Attendance */}
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-shadow">
+            <div className="w-11 h-11 rounded-xl bg-[#fef8e7] text-[#f59e0b] flex items-center justify-center flex-shrink-0">
+              <Percent className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 font-medium">Present Days</p>
-              <p className="text-2xl font-bold text-gray-900 mt-0.5">{summary.presentDays}</p>
-              <p className="text-xs text-gray-400">Days</p>
-            </div>
-          </div>
-          <div className="bg-white py-3 px-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="bg-red-50 p-3 rounded-lg text-red-500">
-              <Clock size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Absent Days</p>
-              <p className="text-2xl font-bold text-gray-900 mt-0.5">{summary.absentDays}</p>
-              <p className="text-xs text-gray-400">Days</p>
-            </div>
-          </div>
-          <div className="bg-white py-3 px-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-4">
-            <div className="bg-yellow-50 p-3 rounded-lg text-yellow-600">
-              <Percent size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 font-medium">Attendance</p>
-              <p className="text-2xl font-bold text-gray-900 mt-0.5">{summary.attendancePercentage}%</p>
-              <p className="text-xs text-gray-400">Overall</p>
+              <p className="text-xs font-medium text-gray-500">Attendance</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5">
+                {summary.attendancePercentage}%
+              </p>
+              <p className="text-[11px] text-gray-400 font-medium">Overall</p>
             </div>
           </div>
         </div>
 
 
+        {/* Main Content Layout (Unified Card) */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-gray-100 shadow-sm">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            {/* Left: Calendar Sidebar */}
+            <div className="lg:col-span-3 flex flex-col">
+              <h3 className="text-lg font-bold text-gray-900 tracking-tight mb-6">Calendar</h3>
 
-        {/* Calendar Widget Container (styled like the screenshot) */}
-        <div className="bg-[#f4f5fa] rounded-[32px] shadow-xl overflow-hidden flex flex-col md:flex-row border border-gray-200/50 min-h-[600px]">
+              {/* Year Switcher */}
+              <div className="flex items-center justify-between px-2 mb-6 text-gray-500">
+                <button
+                  type="button"
+                  onClick={() => handleYearChange(-1)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                  title="Previous Year"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="font-bold text-base text-gray-800">{filters.year || new Date().getFullYear()}</span>
+                <button
+                  type="button"
+                  onClick={() => handleYearChange(1)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+                  title="Next Year"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
 
-          {/* Left Sidebar inside the widget */}
-          <div className="w-full md:w-[260px] pt-10 pb-6 px-10 flex flex-col justify-start">
-            <h3 className="text-lg font-bold mb-10 tracking-wide text-gray-900">Calendar</h3>
-
-            {/* Year Switcher */}
-            <div className="flex items-center justify-between mb-8 text-gray-400">
-              <ChevronLeft
-                className="w-4 h-4 cursor-pointer hover:text-gray-800 transition"
-                onClick={() => handleYearChange(-1)}
-              />
-              <span className="font-bold text-base text-gray-800">{filters.year || new Date().getFullYear()}</span>
-              <ChevronRight
-                className="w-4 h-4 cursor-pointer hover:text-gray-800 transition"
-                onClick={() => handleYearChange(1)}
-              />
-            </div>
-
-            {/* Month List with Top/Bottom Arrows */}
-            <div className="flex flex-col items-center space-y-4 pl-2 mt-4">
-              <ChevronUp
-                className="w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-800 transition"
-                onClick={() => handleMonthChange(-1)}
-              />
-              <div className="flex flex-col space-y-6 text-center">
+              {/* Months List */}
+              <div className="flex flex-col space-y-2">
                 {getSidebarMonths(filters.month).map((m) => {
                   const isActive = filters.month === m.value;
+                  if (isActive) {
+                    return (
+                      <div
+                        key={m.value}
+                        onClick={() => handleMonthClick(m.value)}
+                        className="bg-blue-600 text-white rounded-xl px-4 py-2.5 flex items-center justify-between shadow-sm cursor-pointer transition select-none"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-2.5 h-2.5 rounded-full bg-white flex-shrink-0" />
+                          <span className="text-sm font-semibold">{m.name}</span>
+                        </div>
+                        <ChevronRight size={16} className="text-white flex-shrink-0" />
+                      </div>
+                    );
+                  }
                   return (
-                    <span
+                    <div
                       key={m.value}
                       onClick={() => handleMonthClick(m.value)}
-                      className={`cursor-pointer transition-all duration-200 ${isActive
-                        ? 'text-gray-800 text-[20px] font-bold'
-                        : 'text-gray-400 font-medium text-sm hover:text-gray-600'
-                        }`}
+                      className="flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition select-none"
                     >
-                      {m.name}
-                    </span>
+                      <span className="w-2.5 h-2.5 rounded-full border-2 border-gray-300 flex-shrink-0" />
+                      <span className="text-sm font-medium">{m.name}</span>
+                    </div>
                   );
                 })}
               </div>
-              <ChevronDown
-                className="w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-800 transition"
-                onClick={() => handleMonthChange(1)}
-              />
             </div>
-          </div>
 
-          {/* Right Main Content Area (curved border overlapping sidebar) */}
-          <div className="flex-1 bg-white rounded-t-[40px] md:rounded-t-none md:rounded-l-[45px] shadow-[-10px_0_30px_rgba(0,0,0,0.02)] p-10 flex flex-col relative min-h-[500px]">
-
-            {/* Header */}
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xl font-bold text-gray-900">
-                {monthsList[parseInt(filters.month) - 1]?.name || 'Attendance'} {filters.year}
-              </h2>
-              <div className="relative w-[180px] sm:w-[220px]">
-                <select
-                  name="mentor"
-                  value={filters.mentor}
-                  onChange={handleMentorFilterChange}
-                  className="w-full appearance-none border border-gray-200 rounded-xl pl-3 pr-8 py-2.5 text-xs font-semibold outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-gray-650 bg-white shadow-sm cursor-pointer"
-                >
-                  <option value="">All Mentors</option>
-                  {mentors.map(m => (
-                    <option key={m._id} value={m._id}>{m.fullName}</option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
-                  <ChevronDown className="w-4 h-4" />
+            {/* Center: Main Calendar Grid Area */}
+            <div className="lg:col-span-6 flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+                  {monthsList[parseInt(filters.month) - 1]?.name || ''} {filters.year}
+                </h2>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleMonthChange(-1)}
+                    className="w-8 h-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition shadow-xs cursor-pointer"
+                    title="Previous Month"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTodayClick}
+                    className="px-3.5 h-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-xs font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition shadow-xs cursor-pointer"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMonthChange(1)}
+                    className="w-8 h-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition shadow-xs cursor-pointer"
+                    title="Next Month"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
                 </div>
               </div>
-            </div>
 
-            {/* Calendar Grid Container */}
-            {loading ? (
-              <div className="flex-1 flex flex-col items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-2"></div>
-                <p className="text-xs text-gray-500">Loading attendance data...</p>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
+              {/* Calendar Grid Container */}
+              {loading ? (
+                <div className="flex-1 flex flex-col items-center justify-center py-24">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                  <p className="text-xs text-gray-500">Loading attendance data...</p>
+                </div>
+              ) : (
+                <div className="flex-1">
                   {/* Days of Week Header */}
-                  <div className="grid grid-cols-7 mb-4 text-center">
+                  <div className="grid grid-cols-7 mb-2 text-center">
                     {daysOfWeek.map((day, idx) => (
-                      <div key={idx} className="text-xs font-bold text-[#5c7aff] tracking-wider py-1">
+                      <div
+                        key={idx}
+                        className={`text-xs font-bold tracking-wider py-1.5 ${
+                          idx === 0
+                            ? 'text-rose-500'
+                            : idx === 6
+                            ? 'text-blue-600'
+                            : 'text-gray-700'
+                        }`}
+                      >
                         {day}
                       </div>
                     ))}
                   </div>
 
                   {/* Calendar Grid */}
-                  <div className="grid grid-cols-7 gap-y-3">
-                    {getCalendarDays(filters.month, filters.year).map((day, index) => renderCalendarDay(day, index))}
+                  <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+                    {getCalendarDays(filters.month, filters.year).map((day, index) =>
+                      renderCalendarDay(day, index)
+                    )}
                   </div>
                 </div>
+              )}
+            </div>
 
-                {/* Footer Section */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mt-12 pt-6 border-t border-gray-100 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-400 font-medium leading-relaxed">
-                      This month you have {summary.totalDays} attendance logs
-                      Present: {summary.presentDays} days | Absent: {summary.absentDays} days
-                    </p>
+            {/* Right: Sidebar Widgets */}
+            <div className="lg:col-span-3 flex flex-col gap-5">
+              {/* Mentor Filter Dropdown */}
+              <div className="relative bg-white border border-gray-200 rounded-xl px-3.5 py-2 shadow-xs flex items-center hover:border-gray-300 transition h-[36px] sm:h-[40px] mb-1">
+                <Users size={16} className="text-gray-500 mr-2.5 flex-shrink-0" />
+                <select
+                  name="mentor"
+                  value={filters.mentor}
+                  onChange={handleMentorFilterChange}
+                  className="w-full appearance-none bg-transparent text-xs font-semibold text-gray-700 outline-none cursor-pointer pr-6"
+                >
+                  <option value="">All Mentors</option>
+                  {mentors.map(m => (
+                    <option key={m._id} value={m._id}>{m.fullName}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="text-gray-400 absolute right-3 pointer-events-none" />
+              </div>
+
+              {/* Attendance Legend Card */}
+              <div className="bg-[#fcfdfd] rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-xs">
+                <h3 className="text-sm font-bold text-gray-900 mb-3.5">Attendance Legend</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#10b981] flex-shrink-0" />
+                    <span className="text-xs font-medium text-gray-600">Present</span>
                   </div>
-
-                  {/* Floating Action Buttons */}
-                  {/* <div className="flex space-x-4">
-                    <button 
-                      onClick={() => window.print()}
-                      className="w-12 h-12 bg-[#ff7ce3] text-white rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(255,124,227,0.4)] hover:bg-pink-500 transition-colors"
-                      title="Print Report"
-                    >
-                      <Pin className="w-5 h-5 fill-current" />
-                    </button>
-                    <Link 
-                      to="/student/leave-request"
-                      className="w-12 h-12 bg-[#5c7aff] text-white rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(92,122,255,0.4)] hover:bg-indigo-600 transition-colors"
-                      title="Request Leave"
-                    >
-                      <Tag className="w-5 h-5 transform rotate-45" />
-                    </Link>
-                  </div> */}
+                  <div className="flex items-center gap-3">
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#f43f5e] flex-shrink-0" />
+                    <span className="text-xs font-medium text-gray-600">Absent</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-3.5 h-3.5 rounded-full bg-[#3b82f6] flex-shrink-0" />
+                    <span className="text-xs font-medium text-gray-600">Today</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-3.5 h-3.5 rounded-full border-2 border-gray-200 bg-gray-50 flex-shrink-0" />
+                    <span className="text-xs font-medium text-gray-600">Other Day</span>
+                  </div>
                 </div>
               </div>
-            )}
+
+              {/* Monthly Summary Card */}
+              <div className="bg-[#fcfdfd] rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-xs">
+                <div className="flex items-center gap-2 mb-3.5">
+                  <BarChart2 size={16} className="text-blue-600 flex-shrink-0" />
+                  <h3 className="text-sm font-bold text-gray-900">Monthly Summary</h3>
+                </div>
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500 font-medium">Total Days</span>
+                    <span className="text-gray-900 font-bold">{summary.totalDays}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500 font-medium">Present Days</span>
+                    <span className="text-gray-900 font-bold">{summary.presentDays}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500 font-medium">Absent Days</span>
+                    <span className="text-gray-900 font-bold">{summary.absentDays}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500 font-medium">Attendance</span>
+                    <span className="text-gray-900 font-bold">{summary.attendancePercentage}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-
-          {/* Footer & Pagination */}
-          {/* <div className="p-5 border-t border-gray-100 flex justify-between items-center text-sm">
-            <span className="text-gray-500">Showing 1 to {attendance.length} of {attendance.length} records</span>
-          </div> */}
-
         </div>
+
       </div>
     </div>
   );

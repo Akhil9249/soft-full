@@ -1523,7 +1523,7 @@ export const TaskManagement = () => {
                         <tr key={task._id || idx} className="hover:bg-gray-50">
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
                           <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
+                            <div className="flex items-center max-w-[220px] lg:max-w-[260px]">
                               <div className="flex-shrink-0 h-10 w-10">
                                 <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
                                   <span className="text-orange-600 font-medium text-sm">
@@ -1531,8 +1531,16 @@ export const TaskManagement = () => {
                                   </span>
                                 </div>
                               </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{task.title}</div>
+                              <div className="ml-4 min-w-0 flex-1">
+                                <div
+                                  className="text-sm font-medium text-gray-900 truncate cursor-pointer hover:text-orange-600 transition-colors"
+                                  title={task.title}
+                                  onClick={() => handleViewTask(task)}
+                                >
+                                  {task.title && task.title.length > 20
+                                    ? `${task.title.substring(0, 20)}...`
+                                    : task.title}
+                                </div>
                                 <div className="text-sm text-gray-500">ID: {task._id?.slice(-6) || 'N/A'}</div>
                               </div>
                             </div>
@@ -1616,7 +1624,13 @@ export const TaskManagement = () => {
                           </div>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-semibold text-gray-900 truncate">{task.title}</h3>
+                          <h3
+                            className="text-base font-semibold text-gray-900 truncate cursor-pointer hover:text-orange-600"
+                            title={task.title}
+                            onClick={() => handleViewTask(task)}
+                          >
+                            {task.title && task.title.length > 20 ? `${task.title.substring(0, 20)}...` : task.title}
+                          </h3>
                           <p className="text-xs text-gray-500">ID: {task._id?.slice(-6) || 'N/A'}</p>
                         </div>
                       </div>

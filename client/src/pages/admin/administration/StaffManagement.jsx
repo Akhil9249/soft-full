@@ -189,9 +189,25 @@ export const StaffManagement = () => {
         });
     };
 
+    // Track last fetched parameters to prevent duplicate calls on page load
+    const lastFetchedRef = useRef({
+        page: null,
+        search: null,
+        department: null,
+        employmentStatus: null,
+        branch: null
+    });
+
     // Fetch staff from backend
     const fetchStaff = async (page = 1, search = '', department = '', employmentStatus = '', branch = '') => {
         try {
+            lastFetchedRef.current = {
+                page,
+                search: search || '',
+                department: department || '',
+                employmentStatus: employmentStatus ?? '',
+                branch: branch || ''
+            };
             setLoading(true);
             setError('');
 
@@ -371,6 +387,18 @@ export const StaffManagement = () => {
     useEffect(() => {
         if (isFirstRender.current) {
             isFirstRender.current = false;
+            return;
+        }
+
+        // Avoid re-fetching if parameters haven't changed (prevents double load when initial branch is set)
+        const last = lastFetchedRef.current;
+        if (
+            last.page === 1 &&
+            last.search === (searchTerm || '') &&
+            last.department === (filters.department || '') &&
+            last.employmentStatus === (filters.employmentStatus ?? '') &&
+            last.branch === (filters.branch || '')
+        ) {
             return;
         }
 

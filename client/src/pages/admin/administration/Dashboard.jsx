@@ -2,18 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen,
-  GraduationCap,
-  Clock,
+  Users,
+  Layers,
   Award,
-  TrendingUp,
-  Play,
   ChevronRight,
+  ChevronDown,
+  ArrowRight,
   Bell,
   Search,
-  LayoutDashboard,
+  MoreVertical,
+  BarChart2,
+  Calendar,
+  FileText,
   BookMarked,
-  Settings,
-  LogOut,
   X
 } from 'lucide-react';
 import AdminService from '../../../services/admin-api-service/AdminService';
@@ -41,13 +42,62 @@ const PAGES_LIST = [
   { name: 'Branch', path: '/branch', category: 'Settings' }
 ];
 
+import dataScienceImg from '../../../assets/dashboard/DATA SCIENCE.jpg';
+import dataAnalyticsImg from '../../../assets/dashboard/DATA ANALYTICS.jpeg';
+import aiEngineeringImg from '../../../assets/dashboard/DATA SCIENCE & AI ENGINEERING.jpg';
+import flutterImg from '../../../assets/dashboard/FLUTTER.png';
+
+// Helper to get image for course based on name or index
+const getCourseImage = (course, index = 0) => {
+  if (course?.courseImage) return course.courseImage;
+  if (course?.image) return course.image;
+  if (course?.thumbnail) return course.thumbnail;
+
+  const name = (course?.courseName || course?.title || '').toLowerCase();
+
+  if (name.includes('ai') || name.includes('artificial') || name.includes('machine') || index === 2) {
+    return aiEngineeringImg;
+  }
+  if (name.includes('analytic') || index === 1) {
+    return dataAnalyticsImg;
+  }
+  if (name.includes('science') || index === 0) {
+    return dataScienceImg;
+  }
+  if (name.includes('flutter') || name.includes('mobile') || index === 3) {
+    return flutterImg;
+  }
+  return dataScienceImg;
+};
+
+// Component to render course thumbnail with image
+const CourseThumbnail = ({ course, index }) => {
+  const imgSrc = getCourseImage(course, index);
+  const isFlutter = imgSrc === flutterImg;
+
+  return (
+    <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-slate-50 border border-slate-100/90 flex-shrink-0 overflow-hidden shadow-xs group-hover:shadow-sm transition">
+      <span className="absolute top-2 left-2 bg-white/90 backdrop-blur-xs text-[10px] font-bold text-gray-700 px-2 py-0.5 rounded-full shadow-2xs z-10">
+        {course.courseType || 'Regular'}
+      </span>
+      <img
+        src={imgSrc}
+        alt={course.courseName || course.title || 'Course'}
+        className={`w-full h-full ${
+          isFlutter ? 'object-contain p-2 bg-white' : 'object-cover'
+        } group-hover:scale-105 transition-transform duration-300`}
+      />
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { getCoursesData, getInternsData, getBatchesData, getStaffData } = AdminService();
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [statsData, setStatsData] = useState({ courses: 0, interns: 0, batches: 0, staff: 0 });
   const [recentCourses, setRecentCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [courseFilter, setCourseFilter] = useState('All');
 
   // Modal State
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -121,48 +171,46 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
-  const stats = [
-    { id: 1, label: 'Total Courses', value: statsData.courses, icon: BookOpen, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { id: 2, label: 'Total Interns', value: statsData.interns, icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { id: 3, label: 'Active Batches', value: statsData.batches, icon: Clock, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { id: 4, label: 'Total Staff', value: statsData.staff, icon: Award, color: 'text-amber-600', bg: 'bg-amber-50' },
-  ];
-
   return (
-    <div className="flex min-h-screen bg-slate-50/50 text-slate-900 font-sans">
+    <div className="min-h-screen bg-[#f8fafd] text-gray-800 font-sans p-4 sm:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
 
-
-
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
-
-        {/* 2. TOP BAR / HEADER */}
-        <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        {/* 1. TOP HEADER / GREETING BANNER */}
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 drop-shadow-sm pb-1">
-              Welcome back, Softroniics !
-            </h1>
-            {/* <p className="text-sm text-slate-500 mt-1">Here is a glance at your learning progress today.</p> */}
+            <div className="flex items-center gap-2">
+              <h1 className="flex flex-wrap items-baseline gap-2">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-medium text-slate-500">
+                  Welcome back,
+                </span>
+                <span className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600">
+                  Softroniics
+                </span>
+              </h1>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-400 font-medium mt-1">
+              Manage courses, interns, staff, and daily operations efficiently from one place.
+            </p>
           </div>
 
           <div className="flex items-center gap-4">
             {/* Elegant Search Bar */}
             <div className="relative w-full sm:w-80" ref={searchRef}>
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input
                 type="text"
-                placeholder="Search pages..."
+                placeholder="Search pages, courses, or topics..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200/80 rounded-full text-xs sm:text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-all shadow-xs"
               />
 
               {isSearchFocused && (
-                <div className="absolute right-0 top-full mt-2 w-full bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 pb-2 pt-1 border-b border-slate-100 flex items-center justify-between">
+                <div className="absolute right-0 top-full mt-2 w-full bg-white border border-gray-200 rounded-2xl shadow-xl z-50 p-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 pb-2 pt-1 border-b border-gray-100 flex items-center justify-between">
                     <span>Quick Navigation</span>
-                    <span className="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full lowercase font-semibold font-mono">
+                    <span className="text-[9px] bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full font-semibold font-mono">
                       {filteredPages.length} result(s)
                     </span>
                   </div>
@@ -175,185 +223,387 @@ export default function Dashboard() {
                             navigate(page.path);
                             setIsSearchFocused(false);
                           }}
-                          className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-slate-700 hover:bg-indigo-50/50 hover:text-indigo-600 transition-colors flex items-center justify-between group"
+                          className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-bold text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-colors flex items-center justify-between group"
                         >
                           <span className="truncate pr-2">{page.name}</span>
-                          <span className="text-[9px] font-bold bg-slate-50 text-slate-400 px-2 py-0.5 rounded-md uppercase group-hover:bg-indigo-100/60 group-hover:text-indigo-600 transition-colors shrink-0">
+                          <span className="text-[9px] font-bold bg-gray-50 text-gray-400 px-2 py-0.5 rounded-md uppercase group-hover:bg-orange-100 group-hover:text-orange-600 transition-colors shrink-0">
                             {page.category}
                           </span>
                         </button>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-6 text-xs text-slate-400 font-medium italic">
+                    <div className="text-center py-6 text-xs text-gray-400 font-medium italic">
                       No matching pages found.
                     </div>
                   )}
                 </div>
               )}
             </div>
-            {/* Notification Badge */}
+
+            {/* Notification Button */}
             <button
               onClick={() => navigate('/notification')}
-              className="relative p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-all"
+              className="relative p-2.5 bg-white border border-gray-200/80 rounded-full text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition shadow-xs flex-shrink-0"
+              title="Notifications"
             >
               <Bell size={18} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full"></span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
             </button>
           </div>
         </header>
 
-        {/* 3. STATS GRID */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat) => {
-            const IconComponent = stat.icon;
-            return (
-              <div key={stat.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">{stat.label}</p>
-                  <p className="text-2xl font-bold text-slate-800 mt-1">{stat.value}</p>
-                </div>
-                <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
-                  <IconComponent size={22} />
-                </div>
+        {/* 2. STATS GRID (4 Cards Styled with Brand Primary Orange) */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          {/* Card 1: Total Courses */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-xs relative overflow-hidden flex items-center min-h-[105px] hover:shadow-md transition">
+            {/* Left: Icon and Text side-by-side */}
+            <div className="flex items-center gap-3.5 z-10">
+              <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
+                <BookOpen size={24} />
               </div>
-            );
-          })}
-        </section>
-
-        {/* 4. MAIN DASHBOARD CONTENT */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* Left/Middle Column: Courses & Progress */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-slate-900">Latest Courses</h2>
-              <button onClick={() => navigate('/courses')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
-                See all <ChevronRight size={16} />
-              </button>
+              <div>
+                <p className="text-xs sm:text-[13px] font-semibold text-slate-500">Total Courses</p>
+                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">{statsData.courses}</p>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5">+2 this month</p>
+              </div>
             </div>
 
-            {/* Course Cards Layout */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Top-right: (->) button */}
+            <button
+              onClick={() => navigate('/courses')}
+              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center text-slate-600 hover:text-orange-500 hover:border-orange-200 shadow-xs transition z-20 cursor-pointer"
+              title="View Courses"
+            >
+              <ArrowRight size={13} strokeWidth={2.2} />
+            </button>
+          </div>
+
+          {/* Card 2: Total Interns */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-xs relative overflow-hidden flex items-center min-h-[105px] hover:shadow-md transition">
+            {/* Left: Icon and Text side-by-side */}
+            <div className="flex items-center gap-3.5 z-10">
+              <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
+                <Users size={24} />
+              </div>
+              <div>
+                <p className="text-xs sm:text-[13px] font-semibold text-slate-500">Total Interns</p>
+                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">{statsData.interns}</p>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5">+3 this month</p>
+              </div>
+            </div>
+
+            {/* Top-right: (->) button */}
+            <button
+              onClick={() => navigate('/student-management')}
+              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center text-slate-600 hover:text-orange-500 hover:border-orange-200 shadow-xs transition z-20 cursor-pointer"
+              title="View Interns"
+            >
+              <ArrowRight size={13} strokeWidth={2.2} />
+            </button>
+          </div>
+
+          {/* Card 3: Active Batches */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-xs relative overflow-hidden flex items-center min-h-[105px] hover:shadow-md transition">
+            {/* Left: Icon and Text side-by-side */}
+            <div className="flex items-center gap-3.5 z-10">
+              <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
+                <Layers size={24} />
+              </div>
+              <div>
+                <p className="text-xs sm:text-[13px] font-semibold text-slate-500">Active Batches</p>
+                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">{statsData.batches}</p>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5">2 ongoing</p>
+              </div>
+            </div>
+
+            {/* Top-right: (->) button */}
+            <button
+              onClick={() => navigate('/batches')}
+              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center text-slate-600 hover:text-orange-500 hover:border-orange-200 shadow-xs transition z-20 cursor-pointer"
+              title="View Batches"
+            >
+              <ArrowRight size={13} strokeWidth={2.2} />
+            </button>
+          </div>
+
+          {/* Card 4: Total Staff */}
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-xs relative overflow-hidden flex items-center min-h-[105px] hover:shadow-md transition">
+            {/* Left: Icon and Text side-by-side */}
+            <div className="flex items-center gap-3.5 z-10">
+              <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
+                <Users size={24} />
+              </div>
+              <div>
+                <p className="text-xs sm:text-[13px] font-semibold text-slate-500">Total Staff</p>
+                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">{statsData.staff}</p>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5">+1 this month</p>
+              </div>
+            </div>
+
+            {/* Top-right: (->) button */}
+            <button
+              onClick={() => navigate('/staff-management')}
+              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center text-slate-600 hover:text-orange-500 hover:border-orange-200 shadow-xs transition z-20 cursor-pointer"
+              title="View Staff"
+            >
+              <ArrowRight size={13} strokeWidth={2.2} />
+            </button>
+          </div>
+        </section>
+
+        {/* 3. MAIN DASHBOARD CONTENT (2 COLUMNS) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+          {/* Left Column: Latest Courses (8 Cols) */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* Header row with filter pills */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h2 className="text-xl font-bold text-gray-900 tracking-tight">Latest Courses</h2>
+
+              <div className="flex items-center gap-3">
+                {/* Filter Pills */}
+                <div className="flex items-center bg-gray-100/70 p-1 rounded-full text-xs">
+                  {['All', 'Popular', 'Ongoing', 'Upcoming'].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setCourseFilter(tab)}
+                      className={`px-3.5 py-1 rounded-full font-semibold transition-all ${
+                        courseFilter === tab
+                          ? 'bg-orange-500 text-white shadow-xs'
+                          : 'text-gray-500 hover:text-gray-900'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+
+                {/* See All Button */}
+                <button
+                  onClick={() => navigate('/courses')}
+                  className="border border-orange-200/80 rounded-full px-3.5 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50 transition flex items-center gap-1 shadow-2xs"
+                >
+                  See all <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Courses 2x2 Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {loading ? (
-                <div className="col-span-2 text-center text-slate-500 py-10">Loading courses...</div>
+                <div className="col-span-2 text-center text-gray-400 py-16">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                  <p className="text-xs">Loading courses...</p>
+                </div>
               ) : recentCourses.length === 0 ? (
-                <div className="col-span-2 text-center text-slate-500 py-10">No courses available.</div>
-              ) : recentCourses.map((course) => (
-                <div key={course._id || course.id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all group flex flex-col justify-between">
-                  <div>
-                    {/* Thumbnail */}
-                    <div className="relative h-40 overflow-hidden bg-slate-100 flex items-center justify-center">
-                      <BookOpen className="text-indigo-200 group-hover:scale-110 transition-transform duration-300" size={64} />
-                      <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-md text-xs font-semibold px-2.5 py-1 rounded-md text-slate-800 shadow-sm">
-                        {course.courseType || 'Course'}
-                      </span>
-                    </div>
+                <div className="col-span-2 text-center text-gray-400 py-16 bg-white rounded-2xl border border-gray-100">
+                  <BookOpen size={32} className="mx-auto text-gray-300 mb-2" />
+                  <p className="text-sm font-medium">No courses available.</p>
+                </div>
+              ) : (
+                recentCourses.map((course, idx) => (
+                  <div
+                    key={course._id || course.id || idx}
+                    className="bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-sm hover:shadow-md transition flex flex-col justify-between group"
+                  >
+                    <div>
+                      <div className="flex gap-4 items-start">
+                        {/* 3D Course Thumbnail */}
+                        <CourseThumbnail course={course} index={idx} />
 
-                    {/* Content */}
-                    <div className="p-5">
-                      <p className="text-xs text-slate-400 font-medium">Duration: {course.duration || 'N/A'}</p>
-                      <h3 className="text-sm md:text-base font-bold text-slate-800 mt-1 line-clamp-2 leading-snug">
-                        {course.courseName || course.title}
-                      </h3>
-                    </div>
-                  </div>
+                        {/* Course Details Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-medium text-gray-400 truncate">
+                              Duration: {course.duration || '6 Months'}
+                            </span>
+                            <button
+                              onClick={() => handleViewDetails(course)}
+                              className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-50 transition"
+                              title="Options"
+                            >
+                              <MoreVertical size={15} />
+                            </button>
+                          </div>
 
-                  {/* Progress bar and CTA footer */}
-                  <div className="p-5 pt-0">
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-xs font-semibold text-slate-500">
-                        <span>Modules</span>
-                        <span className="text-indigo-600">{course.totalModules || 0}</span>
+                          <h3 className="text-sm font-bold text-gray-900 mt-1 uppercase tracking-tight line-clamp-1 group-hover:text-orange-600 transition-colors">
+                            {course.courseName || course.title}
+                          </h3>
+
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+                            {course.description || course.overview || 'Learn in-depth concepts, practical implementations, and real-world projects.'}
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleViewDetails(course)}
-                      className="w-full py-2.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2">
-                      <ChevronRight size={14} className="group-hover:text-white" />
-                      View Details
-                    </button>
+                    {/* Footer Metrics & CTA */}
+                    <div className="flex items-center justify-between mt-5 pt-3.5 border-t border-gray-50">
+                      <div className="flex items-center gap-4">
+                        {/* Modules */}
+                        <div className="flex items-center gap-2">
+                          <Layers size={14} className="text-gray-400 flex-shrink-0" />
+                          <div>
+                            <span className="text-gray-400 block text-[10px] font-medium leading-none">Modules</span>
+                            <span className="font-bold text-gray-800 text-xs mt-0.5 block leading-none">
+                              {course.totalModules || (course.modules?.length) || 0}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Enrolled */}
+                        <div className="flex items-center gap-2">
+                          <Users size={14} className="text-gray-400 flex-shrink-0" />
+                          <div>
+                            <span className="text-gray-400 block text-[10px] font-medium leading-none">Enrolled</span>
+                            <span className="font-bold text-gray-800 text-xs mt-0.5 block leading-none">
+                              {course.enrolledCount || 0}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* View Details Button */}
+                      <button
+                        onClick={() => handleViewDetails(course)}
+                        className="bg-orange-50 hover:bg-orange-500 hover:text-white text-orange-600 text-xs font-semibold px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
+                      >
+                        View Details <ArrowRight size={13} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
-          {/* Right Column: Mini Analytics / Study Goals */}
-          <div className="space-y-6">
-            <h2 className="text-lg font-bold text-slate-900">Weekly Activity</h2>
+          {/* Right Column: Weekly Activity & Upcoming Test Banner (4 Cols) */}
+          <div className="lg:col-span-4 space-y-6">
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-6">
-              <div className="flex items-center justify-between">
+            {/* 1. Weekly Activity Card */}
+            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="text-emerald-500" size={18} />
-                  <span className="text-sm font-semibold text-slate-700">On track this week</span>
+                  <BarChart2 size={18} className="text-orange-500" />
+                  <h3 className="text-sm sm:text-base font-bold text-gray-900">Weekly Activity</h3>
                 </div>
-                <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full">+12%</span>
+                <div className="border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-gray-600 font-medium flex items-center gap-1 bg-white hover:bg-gray-50 cursor-pointer shadow-2xs">
+                  <span>This Week</span>
+                  <ChevronDown size={14} className="text-gray-400" />
+                </div>
               </div>
 
-              {/* Minimalist Visual Bars representation for activity */}
+              {/* Day Progress Bars */}
               <div className="space-y-3">
                 {[
-                  { day: 'Mon', hours: '2.5h', percentage: 80 },
-                  { day: 'Tue', hours: '1.2h', percentage: 40 },
-                  { day: 'Wed', hours: '4.0h', percentage: 100 },
-                  { day: 'Thu', hours: '0.5h', percentage: 15 },
-                  { day: 'Fri', hours: '3.1h', percentage: 90 },
+                  { day: 'Mon', hours: '2.5h', width: '52%' },
+                  { day: 'Tue', hours: '1.2h', width: '28%' },
+                  { day: 'Wed', hours: '4.0h', width: '85%' },
+                  { day: 'Thu', hours: '0.5h', width: '12%' },
+                  { day: 'Fri', hours: '3.1h', width: '68%' },
                 ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-4 text-xs font-medium">
-                    <span className="w-8 text-slate-400">{item.day}</span>
-                    <div className="flex-1 bg-slate-50 h-3 rounded-full overflow-hidden">
+                  <div key={idx} className="flex items-center justify-between text-xs py-1">
+                    <span className="text-gray-500 font-medium w-8">{item.day}</span>
+                    <div className="flex-1 bg-gray-100 h-2.5 rounded-full overflow-hidden mx-3">
                       <div
-                        className="bg-gradient-to-r from-indigo-500 to-violet-500 h-full rounded-full"
-                        style={{ width: `${item.percentage}%` }}
+                        className="bg-gradient-to-r from-orange-400 to-orange-500 h-full rounded-full transition-all duration-500"
+                        style={{ width: item.width }}
                       ></div>
                     </div>
-                    <span className="w-8 text-right text-slate-600 font-semibold">{item.hours}</span>
+                    <span className="text-gray-600 font-semibold w-8 text-right">{item.hours}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Upcoming Quiz/Deadline Reminder */}
-            <div className="bg-gradient-to-br from-indigo-600 to-violet-700 text-white p-5 rounded-2xl shadow-md relative overflow-hidden">
-              <div className="relative z-10">
-                <span className="bg-white/20 text-xs font-medium px-2.5 py-1 rounded-md uppercase tracking-wider">
-                  Upcoming Test
-                </span>
-                <h3 className="font-bold text-lg mt-3">MERN Stack Capstone Architecture</h3>
-                <p className="text-xs text-indigo-100 mt-1 opacity-90">Due: May 25th at 11:59 PM</p>
-                <button className="mt-4 bg-white text-indigo-600 font-semibold px-4 py-2 rounded-xl text-xs hover:bg-indigo-50 transition-all shadow-sm">
-                  Prepare Now
+            {/* 2. Upcoming Test Banner */}
+            <div className="bg-gradient-to-br from-[#f97316] via-[#fb923c] via-35% to-[#fef08a] text-white p-6 rounded-2xl shadow-sm relative overflow-hidden flex flex-col justify-between">
+              {/* Soft ambient luminous wash that smoothly decreases darkness from top-left to bottom-right */}
+              <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/5 to-white/20 pointer-events-none"></div>
+              <div className="absolute -right-6 -bottom-6 w-48 h-48 bg-white/30 rounded-full blur-2xl pointer-events-none"></div>
+
+              <div className="relative z-10 max-w-[210px]">
+                {/* Top Badge */}
+                <div className="flex items-center gap-2">
+                  <Calendar size={15} className="text-white/95" />
+                  <span className="bg-white/20 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider backdrop-blur-xs shadow-2xs">
+                    UPCOMING TEST
+                  </span>
+                </div>
+
+                <h4 className="text-base sm:text-lg font-bold text-white mt-3 leading-snug drop-shadow-xs">
+                  MERN Stack Capstone Architecture
+                </h4>
+
+                <div className="space-y-1.5 mt-3 text-xs text-white/90 font-medium">
+                  <div className="flex items-center gap-2">
+                    <Calendar size={13} className="text-white/90" />
+                    <span>Due: May 25th at 11:59 PM</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <FileText size={13} className="text-white/90" />
+                    <span>Final Assessment</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => navigate('/task-management')}
+                  className="mt-5 bg-white text-orange-600 font-bold px-4 py-2 rounded-xl text-xs hover:bg-orange-50 transition shadow-xs inline-flex items-center gap-1.5"
+                >
+                  Prepare Now <ArrowRight size={13} />
                 </button>
               </div>
-              {/* Decorative Background Blur */}
-              <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+
+              {/* 3D Notepad & Alarm Clock Graphic on Right */}
+              <div className="absolute right-3 bottom-4 pointer-events-none z-10">
+                <svg viewBox="0 0 110 110" className="w-24 h-24">
+                  {/* Notepad */}
+                  <rect x="25" y="15" width="55" height="75" rx="8" fill="#ffffff" />
+                  <line x1="35" y1="30" x2="65" y2="30" stroke="#f97316" strokeWidth="3" strokeLinecap="round" />
+                  <line x1="35" y1="42" x2="60" y2="42" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
+                  <line x1="35" y1="52" x2="65" y2="52" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
+                  <line x1="35" y1="62" x2="55" y2="62" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
+                  {/* Alarm clock */}
+                  <circle cx="78" cy="74" r="16" fill="#1e1b4b" stroke="#ffffff" strokeWidth="2.5" />
+                  <path d="M78 65 L78 74 L84 74" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="70" cy="58" r="3" fill="#cbd5e1" />
+                  <circle cx="86" cy="58" r="3" fill="#cbd5e1" />
+                </svg>
+              </div>
             </div>
 
           </div>
 
         </div>
-      </main>
+      </div>
 
       {/* COURSE DETAILS MODAL */}
       {isModalOpen && selectedCourse && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 transition-opacity duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 transition-opacity duration-300">
           <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transform scale-100 transition-transform duration-300">
             {/* Modal Header */}
-            <div className="relative h-32 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-6 flex items-end">
+            <div className="relative h-36 bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 p-6 flex items-end overflow-hidden">
+              {getCourseImage(selectedCourse) && (
+                <img
+                  src={getCourseImage(selectedCourse)}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-overlay pointer-events-none"
+                />
+              )}
               <button
                 onClick={closeModal}
-                className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full backdrop-blur-md transition-all"
+                className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full backdrop-blur-md transition-all z-10"
               >
                 <X size={20} />
               </button>
-              <div className="text-white w-full">
+              <div className="text-white w-full relative z-10">
                 <span className="bg-white/20 backdrop-blur-md text-xs font-bold px-2.5 py-1 rounded-md uppercase tracking-wider mb-2 inline-block shadow-sm">
                   {selectedCourse.courseType || 'Course'}
                 </span>
-                <h2 className="text-2xl font-bold leading-tight drop-shadow-sm truncate" title={selectedCourse.courseName}>{selectedCourse.courseName || 'Course Details'}</h2>
+                <h2 className="text-2xl font-bold leading-tight drop-shadow-sm truncate" title={selectedCourse.courseName}>
+                  {selectedCourse.courseName || 'Course Details'}
+                </h2>
               </div>
             </div>
 
@@ -383,20 +633,27 @@ export default function Dashboard() {
               {/* Modules List */}
               <div>
                 <h3 className="text-base font-bold text-slate-800 mb-3 flex items-center gap-2">
-                  <BookMarked size={18} className="text-indigo-500" />
+                  <BookMarked size={18} className="text-orange-500" />
                   Course Curriculum
                 </h3>
                 {selectedCourse.modules && selectedCourse.modules.length > 0 ? (
                   <div className="space-y-3">
                     {selectedCourse.modules.map((mod, idx) => (
-                      <div key={mod._id || idx} className="flex items-start justify-between p-3 rounded-xl border border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/50 transition-colors group">
+                      <div
+                        key={mod._id || idx}
+                        className="flex items-start justify-between p-3 rounded-xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50/50 transition-colors group"
+                      >
                         <div className="flex gap-3 items-center">
-                          <div className="bg-indigo-100 text-indigo-600 font-bold w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+                          <div className="bg-orange-100 text-orange-600 font-bold w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
                             {idx + 1}
                           </div>
                           <div>
-                            <p className="font-semibold text-slate-800 text-sm group-hover:text-indigo-700 transition-colors">{mod.moduleName}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{mod.totalTopics || 0} Topics included</p>
+                            <p className="font-semibold text-slate-800 text-sm group-hover:text-orange-600 transition-colors">
+                              {mod.moduleName}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              {mod.totalTopics || 0} Topics included
+                            </p>
                           </div>
                         </div>
                       </div>
