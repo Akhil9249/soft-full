@@ -12,7 +12,7 @@ router.get("/my-submissions", checkAuth, taskSubmissionController.getMySubmissio
 // Mentor/Admin actions (Viewing submissions for a specific task and grading)
 router.get("/task/:taskId", checkAuth, checkPermission('taskManagement', 'viewTask'), taskSubmissionController.getTaskSubmissions);
 router.get("/:id", checkAuth, taskSubmissionController.getSubmissionById);
-router.patch("/:id/grade", checkAuth, checkPermission('taskManagement', 'updateTaskMarks'), taskSubmissionController.gradeSubmission);
+router.patch("/:id/grade", checkAuth, checkPermission('taskManagement', 'editTask'), taskSubmissionController.gradeSubmission);
 router.get("/:id/download", checkAuth, taskSubmissionController.downloadSubmissionAttachment);
 
 module.exports = router;

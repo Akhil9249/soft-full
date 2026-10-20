@@ -716,11 +716,11 @@ const MonthlyMenorCard = () => {
 };
 
 const StatCard = ({ title, value, total, sub, color }) => (
-    <div className={`bg-white p-5 rounded-2xl border-b-4 ${color} border-x border-t border-gray-150 shadow-sm flex flex-col justify-between`}>
-        <p className="text-[10px] font-bold text-gray-400 tracking-wider mb-2 flex items-center justify-between">
-            <span>{title}</span>
-            {title.includes('AVG') && <span className="bg-indigo-100 text-indigo-700 font-semibold px-1.5 py-0.5 rounded text-[9px]">AVG</span>}
-        </p>
+    <div className={`bg-white px-3.5 py-4 sm:px-4 sm:py-5 rounded-2xl border-b-4 ${color} border-x border-t border-gray-150 shadow-sm flex flex-col justify-between`}>
+        <div className="text-[9.5px] 2xl:text-[10px] font-bold text-gray-400 tracking-wide mb-2 flex items-center justify-between gap-1 whitespace-nowrap min-w-0">
+            <span className="whitespace-nowrap">{title}</span>
+            {title.includes('AVG') && <span className="bg-indigo-100 text-indigo-700 font-semibold px-1.5 py-0.5 rounded text-[8.5px] shrink-0">AVG</span>}
+        </div>
         <div className="flex items-baseline gap-1 mb-1">
             <span className="text-3xl font-bold text-gray-900">{value}</span>
             {total && <span className="text-gray-400 text-sm font-semibold">{total === '%' ? '%' : `/ ${total}`}</span>}

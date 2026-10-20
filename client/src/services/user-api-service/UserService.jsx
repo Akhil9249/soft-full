@@ -85,6 +85,17 @@ const UserService = () => {
         return response.data;
     };
 
+    // ======================================== mentor card management ========================================
+    const getMyMentorCardData = async () => {
+        const response = await axiosPrivate.get("/api/mentor-card/my-cards");
+        return response.data;
+    };
+
+    const getMyMonthlyCardData = async () => {
+        const response = await axiosPrivate.get("/api/monthly-card/my-cards");
+        return response.data;
+    };
+
     return { 
         getMyAttendanceData,
         postTaskSubmissionData,
@@ -98,7 +109,9 @@ const UserService = () => {
         postLeaveRequest,
         getMyNotificationsData,
         markNotificationAsRead,
-        getUnreadNotificationsCount
+        getUnreadNotificationsCount,
+        getMyMentorCardData,
+        getMyMonthlyCardData
     };
 };
 

@@ -491,8 +491,8 @@ const MenorCard = () => {
 
 const StatCard = ({ title, value, total, sub, color }) => (
     <div className={`bg-white p-6 rounded-2xl border-b-4 ${color} border-x border-t border-gray-150 shadow-sm`}>
-        <p className="text-[10px] font-bold text-gray-400 tracking-widest mb-4 flex items-center gap-2">
-            {title} {title.includes('SCORE') && <span className="bg-indigo-600 text-white px-1 rounded-sm text-[8px]">SCORE</span>}
+        <p className="text-[10px] font-bold text-gray-400 tracking-wider mb-4 flex items-center justify-between gap-2 whitespace-nowrap">
+            <span className="whitespace-nowrap">{title}</span> {title.includes('SCORE') && <span className="bg-indigo-600 text-white px-1 rounded-sm text-[8px] shrink-0">SCORE</span>}
         </p>
         <div className="flex items-baseline gap-2 mb-2">
             <span className="text-4xl font-bold text-gray-900">{value}</span>

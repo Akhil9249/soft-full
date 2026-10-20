@@ -19,7 +19,7 @@ router.delete("/:id",checkAuth, checkPermission('taskManagement', 'deleteTask'),
 router.get("/batch/:batchName",checkAuth, checkPermission('taskManagement', 'viewTask'), taskController.getTasksByBatch);
 router.get("/mentor/:mentorName",checkAuth, checkPermission('taskManagement', 'viewTask'), taskController.getTasksByMentor);
 router.get("/status/:status",checkAuth, checkPermission('taskManagement', 'viewTask'), taskController.getTasksByStatus);
-router.patch("/:id/status",checkAuth, checkPermission('taskManagement', 'updateTaskStatus'), taskController.updateTaskStatus);
-router.patch("/:id/marks",checkAuth, checkPermission('taskManagement', 'updateTaskMarks'), taskController.updateTaskMarks);
+router.patch("/:id/status",checkAuth, checkPermission('taskManagement', 'editTask'), taskController.updateTaskStatus);
+router.patch("/:id/marks",checkAuth, checkPermission('taskManagement', 'editTask'), taskController.updateTaskMarks);
 
 module.exports = router;

@@ -41,6 +41,14 @@ if (!Intern) {
   console.error("CRITICAL: Intern model not loaded - permission checks will fail for interns");
 }
 
+// Action aliases to map sub-actions or custom route permissions to role schema permission keys
+const ACTION_ALIASES = {
+  taskManagement: {
+    updateTaskMarks: 'editTask',
+    updateTaskStatus: 'editTask',
+  },
+};
+
 /**
  * Middleware factory to check permissions based on resource and action
  * Usage: checkPermission('studentManagement', 'viewStudent')
@@ -50,8 +58,9 @@ if (!Intern) {
  * @returns {Function} Express middleware function
  */
 const checkPermission = (resource, action) => {
+  const resolvedAction = ACTION_ALIASES[resource]?.[action] || action;
   console.log("resource====", resource);
-  console.log("action====", action);
+  console.log("action====", resolvedAction);
 
   // Early validation - fail fast if models aren't loaded
   if (!Staff || !Role) {
@@ -187,14 +196,14 @@ const checkPermission = (resource, action) => {
       }
 
       // Check if the action exists for the resource
-      if (permissions[resource][action] === undefined || permissions[resource][action] === null) {
+      if (permissions[resource][resolvedAction] === undefined || permissions[resource][resolvedAction] === null) {
         return res.status(403).json({
-          message: `Permission denied - Action '${action}' not found for resource '${resource}'`,
+          message: `Permission denied - Action '${resolvedAction}' not found for resource '${resource}'`,
         });
       }
 
       // Check if permission is granted
-      if (!permissions[resource][action]) {
+      if (!permissions[resource][resolvedAction]) {
         return res.status(403).json({
           message: "You do not have permission to perform this action",
         });

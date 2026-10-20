@@ -180,7 +180,7 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               Weekly Schedule
             </Link>
 
-            {/* My Card / Evaluation Card */}
+            {/* Weekly Card */}
             <Link
               to="/student/menor-card"
               onClick={() => handleNavItemClick('/student/menor-card')}
@@ -190,7 +190,20 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                 }`}
             >
               <FileText className="w-5 h-5 mr-3" />
-              My Card
+              Weekly Card
+            </Link>
+
+            {/* Monthly Card */}
+            <Link
+              to="/student/monthly-menor-card"
+              onClick={() => handleNavItemClick('/student/monthly-menor-card')}
+              className={`flex items-center font-medium p-2 rounded-lg transition-colors duration-200 ${activeNavItem === '/student/monthly-menor-card' || activeNavItem === '/student/monthly-card'
+                ? 'bg-orange-100 text-orange-600 font-semibold'
+                : 'text-gray-600 hover:text-orange-500 hover:bg-gray-100'
+                }`}
+            >
+              <Calendar className="w-5 h-5 mr-3" />
+              Monthly Card
             </Link>
 
             {/* Task Submission */}

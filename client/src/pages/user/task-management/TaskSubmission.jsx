@@ -290,20 +290,32 @@ export const TaskSubmission = () => {
     setViewingTaskDetails(null);
     const taskObj = submission.task && typeof submission.task === 'object' ? submission.task : {};
     setSelectedTask(taskObj);
-    const graderObj = submission.gradedBy || {};
+    const graderObj = submission.gradedBy && typeof submission.gradedBy === 'object' ? submission.gradedBy : {};
     
+    // Check if the submission has been marked / reviewed by mentor
+    const isMarked = Boolean(
+      submission.status === 'Graded' ||
+      submission.gradedAt ||
+      submission.gradedBy ||
+      (submission.achievedMarks !== undefined && submission.achievedMarks !== null && Number(submission.achievedMarks) > 0) ||
+      (submission.feedback && submission.feedback.trim() !== '')
+    );
+
+    const effectiveStatus = (isMarked && submission.status !== 'Rejected') ? 'Graded' : (submission.status || 'Submitted');
+    const reviewerName = graderObj.fullName || taskObj.assignedMentor?.fullName || (submission.gradedAt ? 'Mentor' : '');
+
     setFormData({
       task: taskObj._id || '',
       module: taskObj.module || '',
-      status: submission.status || 'Submitted',
+      status: effectiveStatus,
       submissionText: submission.submissionText || '',
       githubRepo: submission.githubRepository || submission.githubRepo || '',
       liveDemo: submission.liveDemoUrl || submission.liveDemo || '',
       totalMarks: taskObj.totalMarks || '',
       dueDate: taskObj.dueDate ? new Date(taskObj.dueDate).toISOString().split('T')[0] : '',
-      achievedMarks: submission.status === 'Graded' ? submission.achievedMarks : '',
+      achievedMarks: isMarked && submission.achievedMarks !== undefined && submission.achievedMarks !== null ? submission.achievedMarks : '',
       feedback: submission.feedback || '',
-      reviewedBy: graderObj.fullName || '',
+      reviewedBy: reviewerName,
       reviewedDate: submission.gradedAt ? new Date(submission.gradedAt).toISOString().split('T')[0] : ''
     });
     
@@ -611,23 +623,29 @@ export const TaskSubmission = () => {
                               })}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {sub.status === 'Graded' ? (
-                                <span className="text-green-700 font-semibold">{sub.achievedMarks}</span>
+                              {(sub.status === 'Graded' || sub.gradedAt || (sub.achievedMarks !== undefined && sub.achievedMarks !== null && Number(sub.achievedMarks) > 0) || (sub.feedback && sub.feedback.trim() !== '')) ? (
+                                <span className="text-green-700 font-semibold">{sub.achievedMarks ?? 0}</span>
                               ) : (
                                 <span className="text-gray-400">-</span>
                               )}
                               <span className="text-gray-400 font-normal"> / {sub.task?.totalMarks || 0}</span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-semibold border ${
-                                sub.status === 'Graded'
-                                  ? 'bg-green-50 text-green-700 border-green-200'
-                                  : sub.status === 'Rejected'
-                                  ? 'bg-red-50 text-red-700 border-red-200'
-                                  : 'bg-blue-50 text-blue-700 border-blue-200'
-                              }`}>
-                                {sub.status}
-                              </span>
+                              {(() => {
+                                const isMarked = sub.status === 'Graded' || sub.gradedAt || (sub.achievedMarks !== undefined && sub.achievedMarks !== null && Number(sub.achievedMarks) > 0) || (sub.feedback && sub.feedback.trim() !== '');
+                                const displayStatus = (isMarked && sub.status !== 'Rejected') ? 'Graded' : sub.status;
+                                return (
+                                  <span className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-semibold border ${
+                                    displayStatus === 'Graded'
+                                      ? 'bg-green-50 text-green-700 border-green-200'
+                                      : displayStatus === 'Rejected'
+                                      ? 'bg-red-50 text-red-700 border-red-200'
+                                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                                  }`}>
+                                    {displayStatus}
+                                  </span>
+                                );
+                              })()}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <button
@@ -1041,10 +1059,14 @@ export const TaskSubmission = () => {
                     <input
                       type="text"
                       name="achievedMarks"
-                      value={formData.achievedMarks}
+                      value={formData.achievedMarks !== '' && formData.achievedMarks !== undefined && formData.achievedMarks !== null ? formData.achievedMarks : ''}
                       disabled
                       placeholder="N/A"
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed"
+                      className={`px-4 py-2 border rounded-md focus:outline-none cursor-not-allowed ${
+                        formData.achievedMarks !== '' && formData.achievedMarks !== undefined && formData.achievedMarks !== null
+                          ? 'border-green-300 text-green-700 bg-green-50/50 font-semibold'
+                          : 'border-gray-300 text-gray-500 bg-gray-50'
+                      }`}
                     />
                   </div>
 

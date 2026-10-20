@@ -85,7 +85,7 @@ const getMonthlyCardsByIntern = async (req, res) => {
             .populate("course", "courseName")
             .populate("branch", "branchName");
 
-        const entries = await MonthlyMentorCard.find({ internId, isDeleted: false })
+        const entries = await MonthlyMentorCard.find({ internId, isDeleted: { $ne: true } })
             .populate("mentorId", "fullName email")
             .sort({ month: 1, createdAt: -1 });
 

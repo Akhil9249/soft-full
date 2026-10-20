@@ -119,15 +119,26 @@ export const TaskEvaluation = () => {
       doc.text(totalText, (pageWidth - totalWidth) / 2, 27);
       
       // Table Data
-      const tableData = submissions.map(sub => [
-        sub.intern?.fullName || 'N/A',
-        sub.intern?.email || 'N/A',
-        sub.githubRepo || 'N/A',
-        sub.liveDemo || 'N/A',
-        sub.status || 'N/A',
-        sub.status === 'Graded' ? `${sub.achievedMarks} / ${sub.task?.totalMarks || 0}` : '-',
-        sub.createdAt ? new Date(sub.createdAt).toLocaleDateString('en-GB') : 'N/A'
-      ]);
+      const tableData = submissions.map(sub => {
+        const isMarked = sub.status === 'Graded' || 
+          Boolean(sub.gradedAt) || 
+          Boolean(sub.gradedBy) || 
+          (sub.achievedMarks !== undefined && sub.achievedMarks !== null && Number(sub.achievedMarks) > 0) ||
+          Boolean(sub.feedback && sub.feedback.trim());
+        const displayStatus = (isMarked && sub.status !== 'Rejected') ? 'Graded' : (sub.status || 'N/A');
+        const taskTotal = sub.task?.totalMarks ?? (tasks.find(t => t._id === selectedTask)?.totalMarks || 0);
+        const displayMarks = isMarked ? `${sub.achievedMarks ?? 0} / ${taskTotal}` : '-';
+
+        return [
+          sub.intern?.fullName || 'N/A',
+          sub.intern?.email || 'N/A',
+          sub.githubRepo || 'N/A',
+          sub.liveDemo || 'N/A',
+          displayStatus,
+          displayMarks,
+          sub.createdAt ? new Date(sub.createdAt).toLocaleDateString('en-GB') : 'N/A'
+        ];
+      });
       
       autoTable(doc, {
         startY: 35,
@@ -372,17 +383,27 @@ export const TaskEvaluation = () => {
     const internObj = submission.intern || {};
     const graderObj = submission.gradedBy || {};
     
+    const isMarked = Boolean(
+      submission.status === 'Graded' ||
+      submission.gradedAt ||
+      submission.gradedBy ||
+      (submission.achievedMarks !== undefined && submission.achievedMarks !== null && Number(submission.achievedMarks) > 0) ||
+      (submission.feedback && submission.feedback.trim() !== '')
+    );
+
+    const effectiveStatus = (isMarked && submission.status !== 'Rejected') ? 'Graded' : (submission.status || 'Submitted');
+
     setFormData({
       task: taskObj._id || '',
       module: taskObj.module || '',
-      status: submission.status || 'Submitted',
+      status: effectiveStatus,
       intern: internObj._id || '',
       submissionText: submission.submissionText || '',
       githubRepo: submission.githubRepository || submission.githubRepo || '',
       liveDemo: submission.liveDemoUrl || submission.liveDemo || '',
       totalMarks: taskObj.totalMarks || '',
       dueDate: taskObj.dueDate ? new Date(taskObj.dueDate).toISOString().split('T')[0] : '',
-      achievedMarks: submission.achievedMarks || '',
+      achievedMarks: submission.achievedMarks !== undefined && submission.achievedMarks !== null ? submission.achievedMarks : '',
       feedback: submission.feedback || '',
       reviewedBy: graderObj._id || currentUserId,
       reviewedDate: submission.gradedAt ? new Date(submission.gradedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
@@ -402,7 +423,7 @@ export const TaskEvaluation = () => {
         const patchData = {
           achievedMarks: Number(formData.achievedMarks),
           feedback: formData.feedback,
-          status: formData.status
+          status: formData.status === 'Submitted' || !formData.status ? 'Graded' : formData.status
         };
         const res = await gradeSubmissionData(editingSubmission._id, patchData);
         showNotification('success', 'Graded Successfully', 'The submission status and marks have been updated.');
@@ -584,72 +605,83 @@ export const TaskEvaluation = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {submissions.map((sub) => (
-                        <tr key={sub._id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="h-9 w-9 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-bold text-sm mr-3">
-                                {sub.intern?.fullName?.charAt(0).toUpperCase() || 'I'}
+                      {submissions.map((sub) => {
+                        const isMarked = sub.status === 'Graded' || 
+                          Boolean(sub.gradedAt) || 
+                          Boolean(sub.gradedBy) || 
+                          (sub.achievedMarks !== undefined && sub.achievedMarks !== null && Number(sub.achievedMarks) > 0) ||
+                          Boolean(sub.feedback && sub.feedback.trim());
+
+                        const displayStatus = (isMarked && sub.status !== 'Rejected') ? 'Graded' : sub.status;
+                        const taskTotal = sub.task?.totalMarks ?? (tasks.find(t => t._id === selectedTask)?.totalMarks || 0);
+
+                        return (
+                          <tr key={sub._id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="h-9 w-9 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center font-bold text-sm mr-3">
+                                  {sub.intern?.fullName?.charAt(0).toUpperCase() || 'I'}
+                                </div>
+                                <div>
+                                  <div className="text-sm font-semibold text-gray-900">{sub.intern?.fullName || 'Unknown Intern'}</div>
+                                  <div className="text-xs text-gray-500">{sub.intern?.email || ''}</div>
+                                </div>
                               </div>
-                              <div>
-                                <div className="text-sm font-semibold text-gray-900">{sub.intern?.fullName || 'Unknown Intern'}</div>
-                                <div className="text-xs text-gray-500">{sub.intern?.email || ''}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(sub.createdAt).toLocaleDateString(undefined, {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {sub.attachments ? (
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {new Date(sub.createdAt).toLocaleDateString(undefined, {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {sub.attachments ? (
+                                <button
+                                  onClick={() => handleDownload(sub._id, sub.attachments.split('/').pop())}
+                                  className="inline-flex items-center text-orange-600 hover:text-orange-700 font-semibold gap-1 hover:underline"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
+                                  Download
+                                </button>
+                              ) : (
+                                <span className="text-gray-400 italic">No File</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {isMarked ? (
+                                <span className="text-green-700 font-semibold">{sub.achievedMarks ?? 0}</span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                              <span className="text-gray-400 font-normal"> / {taskTotal}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-semibold border ${
+                                displayStatus === 'Graded'
+                                  ? 'bg-green-50 text-green-700 border-green-200'
+                                  : displayStatus === 'Rejected'
+                                  ? 'bg-red-50 text-red-700 border-red-200'
+                                  : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}>
+                                {displayStatus}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <button
-                                onClick={() => handleDownload(sub._id, sub.attachments.split('/').pop())}
-                                className="inline-flex items-center text-orange-600 hover:text-orange-700 font-semibold gap-1 hover:underline"
+                                onClick={() => handleEditClick(sub)}
+                                className="text-orange-500 hover:text-orange-600 hover:bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-200 transition-colors"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                Download
+                                {isMarked ? 'Edit Grade' : 'Grade / Review'}
                               </button>
-                            ) : (
-                              <span className="text-gray-400 italic">No File</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {sub.status === 'Graded' ? (
-                              <span className="text-green-700 font-semibold">{sub.achievedMarks}</span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                            <span className="text-gray-400 font-normal"> / {sub.task?.totalMarks || 0}</span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-semibold border ${
-                              sub.status === 'Graded'
-                                ? 'bg-green-50 text-green-700 border-green-200'
-                                : sub.status === 'Rejected'
-                                ? 'bg-red-50 text-red-700 border-red-200'
-                                : 'bg-blue-50 text-blue-700 border-blue-200'
-                            }`}>
-                              {sub.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button
-                              onClick={() => handleEditClick(sub)}
-                              className="text-orange-500 hover:text-orange-600 hover:bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-200 transition-colors"
-                            >
-                              Grade / Review
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

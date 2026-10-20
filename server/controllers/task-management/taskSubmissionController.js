@@ -155,6 +155,7 @@ const getMySubmissions = async (req, res) => {
           path: "task",
           populate: { path: "assignedMentor", select: "fullName" }
         })
+        .populate("gradedBy", "fullName")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -177,6 +178,7 @@ const getMySubmissions = async (req, res) => {
           path: "task",
           populate: { path: "assignedMentor", select: "fullName" }
         })
+        .populate("gradedBy", "fullName")
         .sort({ createdAt: -1 });
 
       return res.status(200).json({
@@ -253,7 +255,7 @@ const gradeSubmission = async (req, res) => {
 
     if (achievedMarks !== undefined) submission.achievedMarks = Number(achievedMarks);
     if (feedback !== undefined) submission.feedback = feedback;
-    if (status !== undefined) {
+    if (status && status !== "Submitted") {
       submission.status = status;
     } else {
       submission.status = "Graded";
