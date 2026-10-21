@@ -378,7 +378,7 @@ export const TaskSubmission = () => {
   const currentTask = selectedTask || tasks.find(t => t._id === formData.task) || (viewingSubmission?.task && typeof viewingSubmission.task === 'object' ? viewingSubmission.task : null);
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 font-sans text-gray-800">
+    <div className="min-h-screen bg-gray-50/50 p-3 sm:p-4 md:p-6 font-sans text-gray-800">
       {/* Toast Notification */}
       {notification.show && (
         <div className="fixed top-6 right-6 z-50 flex items-center p-4 w-full max-w-xs text-gray-700 bg-white rounded-lg shadow-lg border border-gray-100">
@@ -407,7 +407,7 @@ export const TaskSubmission = () => {
       </Navbar>
 
       {/* Main Container */}
-      <div className="w-full bg-white rounded-xl shadow-2xl p-4 sm:p-6 lg:p-8">
+      <div className="w-full bg-white rounded-xl shadow-2xl p-3 sm:p-4 md:p-6 lg:p-8">
           {activeTab === 'tasks-list' ? (
             <div className="space-y-6">
               {/* Assigned Tasks Table */}
@@ -511,16 +511,16 @@ export const TaskSubmission = () => {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleViewTaskDetails(task)}
-                            className="flex-1 text-center text-gray-700 bg-white hover:bg-gray-100 px-3 py-2 rounded-lg border border-gray-300 transition-colors font-medium text-sm flex items-center justify-center gap-1.5"
+                            className="whitespace-nowrap flex-1 text-center text-gray-700 bg-white hover:bg-gray-100 px-3 py-2 rounded-lg border border-gray-300 transition-colors font-medium text-sm flex items-center justify-center gap-1.5"
                           >
-                            <Eye className="w-4 h-4 text-gray-500" />
-                            <span>View Task</span>
+                            <Eye className="w-4 h-4 text-gray-500 shrink-0" />
+                            <span>View</span>
                           </button>
                           <button
                             onClick={() => handleStartSubmission(task)}
-                            className="flex-1 text-center text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg border border-blue-200 transition-colors font-medium text-sm"
+                            className="whitespace-nowrap flex-1 text-center text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg border border-blue-200 transition-colors font-medium text-sm"
                           >
-                            Submit Task
+                            Submit
                           </button>
                         </div>
                       </div>
@@ -597,7 +597,8 @@ export const TaskSubmission = () => {
                 </div>
               ) : (
                 <>
-                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block overflow-x-auto border border-gray-200 rounded-xl">
                     <table className="min-w-full divide-y divide-gray-200 text-left">
                       <thead className="bg-gray-50">
                         <tr>
@@ -661,6 +662,72 @@ export const TaskSubmission = () => {
                     </table>
                   </div>
 
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-4">
+                    {submissions.map((sub) => {
+                      const isMarked = sub.status === 'Graded' || sub.gradedAt || (sub.achievedMarks !== undefined && sub.achievedMarks !== null && Number(sub.achievedMarks) > 0) || (sub.feedback && sub.feedback.trim() !== '');
+                      const displayStatus = (isMarked && sub.status !== 'Rejected') ? 'Graded' : sub.status;
+
+                      return (
+                        <div key={sub._id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <h3 className="text-base font-semibold text-gray-900 leading-snug">
+                                {sub.task?.title || 'Untitled Task'}
+                              </h3>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {sub.task?.module || 'General'}
+                              </p>
+                            </div>
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border shrink-0 ${
+                              displayStatus === 'Graded'
+                                ? 'bg-green-50 text-green-700 border-green-200'
+                                : displayStatus === 'Rejected'
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : 'bg-blue-50 text-blue-700 border-blue-200'
+                            }`}>
+                              {displayStatus}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-xs bg-white p-3 rounded-lg border border-gray-200">
+                            <div>
+                              <span className="text-gray-500 block mb-0.5">Submitted Date</span>
+                              <span className="font-medium text-gray-800">
+                                {new Date(sub.createdAt).toLocaleDateString(undefined, {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500 block mb-0.5">Marks Obtained</span>
+                              <span className="font-semibold text-gray-900">
+                                {isMarked ? (
+                                  <span className="text-green-700 font-semibold">{sub.achievedMarks ?? 0}</span>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                                <span className="text-gray-400 font-normal"> / {sub.task?.totalMarks || 0}</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <button
+                              onClick={() => handleViewClick(sub)}
+                              className="w-full whitespace-nowrap text-center text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg border border-blue-200 transition-colors font-medium text-sm flex items-center justify-center gap-1.5"
+                            >
+                              <Eye className="w-4 h-4 text-blue-600 shrink-0" />
+                              <span>View Submission</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
                   {/* Pagination Controls */}
                   {submissionsPagination.totalPages > 1 && (
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 px-4 py-3 bg-white border-t border-gray-200">
@@ -715,43 +782,43 @@ export const TaskSubmission = () => {
             </div>
           ) : (
             /* Tab: Submission Form */
-            <div className="bg-white rounded-lg p-2 max-w-6xl mx-auto">
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="w-full bg-white rounded-lg p-0 sm:p-2 max-w-6xl mx-auto">
+              <form onSubmit={handleSubmit} className="space-y-6 w-full">
                 {/* Mentor's Task Overview & Instructions Card */}
                 {currentTask && (
-                  <div className="bg-gradient-to-br from-orange-50/80 via-amber-50/40 to-white border border-orange-200 rounded-xl p-5 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-orange-200/80 gap-2 mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <div className="w-full bg-gradient-to-br from-orange-50/80 via-amber-50/40 to-white border border-orange-200 rounded-xl p-3.5 sm:p-5 shadow-sm">
+                    <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-orange-200/80 gap-3 mb-3">
+                      <div className="flex items-center gap-3 w-full sm:w-auto min-w-0">
+                        <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0 shadow-sm">
                           <FileText className="w-5 h-5" />
                         </div>
-                        <div>
-                          <h3 className="text-base font-bold text-gray-900 leading-tight">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">
                             {currentTask.title || 'Task Details'}
                           </h3>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            Mentor: <span className="font-semibold text-gray-800">{currentTask.assignedMentor?.fullName || 'Assigned Mentor'}</span>
+                          <div className="text-xs text-gray-500 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <span>Mentor: <strong className="font-semibold text-gray-800">{currentTask.assignedMentor?.fullName || 'Assigned Mentor'}</strong></span>
                             {currentTask.dueDate && (
-                              <> • Due: <span className="font-semibold text-red-600">{new Date(currentTask.dueDate).toLocaleDateString()}</span></>
+                              <span>• Due: <strong className="font-semibold text-red-600">{new Date(currentTask.dueDate).toLocaleDateString()}</strong></span>
                             )}
                             {currentTask.totalMarks ? (
-                              <> • Total Marks: <span className="font-semibold text-gray-800">{currentTask.totalMarks} pts</span></>
+                              <span>• Total Marks: <strong className="font-semibold text-gray-800">{currentTask.totalMarks} pts</strong></span>
                             ) : null}
-                          </p>
+                          </div>
                         </div>
                       </div>
-                      <span className="self-start sm:self-center px-3 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-800 border border-orange-300 uppercase tracking-wider">
+                      <span className="self-start sm:self-center px-3 py-1 text-xs font-bold rounded-full bg-orange-100 text-orange-800 border border-orange-300 uppercase tracking-wider shrink-0 whitespace-nowrap">
                         Mentor's Instructions
                       </span>
                     </div>
 
                     {/* Description Box */}
-                    <div className="bg-white border border-orange-200/80 rounded-lg p-4 shadow-sm mb-3">
+                    <div className="w-full bg-white border border-orange-200/80 rounded-lg p-3.5 sm:p-4 shadow-sm mb-3">
                       <div className="flex items-center gap-1.5 mb-2 text-xs font-bold text-orange-600 uppercase tracking-wider">
-                        <Info className="w-4 h-4" />
+                        <Info className="w-4 h-4 shrink-0" />
                         <span>Description Added by Mentor</span>
                       </div>
-                      <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                      <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed break-words">
                         {currentTask.description ? currentTask.description : (
                           <span className="italic text-gray-400">No description was added by the mentor for this task.</span>
                         )}
@@ -760,19 +827,19 @@ export const TaskSubmission = () => {
 
                     {/* Attachment from Mentor if any */}
                     {currentTask.attachments && (
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-white border border-orange-200/80 rounded-lg text-xs">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Paperclip className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white border border-orange-200/80 rounded-lg text-xs">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <Paperclip className="w-4 h-4 text-orange-500 shrink-0" />
                           <span className="font-medium text-gray-700 truncate">
                             {currentTask.attachments.split('/').pop()?.split('?')[0] || 'Mentor_Attachment.pdf'}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
                           <a
                             href={currentTask.attachments}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 px-2.5 py-1 rounded bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
+                            className="text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                             Preview Document
@@ -781,7 +848,7 @@ export const TaskSubmission = () => {
                             <button
                               type="button"
                               onClick={() => handleDownloadTaskAttachment(currentTask._id, currentTask.attachments.split('/').pop()?.split('?')[0])}
-                              className="text-orange-600 hover:text-orange-800 font-semibold flex items-center gap-1 px-2.5 py-1 rounded bg-orange-50 border border-orange-200 hover:bg-orange-100 transition-colors ml-1"
+                              className="text-orange-600 hover:text-orange-800 font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded bg-orange-50 border border-orange-200 hover:bg-orange-100 transition-colors"
                             >
                               <Download className="w-3.5 h-3.5" />
                               Download
@@ -794,7 +861,7 @@ export const TaskSubmission = () => {
                 )}
 
                 {/* Row 1 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-800 mb-2">Task Title</label>
                     <select
@@ -803,7 +870,7 @@ export const TaskSubmission = () => {
                       onChange={(e) => handleFormTaskChange(e.target.value)}
                       disabled
                       required
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed appearance-none"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed appearance-none"
                     >
                       <option value="">Choose Task</option>
                       {tasks.map(task => (
@@ -818,7 +885,7 @@ export const TaskSubmission = () => {
                       name="module"
                       value={formData.module}
                       disabled
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed appearance-none"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed appearance-none"
                     >
                       <option value="">Choose Module</option>
                       {modules.map(mod => (
@@ -833,7 +900,7 @@ export const TaskSubmission = () => {
                       name="status"
                       value={formData.status}
                       disabled
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed appearance-none"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed appearance-none"
                     >
                       <option value="Submitted">Submitted</option>
                       <option value="Graded">Graded</option>
@@ -843,7 +910,7 @@ export const TaskSubmission = () => {
                 </div>
 
                 {/* Row 2 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-800 mb-2">Submitted By</label>
                     <input
@@ -876,7 +943,7 @@ export const TaskSubmission = () => {
                 </div>
 
                 {/* Row 3 - Submission Description */}
-                <div className="flex flex-col">
+                <div className="w-full flex flex-col">
                   <label className="text-sm font-medium text-gray-800 mb-2">Submission Description</label>
                   <textarea
                     rows="4"
@@ -891,7 +958,7 @@ export const TaskSubmission = () => {
                 </div>
 
                 {/* Row 4 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-800 mb-2">GitHub Repository</label>
                     <input
@@ -901,7 +968,7 @@ export const TaskSubmission = () => {
                       onChange={handleInputChange}
                       disabled={!!viewingSubmission}
                       placeholder="Enter GitHub repository link"
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
                     />
                   </div>
 
@@ -914,7 +981,7 @@ export const TaskSubmission = () => {
                       onChange={handleInputChange}
                       disabled={!!viewingSubmission}
                       placeholder="Enter live demo URL"
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50"
                     />
                   </div>
 
@@ -926,13 +993,13 @@ export const TaskSubmission = () => {
                       value={formData.totalMarks}
                       disabled
                       placeholder="Total marks"
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Row 5 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-800 mb-2">Attachments <span className="text-gray-500 font-normal">(Optional - ZIP/PNG/PDF only)</span></label>
                     {viewingSubmission ? (
@@ -1062,7 +1129,7 @@ export const TaskSubmission = () => {
                       value={formData.achievedMarks !== '' && formData.achievedMarks !== undefined && formData.achievedMarks !== null ? formData.achievedMarks : ''}
                       disabled
                       placeholder="N/A"
-                      className={`px-4 py-2 border rounded-md focus:outline-none cursor-not-allowed ${
+                      className={`w-full px-4 py-2 border rounded-md focus:outline-none cursor-not-allowed ${
                         formData.achievedMarks !== '' && formData.achievedMarks !== undefined && formData.achievedMarks !== null
                           ? 'border-green-300 text-green-700 bg-green-50/50 font-semibold'
                           : 'border-gray-300 text-gray-500 bg-gray-50'
@@ -1078,20 +1145,20 @@ export const TaskSubmission = () => {
                       value={formData.feedback}
                       disabled
                       placeholder="No feedback yet"
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed"
                     />
                   </div>
                 </div>
 
                 {/* Row 6 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6">
+                <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 pb-6">
                   <div className="flex flex-col">
                     <label className="text-sm font-medium text-gray-800 mb-2">Submission Status</label>
                     <select
                       name="status"
                       value={formData.status}
                       disabled
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed appearance-none"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed appearance-none"
                     >
                       <option value="Submitted">Submitted</option>
                       <option value="Graded">Graded</option>
@@ -1107,7 +1174,7 @@ export const TaskSubmission = () => {
                       value={formData.reviewedBy}
                       disabled
                       placeholder="Not reviewed yet"
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-md text-gray-500 bg-gray-50 focus:outline-none cursor-not-allowed"
                     />
                   </div>
 
@@ -1124,11 +1191,11 @@ export const TaskSubmission = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex justify-end gap-4 pt-4 border-t border-gray-100">
+                <div className="w-full flex flex-col-reverse sm:flex-row justify-end gap-3 sm:gap-4 pt-4 border-t border-gray-100">
                   <button
                     type="button"
                     onClick={handleCancel}
-                    className="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors"
+                    className="w-full sm:w-auto px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 transition-colors text-center"
                   >
                     Cancel
                   </button>
@@ -1136,7 +1203,7 @@ export const TaskSubmission = () => {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="px-6 py-2.5 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="w-full sm:w-auto px-6 py-2.5 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-center"
                     >
                       {loading ? 'Processing...' : 'Submit'}
                     </button>
@@ -1149,16 +1216,16 @@ export const TaskSubmission = () => {
 
       {/* View Task Details Modal */}
       {viewingTaskDetails && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-100">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-gray-100">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-orange-50/60 via-white to-white">
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-orange-50/60 via-white to-white">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0 shadow-sm">
                   <FileText className="w-5 h-5" />
                 </div>
-                <div className="min-w-0">
-                  <h2 className="text-lg font-bold text-gray-900 truncate">{viewingTaskDetails.title}</h2>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-base sm:text-lg font-bold text-gray-900 truncate">{viewingTaskDetails.title}</h2>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
                     {viewingTaskDetails.taskType || 'Task'}
                   </span>
@@ -1166,16 +1233,16 @@ export const TaskSubmission = () => {
               </div>
               <button
                 onClick={closeViewTaskDetails}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="px-6 py-5 overflow-y-auto space-y-5">
+            <div className="px-3.5 sm:px-6 py-4 sm:py-5 overflow-y-auto space-y-4 sm:space-y-5 w-full">
               {/* Meta Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50/80 p-4 rounded-xl border border-gray-100">
+              <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 bg-gray-50/80 p-3 sm:p-4 rounded-xl border border-gray-100">
                 <div>
                   <span className="text-[11px] font-medium text-gray-500 uppercase tracking-wider block">Module</span>
                   <span className="text-sm font-semibold text-gray-900 truncate block">{viewingTaskDetails.module || 'General'}</span>
@@ -1199,14 +1266,14 @@ export const TaskSubmission = () => {
               </div>
 
               {/* Mentor's Description Section */}
-              <div>
+              <div className="w-full">
                 <div className="flex items-center gap-2 mb-2">
-                  <Info className="w-4 h-4 text-orange-500" />
+                  <Info className="w-4 h-4 text-orange-500 shrink-0" />
                   <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
                     Task Description (From Mentor)
                   </h3>
                 </div>
-                <div className="bg-amber-50/40 border border-amber-200/80 rounded-xl p-4 text-sm text-gray-800 whitespace-pre-line leading-relaxed shadow-sm">
+                <div className="w-full bg-amber-50/40 border border-amber-200/80 rounded-xl p-3.5 sm:p-4 text-sm text-gray-800 whitespace-pre-line leading-relaxed shadow-sm break-words">
                   {viewingTaskDetails.description ? viewingTaskDetails.description : (
                     <span className="italic text-gray-400">No description provided for this task.</span>
                   )}
@@ -1215,16 +1282,16 @@ export const TaskSubmission = () => {
 
               {/* Task Attachments Section */}
               {viewingTaskDetails.attachments && (
-                <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+                <div className="w-full border border-gray-200 rounded-xl p-3.5 sm:p-4 bg-gray-50/50">
                   <div className="flex items-center gap-2 mb-2">
-                    <Paperclip className="w-4 h-4 text-orange-500" />
+                    <Paperclip className="w-4 h-4 text-orange-500 shrink-0" />
                     <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">Task Document / Attachment</h4>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-lg border border-gray-200">
+                  <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-lg border border-gray-200">
                     <span className="text-xs font-medium text-gray-700 truncate max-w-sm">
                       {viewingTaskDetails.attachments.split('/').pop()?.split('?')[0] || 'Task_Attachment.pdf'}
                     </span>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <a
                         href={viewingTaskDetails.attachments}
                         target="_blank"
@@ -1249,10 +1316,10 @@ export const TaskSubmission = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-3.5 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-3">
+            <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-gray-100 bg-gray-50 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 sm:gap-3 w-full">
               <button
                 onClick={closeViewTaskDetails}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+                className="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors text-center"
               >
                 Close
               </button>
@@ -1262,7 +1329,7 @@ export const TaskSubmission = () => {
                   closeViewTaskDetails();
                   handleStartSubmission(taskToSubmit);
                 }}
-                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
+                className="w-full sm:w-auto px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors text-center"
               >
                 Submit Task
               </button>

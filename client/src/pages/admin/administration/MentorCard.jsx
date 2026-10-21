@@ -217,55 +217,57 @@ const MenorCard = () => {
         <>
             <Navbar headData={internDetails?.fullName ? `${internDetails.fullName}'s Card` : "Menor Card"} activeTab="Menor Card" />
 
-            <div className="min-h-screen bg-gray-50/50 text-gray-700 p-6 font-sans rounded-2xl">
+            <div className="min-h-screen bg-gray-50/50 text-gray-700 p-3.5 sm:p-6 font-sans rounded-2xl">
                 {/* Header Section */}
-                <div className="bg-white rounded-2xl p-6 mb-6 border border-gray-100 shadow-sm flex justify-between items-start">
-                    <div className="flex gap-6">
-                        <div className="w-20 h-20 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-lg">
+                <div className="bg-white rounded-2xl p-4 sm:p-6 mb-6 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5 sm:gap-6 min-w-0">
+                        <div className="w-14 h-14 sm:w-20 sm:h-20 shrink-0 aspect-square bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-xl sm:text-3xl font-bold text-white shadow-md sm:shadow-lg">
                             {internDetails?.fullName
                                 ? internDetails.fullName.split(' ').map(n => n[0]).join('').toUpperCase()
                                 : '...'}
                         </div>
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 mb-3">{internDetails?.fullName || 'Loading...'}</h1>
-                            <div className="flex flex-wrap gap-2">
-                                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full border border-indigo-100">FULL TIME</span>
-                                <span className="px-3 py-1 bg-teal-50 text-teal-600 text-xs font-bold rounded-full border border-teal-100">{internDetails?.batch || 'BATCH'}</span>
-                                <span className="px-3 py-1 bg-gray-50 text-gray-600 text-xs font-bold rounded-full border border-gray-150">{internDetails?.admissionNumber || 'STU-001'}</span>
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-xl sm:text-3xl font-bold text-gray-900 mb-1.5 sm:mb-2 truncate">{internDetails?.fullName || 'Loading...'}</h1>
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 bg-indigo-50 text-indigo-600 text-[11px] sm:text-xs font-bold rounded-full border border-indigo-100">FULL TIME</span>
+                                <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 bg-teal-50 text-teal-600 text-[11px] sm:text-xs font-bold rounded-full border border-teal-100">{internDetails?.batch || 'BATCH'}</span>
+                                <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 bg-gray-50 text-gray-600 text-[11px] sm:text-xs font-bold rounded-full border border-gray-150">{internDetails?.admissionNumber || 'STU-001'}</span>
                             </div>
                         </div>
                     </div>
-                    <div className="text-right flex items-center gap-3">
+                    <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-gray-100">
                         <button
                             onClick={() => navigate(`/monthly-menor-card?internId=${internId}`)}
-                            className="bg-white hover:bg-gray-50 text-indigo-600 border border-indigo-200 font-bold py-2.5 px-4 rounded-lg flex items-center transition-all shadow-sm text-sm"
+                            className="whitespace-nowrap flex-1 sm:flex-none justify-center bg-white hover:bg-gray-50 text-indigo-600 border border-indigo-200 font-bold py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg flex items-center transition-all shadow-xs text-xs sm:text-sm"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5 sm:mr-2 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            Monthly Card
+                            <span>Monthly Card</span>
                         </button>
                         <button
                             onClick={handleAddNew}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-lg flex items-center transition-colors shadow-sm text-sm"
+                            className="whitespace-nowrap flex-1 sm:flex-none justify-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg flex items-center transition-colors shadow-xs text-xs sm:text-sm"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5 sm:mr-2 shrink-0" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                             </svg>
-                            Add Data
+                            <span>Add Data</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-6">
-                    <StatCard title="AVG TEST SCORE" value={stats.avgTestScore} total="100" color="border-teal-500" />
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5 mb-6">
+                    <StatCard title="AVG TEST SCORE" value={stats.avgTestScore} total="100" color="border-teal-500" className="col-span-2 md:col-span-1" />
                     <StatCard title="AVG PROJECT SCORE" value={stats.avgProjectScore} total="100" color="border-purple-500" />
                     <StatCard title="ATTENDANCE" value={stats.attendancePercent} total="%" sub="Percentage" color="border-orange-500" />
                 </div>
 
-                {/* Table Section */}
-                <div className="bg-white rounded-2xl border border-gray-150 shadow-sm overflow-hidden">
+                {/* Evaluations Section: Table on Desktop (md+), Cards on Mobile (< md) */}
+                
+                {/* Desktop Table View (md and above) */}
+                <div className="hidden md:block bg-white rounded-2xl border border-gray-150 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto w-full">
                         <table className="w-full text-left border-collapse min-w-max">
                             <thead>
@@ -298,7 +300,7 @@ const MenorCard = () => {
                                                 </td>
                                                 <td className="p-4 text-gray-800 font-medium">{row.subject || '-'}</td>
                                                 <td className="p-4 text-gray-800">{row.topic || '-'}</td>
- 
+
                                                 <td className="p-4">
                                                     {row.isTest && row.test_name ? (
                                                         <div>
@@ -307,7 +309,7 @@ const MenorCard = () => {
                                                         </div>
                                                     ) : <span className="text-gray-400">—</span>}
                                                 </td>
- 
+
                                                 <td className="p-4">
                                                     {row.isProject && row.project_name ? (
                                                         <div>
@@ -316,19 +318,19 @@ const MenorCard = () => {
                                                         </div>
                                                     ) : <span className="text-gray-400">—</span>}
                                                 </td>
- 
+
                                                 <td className="p-4 font-semibold">
                                                     {row.isSoftSkill ? <span className="text-green-600">Yes</span> : <span className="text-gray-400">No</span>}
                                                 </td>
- 
+
                                                 <td className="p-4 text-gray-700">
                                                     {row.attend || 0} / {row.totalDays || 0}
                                                 </td>
- 
+
                                                 <td className="p-4 font-semibold text-indigo-600">
                                                     {row.mentorId?.fullName || '-'}
                                                 </td>
- 
+
                                                 <td className="p-4 align-middle">
                                                     <div className="flex items-center gap-2">
                                                         <button
@@ -354,6 +356,122 @@ const MenorCard = () => {
                             </tbody>
                         </table>
                     </div>
+                </div>
+
+                {/* Mobile Card View (Below md) */}
+                <div className="block md:hidden space-y-3.5">
+                    {mentorCards.length > 0 ? (
+                        (() => {
+                            const sortedCards = [...mentorCards].sort((a, b) => Number(a.week) - Number(b.week));
+                            return sortedCards.map((row, idx) => (
+                                <div
+                                    key={row._id || idx}
+                                    className="bg-white rounded-2xl p-4 border border-gray-150 shadow-xs space-y-3"
+                                >
+                                    {/* Top Row: Week Badge & Dates */}
+                                    <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2.5 py-1 bg-indigo-50 text-indigo-600 font-extrabold text-sm rounded-lg border border-indigo-100">
+                                                W{row.week}
+                                            </span>
+                                            <span className="text-xs font-semibold text-gray-700">Week {row.week}</span>
+                                        </div>
+                                        <div className="text-[11px] text-gray-500 font-medium text-right">
+                                            {row.startDate ? new Date(row.startDate).toLocaleDateString('en-GB') : '-'}
+                                            {' to '}
+                                            {row.endDate ? new Date(row.endDate).toLocaleDateString('en-GB') : '-'}
+                                        </div>
+                                    </div>
+
+                                    {/* Subject & Topic */}
+                                    <div>
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Subject & Topic</div>
+                                        <div className="text-sm font-bold text-gray-900 mt-0.5">{row.subject || '-'}</div>
+                                        {row.topic && <div className="text-xs text-gray-600 mt-0.5">{row.topic}</div>}
+                                    </div>
+
+                                    {/* Scores: Test & Project */}
+                                    <div className="grid grid-cols-2 gap-2.5 pt-1">
+                                        {/* Test */}
+                                        <div className="bg-gray-50/70 p-2.5 rounded-xl border border-gray-150/70">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Test</span>
+                                            {row.isTest && row.test_name ? (
+                                                <div>
+                                                    <div className="text-xs text-gray-700 font-medium truncate mb-1" title={row.test_name}>{row.test_name}</div>
+                                                    <ScoreBadge score={`${row.test_marks}/${row.test_total}`} color="bg-yellow-50 text-yellow-700 border border-yellow-200/50" />
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">—</span>
+                                            )}
+                                        </div>
+
+                                        {/* Project */}
+                                        <div className="bg-gray-50/70 p-2.5 rounded-xl border border-gray-150/70">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">Project</span>
+                                            {row.isProject && row.project_name ? (
+                                                <div>
+                                                    <div className="text-xs text-gray-700 font-medium truncate mb-1" title={row.project_name}>{row.project_name}</div>
+                                                    <ScoreBadge score={`${row.project_marks}/${row.project_total}`} color="bg-blue-50 text-blue-700 border border-blue-200/50" />
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-gray-400">—</span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Soft Skill & Attendance */}
+                                    <div className="grid grid-cols-2 gap-2.5 text-xs pt-1">
+                                        <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 border border-gray-100">
+                                            <span className="text-gray-500 font-medium">Soft Skill:</span>
+                                            <span className={`font-bold ${row.isSoftSkill ? 'text-green-600' : 'text-gray-400'}`}>
+                                                {row.isSoftSkill ? 'Yes' : 'No'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50/50 border border-gray-100">
+                                            <span className="text-gray-500 font-medium">Attendance:</span>
+                                            <span className="font-bold text-gray-900">{row.attend || 0} / {row.totalDays || 0}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Mentor & Note */}
+                                    {(row.mentorId?.fullName || row.note) && (
+                                        <div className="pt-2 border-t border-gray-100 text-xs space-y-1">
+                                            {row.mentorId?.fullName && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-gray-400 font-medium">Mentor:</span>
+                                                    <span className="font-semibold text-indigo-600">{row.mentorId.fullName}</span>
+                                                </div>
+                                            )}
+                                            {row.note && (
+                                                <div className="bg-amber-50/60 p-2.5 rounded-lg border border-amber-100/60 text-gray-700 italic text-[11px] mt-1">
+                                                    <span className="font-semibold not-italic text-amber-800">Note: </span>
+                                                    {row.note}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Actions */}
+                                    <div className="pt-2.5 border-t border-gray-100 flex items-center justify-end">
+                                        <button
+                                            onClick={() => handleEdit(row)}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50/70 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 border border-indigo-200 hover:border-indigo-300 rounded-lg shadow-xs transition-all text-xs font-semibold active:scale-95"
+                                            title="Edit Entry"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                            </svg>
+                                            <span>Edit</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ));
+                        })()
+                    ) : (
+                        <div className="bg-white rounded-2xl p-6 text-center text-gray-500 border border-gray-150 shadow-xs">
+                            No data available for this intern.
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -477,8 +595,8 @@ const MenorCard = () => {
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors font-medium">
                                     Cancel
                                 </button>
-                                <button type="submit" className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors font-medium">
-                                    Save Data
+                                <button type="submit" className="whitespace-nowrap shrink-0 px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors font-medium">
+                                    Save 
                                 </button>
                             </div>
                         </form>
@@ -489,8 +607,8 @@ const MenorCard = () => {
     );
 };
 
-const StatCard = ({ title, value, total, sub, color }) => (
-    <div className={`bg-white px-4 py-3 sm:py-3.5 rounded-xl border-b-[3px] ${color} border-x border-t border-gray-150 shadow-xs hover:shadow-sm transition-all`}>
+const StatCard = ({ title, value, total, sub, color, className = "" }) => (
+    <div className={`bg-white px-4 py-3 sm:py-3.5 rounded-xl border-b-[3px] ${color} border-x border-t border-gray-150 shadow-xs hover:shadow-sm transition-all ${className}`}>
         <p className="text-[9.5px] sm:text-[10px] font-bold text-gray-400 tracking-wider mb-1.5 flex items-center justify-between gap-1">
             <span className="truncate">{title}</span>
             {title.includes('SCORE') && <span className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[8px] font-semibold shrink-0">SCORE</span>}

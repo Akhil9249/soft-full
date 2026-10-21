@@ -329,29 +329,29 @@ const WeeklySchedule = () => {
         <Navbar headData={headData} activeTab={activeTab} />
 
         {/* Date Selector Top Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-200/80 shadow-sm mb-6 min-w-0">
-          <div className="flex items-center gap-3.5 flex-1 min-w-0">
-            <div className="w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 font-bold border border-orange-100 shadow-sm flex-shrink-0">
-              <svg className="w-5.5 h-5.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-gray-200/80 shadow-sm mb-6 min-w-0">
+          <div className="flex items-center gap-3 sm:gap-3.5 flex-1 min-w-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 font-bold border border-orange-100 shadow-sm shrink-0 aspect-square">
+              <svg className="w-5 h-5 sm:w-5.5 sm:h-5.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-base font-bold text-slate-800 truncate">My Weekly Timeline</h3>
-              <p className="text-xs text-slate-600 font-medium truncate">View class timings, subjects, and mentors for your batches</p>
+              <h3 className="text-sm sm:text-base font-bold text-slate-800 truncate">My Weekly Timeline</h3>
+              <p className="text-xs text-slate-500 font-medium truncate">View class timings, subjects, and mentors</p>
             </div>
           </div>
-          <div className="flex flex-row flex-wrap items-center gap-3 py-1 w-full md:w-auto md:justify-end">
+          <div className="flex items-center gap-2 w-full md:w-auto min-w-0 md:justify-end">
             {/* Date Range Selector */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-1 md:flex-initial min-w-0">
               <input
                 type="date"
-                className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-gray-300 transition-colors cursor-pointer flex-shrink-0 min-w-[135px]"
+                className="flex-1 md:w-auto min-w-0 px-2.5 sm:px-3 py-2 border border-gray-200 rounded-xl text-xs sm:text-sm bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm hover:border-gray-300 transition-colors cursor-pointer"
                 value={startDate}
                 onChange={handleDateChange}
               />
               {endDate && (
-                <span className="text-xs text-gray-600 font-bold bg-orange-50/60 text-orange-700 px-3 py-2 rounded-xl border border-orange-100/60 shadow-sm whitespace-nowrap flex-shrink-0">
+                <span className="text-[11px] sm:text-xs font-bold bg-orange-50 text-orange-700 px-2 sm:px-3 py-2 rounded-xl border border-orange-100 shadow-sm whitespace-nowrap shrink-0">
                   To: {new Date(endDate).toLocaleDateString('en-GB')}
                 </span>
               )}
@@ -361,10 +361,10 @@ const WeeklySchedule = () => {
               <button
                 onClick={handleExport}
                 disabled={exporting}
-                className="flex items-center justify-center p-2.5 bg-white text-gray-700 rounded-xl border border-gray-200 hover:bg-gray-50 shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 transition-colors flex-shrink-0"
+                className="flex items-center justify-center p-2 sm:p-2.5 bg-white text-gray-700 rounded-xl border border-gray-200 hover:bg-gray-50 shadow-sm hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 transition-colors shrink-0"
                 title="Export My Schedule to PDF"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <svg className="w-4.5 h-4.5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                 </svg>
               </button>

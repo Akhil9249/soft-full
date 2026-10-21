@@ -315,61 +315,61 @@ export default function AttendanceDashboard() {
       <div className="max-w-7xl mx-auto space-y-6">
         <Navbar headData="Student Attendance" activeTab="Attendance Details" />
 
-        {/* Top Metric Cards (Compact & Clean) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Top Metric Cards (Compact & Clean: 2 per row below md, 4 on md+) */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {/* Card 1: Total Days */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-shadow">
-            <div className="w-11 h-11 rounded-xl bg-[#eff4ff] text-[#3b82f6] flex items-center justify-center flex-shrink-0">
-              <CalendarIcon className="w-5 h-5" />
+          <div className="bg-white rounded-2xl p-3 sm:p-4 border border-gray-100 shadow-sm flex items-center gap-2.5 sm:gap-3.5 hover:shadow-md transition-shadow min-w-0">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-[#eff4ff] text-[#3b82f6] flex items-center justify-center flex-shrink-0">
+              <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">Total Days</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-medium text-gray-500 truncate">Total Days</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5">
                 {summary.totalDays}
               </p>
-              <p className="text-[11px] text-gray-400 font-medium">Days</p>
+              <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium">Days</p>
             </div>
           </div>
 
           {/* Card 2: Present Days */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-shadow">
-            <div className="w-11 h-11 rounded-xl bg-[#ecfdf3] text-[#10b981] flex items-center justify-center flex-shrink-0">
-              <CheckCircle2 className="w-5 h-5" />
+          <div className="bg-white rounded-2xl p-3 sm:p-4 border border-gray-100 shadow-sm flex items-center gap-2.5 sm:gap-3.5 hover:shadow-md transition-shadow min-w-0">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-[#ecfdf3] text-[#10b981] flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">Present Days</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-medium text-gray-500 truncate">Present Days</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5">
                 {summary.presentDays}
               </p>
-              <p className="text-[11px] text-gray-400 font-medium">Days</p>
+              <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium">Days</p>
             </div>
           </div>
 
           {/* Card 3: Absent Days */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-shadow">
-            <div className="w-11 h-11 rounded-xl bg-[#fef3f2] text-[#f43f5e] flex items-center justify-center flex-shrink-0">
-              <Clock className="w-5 h-5" />
+          <div className="bg-white rounded-2xl p-3 sm:p-4 border border-gray-100 shadow-sm flex items-center gap-2.5 sm:gap-3.5 hover:shadow-md transition-shadow min-w-0">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-[#fef3f2] text-[#f43f5e] flex items-center justify-center flex-shrink-0">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">Absent Days</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-medium text-gray-500 truncate">Absent Days</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5">
                 {summary.absentDays}
               </p>
-              <p className="text-[11px] text-gray-400 font-medium">Days</p>
+              <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium">Days</p>
             </div>
           </div>
 
           {/* Card 4: Attendance */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-shadow">
-            <div className="w-11 h-11 rounded-xl bg-[#fef8e7] text-[#f59e0b] flex items-center justify-center flex-shrink-0">
-              <Percent className="w-5 h-5" />
+          <div className="bg-white rounded-2xl p-3 sm:p-4 border border-gray-100 shadow-sm flex items-center gap-2.5 sm:gap-3.5 hover:shadow-md transition-shadow min-w-0">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-[#fef8e7] text-[#f59e0b] flex items-center justify-center flex-shrink-0">
+              <Percent className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">Attendance</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5">
+            <div className="min-w-0">
+              <p className="text-[11px] sm:text-xs font-medium text-gray-500 truncate">Attendance</p>
+              <p className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight mt-0.5 truncate">
                 {summary.attendancePercentage}%
               </p>
-              <p className="text-[11px] text-gray-400 font-medium">Overall</p>
+              <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium">Overall</p>
             </div>
           </div>
         </div>
@@ -405,14 +405,17 @@ export default function AttendanceDashboard() {
 
               {/* Months List */}
               <div className="flex flex-col space-y-2">
-                {getSidebarMonths(filters.month).map((m) => {
+                {getSidebarMonths(filters.month).map((m, idx) => {
                   const isActive = filters.month === m.value;
+                  const isOuter = idx === 0 || idx === 4;
+                  const visibilityClass = isOuter ? 'hidden md:flex' : 'flex';
+
                   if (isActive) {
                     return (
                       <div
                         key={m.value}
                         onClick={() => handleMonthClick(m.value)}
-                        className="bg-blue-600 text-white rounded-xl px-4 py-2.5 flex items-center justify-between shadow-sm cursor-pointer transition select-none"
+                        className={`bg-blue-600 text-white rounded-xl px-4 py-2.5 ${visibilityClass} items-center justify-between shadow-sm cursor-pointer transition select-none`}
                       >
                         <div className="flex items-center gap-3">
                           <span className="w-2.5 h-2.5 rounded-full bg-white flex-shrink-0" />
@@ -426,7 +429,7 @@ export default function AttendanceDashboard() {
                     <div
                       key={m.value}
                       onClick={() => handleMonthClick(m.value)}
-                      className="flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition select-none"
+                      className={`${visibilityClass} items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition select-none`}
                     >
                       <span className="w-2.5 h-2.5 rounded-full border-2 border-gray-300 flex-shrink-0" />
                       <span className="text-sm font-medium">{m.name}</span>
