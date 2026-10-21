@@ -378,30 +378,30 @@ const WeeklySchedule = () => {
           <div className="lg:col-span-5 space-y-6">
 
             {/* Profile Card */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-orange-100/80 rounded-2xl flex items-center justify-center text-orange-600 shadow-sm border border-orange-100 flex-shrink-0">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-5">
+              <div className="flex items-center gap-3.5 mb-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-orange-100/80 rounded-xl flex items-center justify-center text-orange-600 shadow-sm border border-orange-100 flex-shrink-0">
+                  <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <span className="inline-flex px-2.5 py-0.5 text-[10px] font-bold rounded-full mb-1.5 uppercase tracking-wider bg-orange-100 text-orange-800">
+                  <span className="inline-flex px-2 py-0.5 text-[9.5px] font-bold rounded-full mb-1 uppercase tracking-wider bg-orange-100 text-orange-800">
                     INTERN
                   </span>
-                  <h4 className="text-lg font-bold text-slate-900 leading-tight truncate">{internDetails?.fullName}</h4>
-                  <p className="text-xs text-slate-600 mt-1 font-medium truncate">{internDetails?.email}</p>
+                  <h4 className="text-base font-bold text-slate-900 leading-tight truncate">{internDetails?.fullName}</h4>
+                  <p className="text-xs text-slate-600 mt-0.5 font-medium truncate">{internDetails?.email}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4.5">
-                <div className="bg-slate-50/50 rounded-2xl p-4.5 text-center border border-slate-100">
-                  <div className="text-2xl font-extrabold text-blue-600">{internBatches.length}</div>
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">My Batches</div>
+              <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
+                <div className="bg-slate-50/50 rounded-xl p-2.5 sm:p-3 text-center border border-slate-100">
+                  <div className="text-xl font-extrabold text-blue-600">{internBatches.length}</div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">My Batches</div>
                 </div>
-                <div className="bg-slate-50/50 rounded-2xl p-4.5 text-center border border-slate-100">
-                  <div className="text-2xl font-extrabold text-green-600">{scheduleDetails.length}</div>
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-1">Weekly Slots</div>
+                <div className="bg-slate-50/50 rounded-xl p-2.5 sm:p-3 text-center border border-slate-100">
+                  <div className="text-xl font-extrabold text-green-600">{scheduleDetails.length}</div>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">Weekly Slots</div>
                 </div>
               </div>
             </div>

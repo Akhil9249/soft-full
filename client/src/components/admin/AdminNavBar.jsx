@@ -153,19 +153,19 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
       {/* Sidebar */}
       <aside className={`
         fixed lg:static
-        w-64 bg-white p-6 shadow-md flex flex-col justify-between rounded-r-xl h-screen overflow-hidden z-50
+        w-64 bg-white p-6 pb-10 md:pb-6 shadow-md flex flex-col justify-between rounded-r-xl h-screen h-[100dvh] overflow-hidden z-50
         transform transition-transform duration-300 ease-in-out
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="overflow-y-auto flex-1 scrollbar-hide">
-          <div className="flex items-center mb-8">
+          <div className="flex items-center mb-6 md:mb-8">
             <img
               src={logo}
               alt="Softroniics Logo"
               className="h-10 w-auto object-contain"
             />
           </div>
-          <nav className="space-y-4">
+          <nav className="space-y-3 md:space-y-4">
             <Link
               to="/dashboard"
               onClick={() => handleNavItemClick('/dashboard')}
@@ -525,7 +525,7 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
           </nav>
         </div>
 
-        <div className="mt-8 flex-shrink-0 pt-4 border-t border-gray-200">
+        <div className="mt-2 md:mt-8 mb-6 md:mb-0 flex-shrink-0 pt-3 md:pt-4 border-t border-gray-200">
           <button
             onClick={handleLogout}
             className="flex items-center text-red-500 font-medium p-2 rounded-lg transition-colors duration-200 hover:bg-red-50 hover:text-red-600 w-full text-left"

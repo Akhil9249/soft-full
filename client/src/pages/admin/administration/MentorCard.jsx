@@ -258,7 +258,7 @@ const MenorCard = () => {
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-3 gap-4 mb-10">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-6">
                     <StatCard title="AVG TEST SCORE" value={stats.avgTestScore} total="100" color="border-teal-500" />
                     <StatCard title="AVG PROJECT SCORE" value={stats.avgProjectScore} total="100" color="border-purple-500" />
                     <StatCard title="ATTENDANCE" value={stats.attendancePercent} total="%" sub="Percentage" color="border-orange-500" />
@@ -490,15 +490,16 @@ const MenorCard = () => {
 };
 
 const StatCard = ({ title, value, total, sub, color }) => (
-    <div className={`bg-white p-6 rounded-2xl border-b-4 ${color} border-x border-t border-gray-150 shadow-sm`}>
-        <p className="text-[10px] font-bold text-gray-400 tracking-wider mb-4 flex items-center justify-between gap-2 whitespace-nowrap">
-            <span className="whitespace-nowrap">{title}</span> {title.includes('SCORE') && <span className="bg-indigo-600 text-white px-1 rounded-sm text-[8px] shrink-0">SCORE</span>}
+    <div className={`bg-white px-4 py-3 sm:py-3.5 rounded-xl border-b-[3px] ${color} border-x border-t border-gray-150 shadow-xs hover:shadow-sm transition-all`}>
+        <p className="text-[9.5px] sm:text-[10px] font-bold text-gray-400 tracking-wider mb-1.5 flex items-center justify-between gap-1">
+            <span className="truncate">{title}</span>
+            {title.includes('SCORE') && <span className="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[8px] font-semibold shrink-0">SCORE</span>}
         </p>
-        <div className="flex items-baseline gap-2 mb-2">
-            <span className="text-4xl font-bold text-gray-900">{value}</span>
-            {total && <span className="text-gray-400 text-lg">{total === '%' ? '%' : `/ ${total}`}</span>}
+        <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">{value}</span>
+            {total && <span className="text-gray-400 text-sm font-semibold">{total === '%' ? '%' : `/ ${total}`}</span>}
         </div>
-        {sub && <p className="text-xs text-gray-550 italic">{sub}</p>}
+        {sub && <p className="text-[10.5px] text-gray-400 italic mt-0.5">{sub}</p>}
     </div>
 );
 
