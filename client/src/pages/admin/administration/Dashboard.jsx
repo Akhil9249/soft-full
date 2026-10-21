@@ -18,12 +18,12 @@ import {
   X
 } from 'lucide-react';
 import AdminService from '../../../services/admin-api-service/AdminService';
+import useAuth from '../../../hooks/useAuth';
 
 const PAGES_LIST = [
   { name: 'Dashboard', path: '/dashboard', category: 'General' },
   { name: 'Staff Management', path: '/staff-management', category: 'Administration' },
   { name: 'Student Management', path: '/student-management', category: 'Administration' },
-  { name: 'Mentor Card', path: '/menor-card', category: 'Administration' },
   { name: 'Courses', path: '/courses', category: 'Course Management' },
   { name: 'Category', path: '/category', category: 'Course Management' },
   { name: 'Modules', path: '/modules', category: 'Syllabus Management' },
@@ -93,11 +93,33 @@ const CourseThumbnail = ({ course, index }) => {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { getCoursesData, getInternsData, getBatchesData, getStaffData } = AdminService();
+  const { auth, setAuth } = useAuth();
+  const { getCoursesData, getInternsData, getBatchesData, getStaffData, getUserProfile } = AdminService();
+
+  const [permissions, setPermissions] = useState(() => {
+    try {
+      const saved = localStorage.getItem("permissions");
+      return saved ? JSON.parse(saved) : (auth?.permissions || null);
+    } catch {
+      return null;
+    }
+  });
+
+  const userRole = (auth?.role || localStorage.getItem("role") || "").toLowerCase().trim();
+  const isSuperAdminOrAdmin = ["super admin", "admin", "branch admin"].includes(userRole);
+
   const [statsData, setStatsData] = useState({ courses: 0, interns: 0, batches: 0, staff: 0 });
   const [recentCourses, setRecentCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [courseFilter, setCourseFilter] = useState('All');
+
+  // Track access permissions for dashboard sections
+  const [access, setAccess] = useState({
+    courses: true,
+    batches: true,
+    interns: true,
+    staff: true
+  });
 
   // Modal State
   const [selectedCourse, setSelectedCourse] = useState(null);
@@ -106,6 +128,25 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchRef = useRef(null);
+
+  // Fetch permissions if not already present in state/localStorage for staff
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (!isSuperAdminOrAdmin && !permissions && token) {
+      getUserProfile()
+        .then((res) => {
+          const userPerms = res?.data?.user?.permissions;
+          if (userPerms) {
+            setPermissions(userPerms);
+            localStorage.setItem("permissions", JSON.stringify(userPerms));
+            setAuth((prev) => ({ ...prev, permissions: userPerms }));
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching user permissions in Dashboard:", err);
+        });
+    }
+  }, [isSuperAdminOrAdmin, permissions, setAuth]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -119,10 +160,31 @@ export default function Dashboard() {
     };
   }, []);
 
-  const filteredPages = PAGES_LIST.filter(page =>
-    page.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    page.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPages = PAGES_LIST.filter(page => {
+    if (!isSuperAdminOrAdmin && permissions) {
+      if (page.path === '/staff-management' && (!access.staff || !permissions?.mentorManagement?.viewMentor)) return false;
+      if (page.path === '/student-management' && (!access.interns || !permissions?.studentManagement?.viewStudent)) return false;
+      if (page.path === '/courses' && (!access.courses || !permissions?.courseManagement?.viewCourse)) return false;
+      if (page.path === '/batches' && (!access.batches || !permissions?.batchManagement?.viewBatch)) return false;
+      if (page.path === '/mentor-batches' && (!access.batches || !permissions?.batchManagement?.viewBatch)) return false;
+      if (page.path === '/student-attendance' && (!access.interns || !permissions?.studentManagement?.viewStudent)) return false;
+      if (page.path === '/temp' && (!access.interns || !permissions?.studentManagement?.viewStudent)) return false;
+      if (page.path === '/category' && !permissions?.categoryManagement?.viewCategory) return false;
+      if (page.path === '/modules' && !permissions?.moduleManagement?.viewModule) return false;
+      if (page.path === '/topics' && !permissions?.topicManagement?.viewTopic) return false;
+      if (page.path === '/weekly-schedule' && !permissions?.weeklySchedule?.viewSchedule) return false;
+      if (page.path === '/timings' && !permissions?.scheduleTiming?.viewTiming) return false;
+      if (page.path === '/task-management' && !permissions?.taskManagement?.viewTask) return false;
+      if (page.path === '/material' && !permissions?.materialManagement?.viewMaterial) return false;
+      if (page.path === '/leave-request' && !permissions?.leaveRequest?.viewLeave) return false;
+      if (page.path === '/static-pages' && !permissions?.staticPage?.viewPage) return false;
+      if (page.path === '/branch') return false;
+    }
+    return (
+      page.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      page.category.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
 
   const handleViewDetails = (course) => {
     setSelectedCourse(course);
@@ -136,12 +198,39 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
+        const canFetchCourses = isSuperAdminOrAdmin || (permissions ? Boolean(permissions?.courseManagement?.viewCourse) : true);
+        const canFetchBatches = isSuperAdminOrAdmin || (permissions ? Boolean(permissions?.batchManagement?.viewBatch) : true);
+        const canFetchInterns = isSuperAdminOrAdmin || (permissions ? Boolean(permissions?.studentManagement?.viewStudent) : true);
+        const canFetchStaff = isSuperAdminOrAdmin || (permissions ? Boolean(permissions?.mentorManagement?.viewMentor) : true);
+
+        // Fetch each endpoint independently so a blocked 403 doesn't abort courses or batches
         const [coursesRes, batchesRes, internsRes, staffRes] = await Promise.all([
-          getCoursesData(),
-          getBatchesData(),
-          getInternsData(),
-          getStaffData()
+          canFetchCourses
+            ? getCoursesData().catch((err) => {
+                console.warn("Courses fetch blocked or failed:", err?.response?.status || err.message);
+                return null;
+              })
+            : Promise.resolve(null),
+          canFetchBatches
+            ? getBatchesData().catch((err) => {
+                console.warn("Batches fetch blocked or failed:", err?.response?.status || err.message);
+                return null;
+              })
+            : Promise.resolve(null),
+          canFetchInterns
+            ? getInternsData().catch((err) => {
+                console.warn("Interns fetch blocked or failed:", err?.response?.status || err.message);
+                return null;
+              })
+            : Promise.resolve(null),
+          canFetchStaff
+            ? getStaffData().catch((err) => {
+                console.warn("Staff fetch blocked or failed:", err?.response?.status || err.message);
+                return null;
+              })
+            : Promise.resolve(null)
         ]);
 
         const courses = coursesRes?.data || [];
@@ -149,10 +238,10 @@ export default function Dashboard() {
         const interns = internsRes?.data || [];
         const staff = staffRes?.data || [];
 
-        const coursesCount = coursesRes?.pagination?.totalCount || courses.length || 0;
-        const batchesCount = batchesRes?.pagination?.totalCount || batches.length || 0;
-        const internsCount = internsRes?.pagination?.totalCount || interns.length || 0;
-        const staffCount = staffRes?.pagination?.totalCount || staff.length || 0;
+        const coursesCount = (canFetchCourses && coursesRes) ? (coursesRes?.pagination?.totalCount ?? (Array.isArray(courses) ? courses.length : 0)) : 0;
+        const batchesCount = (canFetchBatches && batchesRes) ? (batchesRes?.pagination?.totalCount ?? (Array.isArray(batches) ? batches.length : 0)) : 0;
+        const internsCount = (canFetchInterns && internsRes) ? (internsRes?.pagination?.totalCount ?? (Array.isArray(interns) ? interns.length : 0)) : 0;
+        const staffCount = (canFetchStaff && staffRes) ? (staffRes?.pagination?.totalCount ?? (Array.isArray(staff) ? staff.length : 0)) : 0;
 
         setStatsData({
           courses: coursesCount,
@@ -161,7 +250,16 @@ export default function Dashboard() {
           staff: staffCount
         });
 
-        setRecentCourses(courses.slice(0, 4));
+        if (Array.isArray(courses)) {
+          setRecentCourses(courses.slice(0, 4));
+        }
+
+        setAccess({
+          courses: canFetchCourses && coursesRes !== null,
+          batches: canFetchBatches && batchesRes !== null,
+          interns: canFetchInterns && internsRes !== null,
+          staff: canFetchStaff && staffRes !== null
+        });
       } catch (err) {
         console.error("Failed to load dashboard data", err);
       } finally {
@@ -169,7 +267,7 @@ export default function Dashboard() {
       }
     };
     fetchData();
-  }, []);
+  }, [permissions, isSuperAdminOrAdmin]);
 
   return (
     <div className="min-h-screen bg-[#f8fafd] text-gray-800 font-sans p-4 sm:p-8">
@@ -253,27 +351,36 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* 2. STATS GRID (4 Cards Styled with Brand Primary Orange) */}
+        {/* 2. STATS GRID (All 4 Cards Always Displayed) */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {/* Card 1: Total Courses */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-xs relative overflow-hidden flex items-center min-h-[105px] hover:shadow-md transition">
-            {/* Left: Icon and Text side-by-side */}
             <div className="flex items-center gap-3.5 z-10">
               <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
                 <BookOpen size={24} />
               </div>
               <div>
                 <p className="text-xs sm:text-[13px] font-semibold text-slate-500">Total Courses</p>
-                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">{statsData.courses}</p>
-                <p className="text-[11px] font-medium text-slate-400 mt-0.5">+2 this month</p>
+                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">
+                  {access.courses ? statsData.courses : 0}
+                </p>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5">
+                  {access.courses ? "+2 this month" : "0 this month"}
+                </p>
               </div>
             </div>
 
-            {/* Top-right: (->) button */}
             <button
-              onClick={() => navigate('/courses')}
-              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center text-slate-600 hover:text-orange-500 hover:border-orange-200 shadow-xs transition z-20 cursor-pointer"
-              title="View Courses"
+              onClick={() => {
+                if (access.courses) navigate('/courses');
+              }}
+              disabled={!access.courses}
+              className={`absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center shadow-xs transition z-20 ${
+                access.courses
+                  ? 'text-slate-600 hover:text-orange-500 hover:border-orange-200 cursor-pointer'
+                  : 'text-slate-300 opacity-60 cursor-not-allowed'
+              }`}
+              title={access.courses ? "View Courses" : "Access Restricted"}
             >
               <ArrowRight size={13} strokeWidth={2.2} />
             </button>
@@ -281,23 +388,32 @@ export default function Dashboard() {
 
           {/* Card 2: Total Interns */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-xs relative overflow-hidden flex items-center min-h-[105px] hover:shadow-md transition">
-            {/* Left: Icon and Text side-by-side */}
             <div className="flex items-center gap-3.5 z-10">
               <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
                 <Users size={24} />
               </div>
               <div>
                 <p className="text-xs sm:text-[13px] font-semibold text-slate-500">Total Interns</p>
-                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">{statsData.interns}</p>
-                <p className="text-[11px] font-medium text-slate-400 mt-0.5">+3 this month</p>
+                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">
+                  {access.interns ? statsData.interns : 0}
+                </p>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5">
+                  {access.interns ? "+3 this month" : "0 this month"}
+                </p>
               </div>
             </div>
 
-            {/* Top-right: (->) button */}
             <button
-              onClick={() => navigate('/student-management')}
-              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center text-slate-600 hover:text-orange-500 hover:border-orange-200 shadow-xs transition z-20 cursor-pointer"
-              title="View Interns"
+              onClick={() => {
+                if (access.interns) navigate('/student-management');
+              }}
+              disabled={!access.interns}
+              className={`absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center shadow-xs transition z-20 ${
+                access.interns
+                  ? 'text-slate-600 hover:text-orange-500 hover:border-orange-200 cursor-pointer'
+                  : 'text-slate-300 opacity-60 cursor-not-allowed'
+              }`}
+              title={access.interns ? "View Interns" : "Access Restricted"}
             >
               <ArrowRight size={13} strokeWidth={2.2} />
             </button>
@@ -305,23 +421,32 @@ export default function Dashboard() {
 
           {/* Card 3: Active Batches */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-xs relative overflow-hidden flex items-center min-h-[105px] hover:shadow-md transition">
-            {/* Left: Icon and Text side-by-side */}
             <div className="flex items-center gap-3.5 z-10">
               <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
                 <Layers size={24} />
               </div>
               <div>
                 <p className="text-xs sm:text-[13px] font-semibold text-slate-500">Active Batches</p>
-                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">{statsData.batches}</p>
-                <p className="text-[11px] font-medium text-slate-400 mt-0.5">2 ongoing</p>
+                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">
+                  {access.batches ? statsData.batches : 0}
+                </p>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5">
+                  {access.batches ? "2 ongoing" : "0 ongoing"}
+                </p>
               </div>
             </div>
 
-            {/* Top-right: (->) button */}
             <button
-              onClick={() => navigate('/batches')}
-              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center text-slate-600 hover:text-orange-500 hover:border-orange-200 shadow-xs transition z-20 cursor-pointer"
-              title="View Batches"
+              onClick={() => {
+                if (access.batches) navigate('/batches');
+              }}
+              disabled={!access.batches}
+              className={`absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center shadow-xs transition z-20 ${
+                access.batches
+                  ? 'text-slate-600 hover:text-orange-500 hover:border-orange-200 cursor-pointer'
+                  : 'text-slate-300 opacity-60 cursor-not-allowed'
+              }`}
+              title={access.batches ? "View Batches" : "Access Restricted"}
             >
               <ArrowRight size={13} strokeWidth={2.2} />
             </button>
@@ -329,23 +454,32 @@ export default function Dashboard() {
 
           {/* Card 4: Total Staff */}
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-xs relative overflow-hidden flex items-center min-h-[105px] hover:shadow-md transition">
-            {/* Left: Icon and Text side-by-side */}
             <div className="flex items-center gap-3.5 z-10">
               <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-2xl bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
                 <Users size={24} />
               </div>
               <div>
                 <p className="text-xs sm:text-[13px] font-semibold text-slate-500">Total Staff</p>
-                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">{statsData.staff}</p>
-                <p className="text-[11px] font-medium text-slate-400 mt-0.5">+1 this month</p>
+                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mt-0.5">
+                  {access.staff ? statsData.staff : 0}
+                </p>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5">
+                  {access.staff ? "+1 this month" : "0 this month"}
+                </p>
               </div>
             </div>
 
-            {/* Top-right: (->) button */}
             <button
-              onClick={() => navigate('/staff-management')}
-              className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center text-slate-600 hover:text-orange-500 hover:border-orange-200 shadow-xs transition z-20 cursor-pointer"
-              title="View Staff"
+              onClick={() => {
+                if (access.staff) navigate('/staff-management');
+              }}
+              disabled={!access.staff}
+              className={`absolute top-3.5 right-3.5 w-7 h-7 rounded-full border border-slate-100 bg-white flex items-center justify-center shadow-xs transition z-20 ${
+                access.staff
+                  ? 'text-slate-600 hover:text-orange-500 hover:border-orange-200 cursor-pointer'
+                  : 'text-slate-300 opacity-60 cursor-not-allowed'
+              }`}
+              title={access.staff ? "View Staff" : "Access Restricted"}
             >
               <ArrowRight size={13} strokeWidth={2.2} />
             </button>
@@ -395,6 +529,11 @@ export default function Dashboard() {
                 <div className="col-span-2 text-center text-gray-400 py-16">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
                   <p className="text-xs">Loading courses...</p>
+                </div>
+              ) : !access.courses ? (
+                <div className="col-span-2 text-center text-gray-400 py-16 bg-white rounded-2xl border border-gray-100">
+                  <BookOpen size={32} className="mx-auto text-gray-300 mb-2" />
+                  <p className="text-sm font-medium">Course viewing is restricted for your role.</p>
                 </div>
               ) : recentCourses.length === 0 ? (
                 <div className="col-span-2 text-center text-gray-400 py-16 bg-white rounded-2xl border border-gray-100">

@@ -134,12 +134,10 @@ const Login = () => {
         // Navigate after a short delay to show the success message
         setTimeout(() => {
           const userRole = role?.toLowerCase() || '';
-          if (userRole === 'super admin' || userRole === 'admin' || userRole === 'branch admin') {
-            navigate("/dashboard");
-          } else if (userRole === 'intern') {
+          if (userRole === 'intern') {
             navigate("/student/attendance-dashboard");
           } else {
-            navigate("/"); // Mentors and other roles go to root
+            navigate("/dashboard");
           }
         }, 2000);
       } else {
