@@ -5,14 +5,6 @@ import { Check, X, ChevronDown, CalendarDays } from 'lucide-react';
 import AdminService from '../../../services/admin-api-service/AdminService';
 import Tabs from '../../../components/button/Tabs';
 
-// --- Mock Data ---
-const mockAttendanceData = [
-  { admNo: '1111', name: 'John Abraham', attendance: [1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0] },
-  { admNo: '1112', name: 'Alice Smith', attendance: [1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] },
-  { admNo: '1113', name: 'Bob Johnson', attendance: [0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1] },
-  { admNo: '1114', name: 'Emily Davis', attendance: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0] },
-  { admNo: '1115', name: 'Michael Lee', attendance: [1, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1] },
-];
 
 const tabOptions = [
   { value: "Student Attendance", label: "Student Attendance" },

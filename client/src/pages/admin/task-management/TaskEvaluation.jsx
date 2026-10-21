@@ -13,8 +13,6 @@ export const TaskEvaluation = () => {
   const [selectedTask, setSelectedTask] = useState('');
   const [selectedModule, setSelectedModule] = useState('');
   const [submissions, setSubmissions] = useState([]);
-  const [interns, setInterns] = useState([]);
-  const [mentors, setMentors] = useState([]);
   const [modules, setModules] = useState([]);
   
   // Loading states
@@ -52,8 +50,6 @@ export const TaskEvaluation = () => {
 
   const {
     getTasksData,
-    getInternsData,
-    getStaffData,
     getModulesData,
     getTaskSubmissionsData,
     gradeSubmissionData,
@@ -63,6 +59,7 @@ export const TaskEvaluation = () => {
 
   const userRole = localStorage.getItem("role")?.toLowerCase() || "";
   const currentUserId = localStorage.getItem("userId") || "";
+  const currentUserName = localStorage.getItem("name") || "";
 
   const tabOptions = [
     { value: 'submissions-list', label: 'Submissions List' },
@@ -264,14 +261,8 @@ export const TaskEvaluation = () => {
         const tasksRes = await getTasksData('page=1&limit=10000');
         const tasksList = tasksRes?.data || [];
         setTasks(tasksList);
-        
-        // Fetch interns
-        const internsRes = await getInternsData('page=1&limit=10000');
-        setInterns(internsRes?.data || []);
-        
-        // Fetch mentors/staff
-        const staffRes = await getStaffData('page=1&limit=10000');
-        setMentors(staffRes?.data || []);
+
+
 
         // Fetch modules
         const modulesRes = await getModulesData('page=1&limit=10000');
@@ -749,19 +740,12 @@ export const TaskEvaluation = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="flex flex-col">
                     <label className="text-sm font-semibold text-gray-700 mb-2">Submitted By</label>
-                    <select
-                      name="intern"
-                      value={formData.intern}
-                      onChange={handleInputChange}
-                      disabled={!!editingSubmission || userRole !== 'super admin'}
-                      required
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 disabled:bg-gray-50"
-                    >
-                      <option value="">Choose Intern</option>
-                      {interns.map(intern => (
-                        <option key={intern._id} value={intern._id}>{intern.fullName}</option>
-                      ))}
-                    </select>
+                    <input
+                      type="text"
+                      disabled
+                      value={editingSubmission?.intern?.fullName || 'N/A'}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-gray-50 focus:outline-none"
+                    />
                   </div>
 
                   <div className="flex flex-col">
@@ -929,18 +913,12 @@ export const TaskEvaluation = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-6">
                   <div className="flex flex-col">
                     <label className="text-sm font-semibold text-gray-700 mb-2">Reviewed By</label>
-                    <select
-                      name="reviewedBy"
-                      value={formData.reviewedBy}
-                      onChange={handleInputChange}
+                    <input
+                      type="text"
                       disabled
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-505 bg-gray-50 focus:outline-none cursor-not-allowed"
-                    >
-                      <option value="">Choose Mentor</option>
-                      {mentors.map(mentor => (
-                        <option key={mentor._id} value={mentor._id}>{mentor.fullName}</option>
-                      ))}
-                    </select>
+                      value={editingSubmission?.gradedBy?.fullName || currentUserName || 'Mentor'}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-gray-50 focus:outline-none"
+                    />
                   </div>
 
                   <div className="flex flex-col">

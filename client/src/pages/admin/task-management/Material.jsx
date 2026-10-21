@@ -56,7 +56,8 @@ const Material = () => {
   const [internsLoading, setInternsLoading] = useState(false);
   const [coursesLoading, setCoursesLoading] = useState(false);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const defaultBranchSet = useRef(false);
+  const isInitialized = useRef(false);
+  const lastFetchedParams = useRef({ search: '', audience: '', mentor: '', branch: '', page: 1 });
   const lastInternBranchIdsRef = useRef(null);
 
   // File upload - will store File object or URL string
@@ -127,6 +128,7 @@ const Material = () => {
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setPagination(prev => ({ ...prev, currentPage: newPage }));
+      lastFetchedParams.current.page = newPage;
       loadMaterials(newPage, searchTerm, filters.audience, filters.mentor, filters.branch);
     }
   };
@@ -142,13 +144,77 @@ const Material = () => {
     }));
   };
 
-  // Load initial data
+  // Initialize data once on mount
+  const initializeData = async () => {
+    try {
+      setLoading(true);
+
+      // 1. Load branches first to determine the default branch
+      const branchesData = await loadBranches();
+
+      // 2. Resolve default branch based on role
+      let defaultBranch = '';
+      const role = localStorage.getItem("role")?.toLowerCase() || "";
+      if (branchesData.length > 0) {
+        if (role === "super admin") {
+          const calicutBranch = branchesData.find(b => b.branchName?.toLowerCase().includes("calicut"));
+          defaultBranch = calicutBranch ? calicutBranch._id : branchesData[0]._id;
+        } else {
+          let ownBranchId = localStorage.getItem("branch");
+          if (!ownBranchId || ownBranchId === "undefined" || ownBranchId === "null") {
+            try {
+              const profileRes = await adminService.getUserProfile();
+              const profileBranch = profileRes?.data?.user?.branch;
+              if (profileBranch) {
+                ownBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
+                localStorage.setItem("branch", ownBranchId);
+              }
+            } catch (e) {
+              console.error("Failed to fetch staff profile for branch:", e);
+            }
+          }
+          if (ownBranchId && branchesData.some(b => String(b._id) === String(ownBranchId))) {
+            defaultBranch = ownBranchId;
+          } else {
+            const calicutBranch = branchesData.find(b => b.branchName?.toLowerCase().includes("calicut"));
+            defaultBranch = calicutBranch ? calicutBranch._id : branchesData[0]._id;
+          }
+        }
+      }
+
+      // 3. Set the filter state with the resolved default branch
+      setFilters(prev => ({
+        ...prev,
+        branch: defaultBranch
+      }));
+
+      // 4. Record params to prevent duplicate calls from debounce effect
+      lastFetchedParams.current = {
+        page: 1,
+        search: '',
+        audience: '',
+        mentor: '',
+        branch: defaultBranch
+      };
+
+      // 5. Load materials with defaultBranch AND load other lookups in parallel
+      await Promise.all([
+        loadMaterials(1, '', '', '', defaultBranch),
+        loadMentors(),
+        loadBatches(),
+        loadInterns()
+      ]);
+
+      isInitialized.current = true;
+    } catch (err) {
+      console.error('Failed to initialize materials data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    loadMaterials(pagination.currentPage, searchTerm, filters.audience, filters.mentor, filters.branch);
-    loadMentors();
-    loadBatches();
-    loadBranches();
-    loadInterns();
+    initializeData();
   }, []);
 
   // Close branch dropdown on click outside
@@ -241,50 +307,30 @@ const Material = () => {
     }
   }, [selectedBranches, formData.audience, activeTab]);
 
-  // Set default branch filter based on user role and details once mentors/staff list and branches are loaded
-  useEffect(() => {
-    if (branches.length === 0) return;
-    if (defaultBranchSet.current) return;
-
-    const role = localStorage.getItem("role")?.toLowerCase() || "";
-    if (role === "super admin") {
-      const calicutBranch = branches.find(b => b.branchName?.toLowerCase().includes("calicut"));
-      const defaultBranch = calicutBranch ? calicutBranch._id : branches[0]._id;
-      setFilters(prev => ({ ...prev, branch: defaultBranch }));
-      loadMaterials(1, searchTerm, filters.audience, filters.mentor, defaultBranch);
-      defaultBranchSet.current = true;
-    } else {
-      let ownBranchId = localStorage.getItem("branch");
-      if (ownBranchId && ownBranchId !== "undefined" && ownBranchId !== "null") {
-        setFilters(prev => ({ ...prev, branch: ownBranchId }));
-        loadMaterials(1, searchTerm, filters.audience, filters.mentor, ownBranchId);
-        defaultBranchSet.current = true;
-      } else {
-        // Fallback: fetch dynamically
-        adminService.getUserProfile().then(profileRes => {
-          const profileBranch = profileRes?.data?.user?.branch;
-          if (profileBranch) {
-            const profileBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
-            localStorage.setItem("branch", profileBranchId);
-            setFilters(prev => ({ ...prev, branch: profileBranchId }));
-            loadMaterials(1, searchTerm, filters.audience, filters.mentor, profileBranchId);
-            defaultBranchSet.current = true;
-          }
-        }).catch(err => console.error("Error fetching branch fallback:", err));
-      }
-    }
-  }, [branches]);
-
-  const isFirstRender = useRef(true);
-
   // Handle search and filter changes with debounce
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
+    if (!isInitialized.current) {
+      return;
+    }
+
+    if (
+      lastFetchedParams.current.page === 1 &&
+      lastFetchedParams.current.search === searchTerm &&
+      lastFetchedParams.current.audience === filters.audience &&
+      lastFetchedParams.current.mentor === filters.mentor &&
+      lastFetchedParams.current.branch === filters.branch
+    ) {
       return;
     }
 
     const timeoutId = setTimeout(() => {
+      lastFetchedParams.current = {
+        page: 1,
+        search: searchTerm,
+        audience: filters.audience,
+        mentor: filters.mentor,
+        branch: filters.branch
+      };
       loadMaterials(1, searchTerm, filters.audience, filters.mentor, filters.branch);
     }, 500); // 500ms debounce
 
@@ -362,8 +408,10 @@ const Material = () => {
       const response = await adminService.getBranchesData();
       const branchesData = (response?.data || []).filter(b => b.isActive !== false);
       setBranches(branchesData);
+      return branchesData;
     } catch (error) {
       console.error('Error loading branches:', error);
+      return [];
     } finally {
       setBranchesLoading(false);
     }
