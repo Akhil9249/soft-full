@@ -87,32 +87,19 @@ export const Batches = () => {
 
   const fetchBranches = async () => {
     try {
-
-      setLoading(true);
       setError('');
-      // const res = await axiosPrivate.get('http://localhost:3000/api/branches');
       const res = await getBranchesData();
 
-      const activeBranches = (res.data || []).filter(
+      const activeBranches = (res?.data || []).filter(
         branch => branch.isActive !== false && !branch.isDeleted
       );
       setBranches(activeBranches);
-      
-      if (activeBranches.length > 0) {
-        const calicutBranch = activeBranches.find(b => b.branchName.toLowerCase().includes('calicut'));
-        const defaultBranchId = calicutBranch ? calicutBranch._id : activeBranches[0]._id;
-        setFilters(prev => ({
-          ...prev,
-          branch: defaultBranchId
-        }));
-      }
+      return activeBranches;
     } catch (err) {
       console.error('Failed to load branches:', err);
       showNotification('error', 'Error', 'Failed to load branches');
-      // Set default branches if API fails
       setBranches([]);
-    } finally {
-      setLoading(false);
+      return [];
     }
   };
 
@@ -207,6 +194,9 @@ export const Batches = () => {
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
       setPagination(prev => ({ ...prev, currentPage: newPage }));
+      if (lastFetchedParams.current) {
+        lastFetchedParams.current.page = newPage;
+      }
       fetchBatches(newPage, searchTerm, filters.status, filters.branch);
     }
   };
@@ -311,23 +301,81 @@ export const Batches = () => {
     }
   };
 
-  useEffect(() => {
-    fetchBranches();
-    fetchBatches(pagination.currentPage, searchTerm, filters.status, filters.branch);
-    // fetchCourses();
-    // fetchInterns();
-  }, []);
+  const isInitialized = useRef(false);
+  const lastFetchedParams = useRef({ search: '', status: '', branch: '', page: 1 });
 
-  const isFirstRender = useRef(true);
+  const initializeData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+
+      const activeBranches = await fetchBranches();
+
+      let initialBranchId = '';
+      if (activeBranches.length > 0) {
+        if (auth?.role?.toLowerCase() === 'super admin') {
+          const calicutBranch = activeBranches.find(b => b.branchName?.toLowerCase().includes('calicut'));
+          initialBranchId = calicutBranch ? calicutBranch._id : activeBranches[0]._id;
+        } else {
+          const staffBranch = localStorage.getItem("branch") || (typeof auth?.branch === 'object' ? auth?.branch?._id : auth?.branch);
+          if (staffBranch && activeBranches.some(b => String(b._id) === String(staffBranch))) {
+            initialBranchId = staffBranch;
+          } else {
+            const calicutBranch = activeBranches.find(b => b.branchName?.toLowerCase().includes('calicut'));
+            initialBranchId = calicutBranch ? calicutBranch._id : activeBranches[0]._id;
+          }
+        }
+      }
+
+      setFilters(prev => ({
+        ...prev,
+        branch: initialBranchId
+      }));
+
+      lastFetchedParams.current = {
+        page: 1,
+        search: '',
+        status: 'Active',
+        branch: initialBranchId
+      };
+
+      await fetchBatches(1, '', 'Active', initialBranchId);
+      isInitialized.current = true;
+    } catch (err) {
+      console.error('Failed to initialize batches data:', err);
+      showNotification('error', 'Error', 'Failed to load batches');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    initializeData();
+  }, []);
 
   // Handle search and filter changes with debounce
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
+    if (!isInitialized.current) {
+      return;
+    }
+
+    if (
+      lastFetchedParams.current.page === 1 &&
+      lastFetchedParams.current.search === searchTerm &&
+      lastFetchedParams.current.status === filters.status &&
+      lastFetchedParams.current.branch === filters.branch
+    ) {
       return;
     }
 
     const timeoutId = setTimeout(() => {
+      lastFetchedParams.current = {
+        page: 1,
+        search: searchTerm,
+        status: filters.status,
+        branch: filters.branch
+      };
+      setPagination(prev => ({ ...prev, currentPage: 1 }));
       fetchBatches(1, searchTerm, filters.status, filters.branch);
     }, 500); // 500ms debounce
 

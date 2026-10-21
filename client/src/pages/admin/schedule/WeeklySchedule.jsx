@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Navbar } from '../../../components/admin/AdminNavBar';
 import AdminService from '../../../services/admin-api-service/AdminService';
 import { IoEyeOutline } from "react-icons/io5";
@@ -30,6 +30,10 @@ export const WeeklySchedule = () => {
   const [batches, setBatches] = useState([]);
   const [allBatches, setAllBatches] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const isInitialized = useRef(false);
+  const lastFetchedParams = useRef({ startDate: '', endDate: '', branch: '' });
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -384,20 +388,191 @@ export const WeeklySchedule = () => {
     }
   };
 
-  const fetchWeeklySchedules = async () => {
+  const initializeData = async () => {
     try {
-      console.log('Fetching weekly schedules...');
-      setLoading(true);
+      setInitialLoading(true);
       setError('');
 
+      const [
+        branchesRes,
+        profileRes,
+        batchesRes,
+        staffRes,
+        timingsRes,
+        daysRes,
+        modulesRes,
+        topicsRes
+      ] = await Promise.all([
+        getBranchesData().catch(err => {
+          console.error('Failed to load branches:', err);
+          return { data: [] };
+        }),
+        !isSuperAdmin ? getUserProfile().catch(err => {
+          console.error('Failed to load user profile:', err);
+          return { data: null };
+        }) : Promise.resolve({ data: null }),
+        getAllBatchesData().catch(err => {
+          console.error('Failed to load batches:', err);
+          return { data: [] };
+        }),
+        getAllActiveStaffData().catch(err => {
+          console.error('Failed to load staff/mentors:', err);
+          return { data: [] };
+        }),
+        getTimingsData().catch(err => {
+          console.error('Failed to load timings:', err);
+          return { data: [] };
+        }),
+        getDaysCombinationsData().catch(err => {
+          console.error('Failed to load day combinations:', err);
+          return { data: [] };
+        }),
+        getModulesData('page=1&limit=10000').catch(err => {
+          console.error('Failed to load modules:', err);
+          return { data: [] };
+        }),
+        getTopicsData().catch(err => {
+          console.error('Failed to load topics:', err);
+          return { data: [] };
+        })
+      ]);
+
+      const fetchedBranches = Array.isArray(branchesRes?.data) ? branchesRes.data : [];
+      let initialBranchId = '';
+      let allowedBranches = fetchedBranches;
+
+      if (fetchedBranches.length > 0) {
+        initialBranchId = fetchedBranches[0]._id;
+        if (isSuperAdmin) {
+          const calicutBranch = fetchedBranches.find(b => b.branchName?.toLowerCase().includes('calicut'));
+          if (calicutBranch) {
+            initialBranchId = calicutBranch._id;
+          }
+          allowedBranches = fetchedBranches;
+        } else {
+          let staffBranchId = localStorage.getItem("branch");
+          const user = profileRes?.data?.user;
+          if (user) {
+            const primaryId = typeof user.branch === 'object' ? user.branch?._id : user.branch;
+            const multiIds = (user.isMultipleBranch && Array.isArray(user.multipleBranches))
+              ? user.multipleBranches.map(b => typeof b === 'object' ? b._id : b)
+              : [];
+            const myBranchIds = [primaryId, ...multiIds].filter(Boolean).map(String);
+            const userAllowed = fetchedBranches.filter(b => myBranchIds.includes(String(b._id)));
+            if (userAllowed.length > 0) {
+              allowedBranches = userAllowed;
+              if (staffBranchId && allowedBranches.some(b => String(b._id) === String(staffBranchId))) {
+                initialBranchId = staffBranchId;
+              } else {
+                initialBranchId = allowedBranches[0]._id;
+                localStorage.setItem("branch", initialBranchId);
+              }
+            }
+          }
+
+          if (allowedBranches.length === 0) {
+            const staffBranch = fetchedBranches.find(b => b._id === staffBranchId);
+            allowedBranches = staffBranch ? [staffBranch] : fetchedBranches;
+            if (staffBranch) initialBranchId = staffBranch._id;
+          }
+        }
+      }
+
+      const timingsData = timingsRes.data?.data || timingsRes.data || [];
+      const safeTimings = Array.isArray(timingsData) ? timingsData : [];
+      const safeDays = daysRes.data || [];
+      const safeModules = modulesRes.data || [];
+      const safeTopics = topicsRes.data || [];
+
+      const activeBatches = (batchesRes.data || []).filter(batch => batch.status === 'Active');
+
+      const mentorStaff = staffRes.data?.filter(staff => (staff.role?.role === 'staff' || staff.role?.role === 'mentor') && staff.employmentStatus === 'Active') || [];
+      const transformedMentors = mentorStaff.map(staff => ({
+        _id: staff._id,
+        name: staff.fullName,
+        branch: staff.branch,
+        isMultipleBranch: staff.isMultipleBranch || false,
+        multipleBranches: staff.multipleBranches || [],
+        time: staff.time || []
+      }));
+
+      const effectiveBranch = initialBranchId;
+      let initialBatches = activeBatches;
+      let initialMentors = transformedMentors;
+
+      if (effectiveBranch && effectiveBranch !== 'undefined' && effectiveBranch !== 'null') {
+        initialBatches = activeBatches.filter(batch => {
+          const branchId = typeof batch.branch === 'object' && batch.branch !== null ? batch.branch._id : batch.branch;
+          return String(branchId) === String(effectiveBranch);
+        });
+
+        initialMentors = transformedMentors.filter(mentor => {
+          const primaryBranchId = typeof mentor.branch === 'object' && mentor.branch !== null ? mentor.branch._id : mentor.branch;
+          if (String(primaryBranchId) === String(effectiveBranch)) return true;
+          if (mentor.isMultipleBranch && Array.isArray(mentor.multipleBranches)) {
+            return mentor.multipleBranches.some(b => {
+              const bId = typeof b === 'object' && b !== null ? b._id : b;
+              return String(bId) === String(effectiveBranch);
+            });
+          }
+          return false;
+        });
+      }
+
+      let initialSchedules = [];
+      if (effectiveBranch && effectiveBranch !== 'undefined' && effectiveBranch !== 'null') {
+        try {
+          const schedRes = await getWeeklySchedulesData(startDate, endDate, effectiveBranch);
+          initialSchedules = (schedRes.data || []).filter(ws => ws.mentor?.employmentStatus === 'Active');
+        } catch (sErr) {
+          console.error('Failed to load initial weekly schedules:', sErr);
+        }
+      }
+
+      setBranches(allowedBranches);
+      setSelectedBranch(initialBranchId);
+      setTimings(safeTimings);
+      setDayCombinations(safeDays);
+      setModules(safeModules);
+      setTopics(safeTopics);
+      setAllBatches(activeBatches);
+      setBatches(initialBatches);
+      setAllMentors(transformedMentors);
+      setMentors(initialMentors);
+      setWeeklySchedules(initialSchedules);
+      lastFetchedParams.current = { startDate, endDate, branch: initialBranchId };
+      isInitialized.current = true;
+    } catch (err) {
+      console.error('Failed to initialize weekly schedule data:', err);
+      setError('Failed to load schedule data');
+    } finally {
+      setInitialLoading(false);
+    }
+  };
+
+  const fetchWeeklySchedules = async (force = false, showLoader = true) => {
+    try {
       const effectiveBranch = isStaffWithoutBranchControl ? (localStorage.getItem("branch") || selectedBranch) : selectedBranch;
 
-      if (isStaffWithoutBranchControl && (!effectiveBranch || effectiveBranch === 'undefined' || effectiveBranch === 'null')) {
-        setWeeklySchedules([]);
-        setLoading(false);
+      if (
+        !force &&
+        lastFetchedParams.current.startDate === startDate &&
+        lastFetchedParams.current.endDate === endDate &&
+        lastFetchedParams.current.branch === effectiveBranch
+      ) {
         return;
       }
 
+      if (showLoader) setScheduleLoading(true);
+      setError('');
+
+      if (isStaffWithoutBranchControl && (!effectiveBranch || effectiveBranch === 'undefined' || effectiveBranch === 'null')) {
+        setWeeklySchedules([]);
+        if (showLoader) setScheduleLoading(false);
+        return;
+      }
+
+      lastFetchedParams.current = { startDate, endDate, branch: effectiveBranch };
       const res = await getWeeklySchedulesData(startDate, endDate, effectiveBranch);
       const filteredSchedules = (res.data || []).filter(ws => ws.mentor?.employmentStatus === 'Active');
       setWeeklySchedules(filteredSchedules);
@@ -406,7 +581,7 @@ export const WeeklySchedule = () => {
       setError('Failed to load weekly schedules');
       showModalMessage('Failed to load weekly schedules. Please try again.', 'error');
     } finally {
-      setLoading(false);
+      if (showLoader) setScheduleLoading(false);
     }
   };
 
@@ -429,7 +604,10 @@ export const WeeklySchedule = () => {
   };
 
   useEffect(() => {
-    fetchWeeklySchedules();
+    if (!isInitialized.current) {
+      return;
+    }
+    fetchWeeklySchedules(false, true);
   }, [startDate, endDate, selectedBranch]);
 
   useEffect(() => {
@@ -471,13 +649,7 @@ export const WeeklySchedule = () => {
   }, [selectedBranch, allBatches, allMentors, searchTerm, isStaffWithoutBranchControl, branches.length]);
 
   useEffect(() => {
-    fetchBatches();
-    fetchBranches();
-    fetchTimings();
-    fetchDayCombinations();
-    fetchMentors();
-    fetchModules();
-    fetchTopics();
+    initializeData();
   }, []);
 
   const handleDateChange = (e) => {
@@ -555,7 +727,7 @@ export const WeeklySchedule = () => {
         await postWeeklySchedulesData(newScheduleData);
         showToastMessage('Schedule created with note successfully!', 'success');
       }
-      await fetchWeeklySchedules();
+      await fetchWeeklySchedules(true, false);
       closeNoteModal();
     } catch (err) {
       console.error('Failed to save schedule note:', err);
@@ -578,7 +750,7 @@ export const WeeklySchedule = () => {
       const response = await deleteWeeklySchedulesData(scheduleId, { batchId });
       const message = response?.message || 'Batch successfully removed from schedule!';
       showToastMessage(message, 'success');
-      await fetchWeeklySchedules();
+      await fetchWeeklySchedules(true, false);
       setShowRemoveBatchModal(false);
       setRemovingBatchInfo(null);
     } catch (error) {
@@ -605,7 +777,7 @@ export const WeeklySchedule = () => {
     try {
       const response = await deleteWeeklyScheduleDocument(deletingScheduleId);
       showToastMessage('Schedule document successfully deleted!', 'success');
-      await fetchWeeklySchedules();
+      await fetchWeeklySchedules(true, false);
       setShowDeleteModal(false);
       setDeletingScheduleId(null);
     } catch (error) {
@@ -659,7 +831,7 @@ export const WeeklySchedule = () => {
         subject: newSubject
       });
       showToastMessage('Subject updated successfully!', 'success');
-      await fetchWeeklySchedules();
+      await fetchWeeklySchedules(true, false);
     } catch (error) {
       console.error('Error updating subject:', error);
       setError('Failed to update subject');
@@ -700,7 +872,7 @@ export const WeeklySchedule = () => {
       };
       await postWeeklySchedulesData(newScheduleData);
       showToastMessage('Subject saved to new schedule!', 'success');
-      await fetchWeeklySchedules();
+      await fetchWeeklySchedules(true, false);
     } catch (err) {
       console.error('Failed to create subject in new schedule', err);
       showModalMessage('Failed to create schedule block for subject.', 'error');
@@ -802,7 +974,7 @@ export const WeeklySchedule = () => {
             };
             await postWeeklySchedulesData(newScheduleData);
             showToastMessage('Batch successfully added to schedule!', 'success');
-            await fetchWeeklySchedules();
+            await fetchWeeklySchedules(true, false);
             setDraggingItem(null);
             return;
           } catch (err) {
@@ -825,7 +997,7 @@ export const WeeklySchedule = () => {
         });
 
         showToastMessage('Batch successfully added to schedule!', 'success');
-        await fetchWeeklySchedules();
+        await fetchWeeklySchedules(true, false);
 
       } catch (error) {
         console.error('Error adding batch to database:', error);
@@ -1003,13 +1175,21 @@ export const WeeklySchedule = () => {
   const renderContent = () => {
     // Derive valid dayCombinations and timings based on selected branch
     const currentBranch = branches.find(b => b._id === selectedBranch);
-    const displayedDayCombinations = currentBranch ? currentBranch.days : [];
+    const displayedDayCombinations = (currentBranch && currentBranch.days && currentBranch.days.length > 0) ? currentBranch.days : dayCombinations;
     const displayedTimings = currentBranch ? currentBranch.time : [];
 
     return (
       <div className="h-screen bg-gray-100 font-sans flex flex-col overflow-hidden">
         <Navbar headData={headData} activeTab={activeTab} />
-        <div className="flex-1 flex flex-col lg:flex-row space-y-4 sm:space-y-6 lg:space-y-0 lg:space-x-6 overflow-y-auto p-2 sm:p-4 lg:p-6">
+        {initialLoading ? (
+          <div className="flex-1 flex items-center justify-center p-12">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading staff...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col lg:flex-row space-y-4 sm:space-y-6 lg:space-y-0 lg:space-x-6 overflow-y-auto p-2 sm:p-4 lg:p-6">
           <div className="w-full lg:w-1/6 bg-white p-4 sm:p-6 rounded-lg sm:rounded-xl shadow-sm flex flex-col h-auto lg:h-full max-h-[400px] lg:max-h-none">
             <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-4">Batch's</h3>
             <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">Drag batches to the weekly live schedule (classes.)</p>
@@ -1081,7 +1261,7 @@ export const WeeklySchedule = () => {
                 <select
                   value={selectedBranch}
                   onChange={(e) => setSelectedBranch(e.target.value)}
-                  disabled={branchesLoading || (isStaffWithoutBranchControl && branches.length <= 1)}
+                  disabled={branchesLoading || scheduleLoading || (isStaffWithoutBranchControl && branches.length <= 1)}
                   className="w-full sm:w-auto p-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500 disabled:opacity-75 disabled:cursor-not-allowed"
                 >
                   {(isSuperAdmin || branches.length > 1) && (
@@ -1101,7 +1281,8 @@ export const WeeklySchedule = () => {
                 <div className="flex items-center space-x-2">
                   <input
                     type="date"
-                    className="w-full sm:w-auto p-2 text-sm border border-gray-300 rounded-lg shadow-sm"
+                    disabled={scheduleLoading}
+                    className="w-full sm:w-auto p-2 text-sm border border-gray-300 rounded-lg shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
                     value={startDate}
                     onChange={handleDateChange}
                   />
@@ -1117,7 +1298,8 @@ export const WeeklySchedule = () => {
                 </button>
                 <button
                   onClick={openCloneModal}
-                  className="flex items-center justify-center space-x-2 py-2 px-3 sm:px-4 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition shadow-sm"
+                  disabled={scheduleLoading}
+                  className="flex items-center justify-center space-x-2 py-2 px-3 sm:px-4 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition shadow-sm disabled:opacity-75"
                 >
                   <Icon path="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span className="text-xs sm:text-sm font-semibold">Add Next Schedule</span>
@@ -1126,21 +1308,39 @@ export const WeeklySchedule = () => {
             </div>
 
             <div className="overflow-x-auto rounded-lg border border-gray-200 flex-1 -mx-2 sm:mx-0">
-              <table className="min-w-full">
-                <thead className="bg-orange-500 text-white">
-                  <tr>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky left-0 bg-orange-500 z-20 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px]">Mentors</th>
-                    <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky left-[120px] sm:left-[150px] bg-orange-500 z-20 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] border-r border-orange-400 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]">Time</th>
-                    {displayedDayCombinations.map((dayCombo) => (
-                      <React.Fragment key={dayCombo._id}>
-                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left w-[150px] min-w-[150px] max-w-[150px] text-[10px] sm:text-xs font-medium uppercase tracking-wider">{dayCombo.name}</th>
-                        <th className="px-2 sm:px-4 py-2 sm:py-3 text-left w-[150px] min-w-[150px] text-[10px] sm:text-xs font-medium uppercase tracking-wider">Subject</th>
-                      </React.Fragment>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {mentors.map((mentor, mentorIndex) => {
+              {scheduleLoading ? (
+                <div className="flex items-center justify-center p-12 min-h-[350px]">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+                    <p className="text-gray-500">Loading staff...</p>
+                  </div>
+                </div>
+              ) : (
+                <table className="min-w-full">
+                  <thead className="bg-orange-500 text-white">
+                    <tr>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky left-0 bg-orange-500 z-20 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px]">Mentors</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky left-[120px] sm:left-[150px] bg-orange-500 z-20 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] border-r border-orange-400 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]">Time</th>
+                      {displayedDayCombinations.map((dayCombo) => (
+                        <React.Fragment key={dayCombo._id}>
+                          <th className="px-2 sm:px-4 py-2 sm:py-3 text-left w-[150px] min-w-[150px] max-w-[150px] text-[10px] sm:text-xs font-medium uppercase tracking-wider">{dayCombo.name}</th>
+                          <th className="px-2 sm:px-4 py-2 sm:py-3 text-left w-[150px] min-w-[150px] text-[10px] sm:text-xs font-medium uppercase tracking-wider">Subject</th>
+                        </React.Fragment>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {mentors.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={Math.max(2 + displayedDayCombinations.length * 2, 2)}
+                          className="px-4 py-12 text-center text-xs sm:text-sm text-gray-500"
+                        >
+                          No staff/mentors found for this branch.
+                        </td>
+                      </tr>
+                    ) : (
+                      mentors.map((mentor, mentorIndex) => {
                     const effectiveBranch = selectedBranch || (isStaffWithoutBranchControl ? localStorage.getItem("branch") : "");
                     const mentorTimings = getMentorTimingsForBranch(mentor, effectiveBranch);
 
@@ -1304,12 +1504,14 @@ export const WeeklySchedule = () => {
                         })}
                       </React.Fragment>
                     );
-                  })}
+                  }))}
                 </tbody>
               </table>
+              )}
             </div>
           </div>
         </div>
+        )}
 
         <Toast />
         <Modal />

@@ -15,7 +15,7 @@ export const Timings = () => {
   const [success, setSuccess] = useState('');
   const [branches, setBranches] = useState([]);
   const [timings, setTimings] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [userBranchId, setUserBranchId] = useState(
     auth?.branch ? (typeof auth.branch === 'object' ? auth.branch._id : auth.branch) : (localStorage.getItem("branch") || '')
   );
@@ -38,7 +38,6 @@ export const Timings = () => {
 
   const fetchBranches = async () => {
     try {
-      setLoading(true);
       setError('');
       const res = await getBranchesData();
       const fetchedBranches = res?.data || [];
@@ -77,14 +76,11 @@ export const Timings = () => {
       console.error('Failed to load branches:', err);
       setError('Failed to load branches');
       setBranches([]);
-    } finally {
-      setLoading(false);
     }
   };
 
   const fetchTimings = async () => {
     try {
-      setLoading(true);
       setError('');
       const res = await getTimingsData();
       setTimings(res.data || []);
@@ -92,6 +88,20 @@ export const Timings = () => {
       console.error('Failed to load timings:', err);
       setError('Failed to load timings');
       setTimings([]);
+    }
+  };
+
+  const initializeData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      await Promise.all([
+        fetchBranches(),
+        fetchTimings()
+      ]);
+    } catch (err) {
+      console.error('Failed to load initial timing data:', err);
+      setError('Failed to load timings');
     } finally {
       setLoading(false);
     }
@@ -99,8 +109,7 @@ export const Timings = () => {
 
   // Load data when component mounts
   useEffect(() => {
-    fetchBranches();
-    fetchTimings();
+    initializeData();
   }, []);
 
   // Clear messages and errors when switching tabs
@@ -251,8 +260,9 @@ export const Timings = () => {
           )}
         </div>
         {loading ? (
-          <div className="flex items-center justify-center p-6 sm:p-8">
-            <p className="text-sm sm:text-base text-gray-500">Loading timings...</p>
+          <div className="flex flex-col items-center justify-center min-h-[200px] p-8 sm:p-12 gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+            <span className="text-lg text-gray-600 font-medium">Loading mentor schedule details...</span>
           </div>
         ) : filteredTimings.length === 0 ? (
           <div className="flex items-center justify-center p-6 sm:p-8">
@@ -344,7 +354,14 @@ export const Timings = () => {
             {success}
           </div>
         )}
-        <AddedTimings />
+        {loading ? (
+          <div className="flex flex-col items-center justify-center min-h-[300px] p-8 sm:p-12 gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+            <span className="text-lg text-gray-600 font-medium">Loading mentor schedule details...</span>
+          </div>
+        ) : (
+          <AddedTimings />
+        )}
       </div>
     );
 

@@ -142,7 +142,7 @@ const Report = ({ activeTab, setActiveTab }) => {
 
   // State for attendance data
   const [attendanceData, setAttendanceData] = useState([]);
-  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceLoading, setAttendanceLoading] = useState(true);
   const [attendanceError, setAttendanceError] = useState('');
   const [monthData, setMonthData] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -160,10 +160,15 @@ const Report = ({ activeTab, setActiveTab }) => {
         console.log('Branches loaded:', response.data.length, 'branches available');
         if (response.data.length > 0) {
           setSelectedBranch(response.data[0]._id);
+        } else {
+          setAttendanceLoading(false);
         }
+      } else {
+        setAttendanceLoading(false);
       }
     } catch (err) {
       console.error('Failed to load branches:', err);
+      setAttendanceLoading(false);
     } finally {
       setBranchesLoading(false);
     }
@@ -531,8 +536,9 @@ const Report = ({ activeTab, setActiveTab }) => {
 
         {/* Attendance Grid/Table */}
         {attendanceLoading ? (
-          <div className="text-center py-6 sm:py-8">
-            <div className="text-xs sm:text-sm text-gray-500">Loading attendance data...</div>
+          <div className="flex flex-col items-center justify-center min-h-[300px] p-8 sm:p-12 gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+            <span className="text-lg text-gray-600 font-medium">Loading mentor schedule details...</span>
           </div>
         ) : attendanceError ? (
           <div className="text-center py-6 sm:py-8">

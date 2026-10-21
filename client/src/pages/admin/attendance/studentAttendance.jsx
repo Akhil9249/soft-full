@@ -572,7 +572,7 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
 
     // State for attendance data from backend
     const [attendanceRecords, setAttendanceRecords] = useState([]); // Attendance records for display
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [attendance, setAttendance] = useState({});
@@ -863,6 +863,7 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
     // Fetch attendance data for selected date and filters
     const fetchAttendanceForDate = async (date, branchId = null, courseId = null, page = 1, batchId = null, timingId = null, dayComboId = undefined) => {
         try {
+            setLoading(true);
             const activeBatchId = batchId || selectedBatch || null;
             const activeTimingId = timingId !== undefined ? timingId : (selectedTiming || null);
             const activeDayComboId = dayComboId !== undefined ? dayComboId : (selectedDayCombination || null);
@@ -939,6 +940,8 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
             setCurrentPage(1);
             setTotalPresent(0);
             setTotalAbsent(0);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -1094,13 +1097,27 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
 
     // Load data when component mounts
     useEffect(() => {
-        if (isMentor) {
-            initializeMentorData();
-        } else {
-            fetchBranches(selectedDate);
-            fetchAllBatches();
-            fetchDayCombinations(selectedDate);
-        }
+        const loadInitialData = async () => {
+            try {
+                setLoading(true);
+                if (isMentor) {
+                    await initializeMentorData();
+                } else {
+                    await Promise.all([
+                        fetchBranches(selectedDate),
+                        fetchAllBatches(),
+                        fetchDayCombinations(selectedDate)
+                    ]);
+                }
+            } catch (err) {
+                console.error("Failed to load initial data:", err);
+                setError("Failed to load data");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadInitialData();
     }, []);
 
     // Update currentDate when selectedDate changes
@@ -1260,8 +1277,9 @@ const AttendanceContent = ({ activeTab, setActiveTab }) => {
 
             {/* Loading State */}
             {loading && (
-                <div className="text-center py-6 sm:py-8">
-                    <div className="text-xs sm:text-sm text-gray-500">Loading interns...</div>
+                <div className="flex flex-col items-center justify-center min-h-[300px] p-8 sm:p-12 gap-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+                    <span className="text-lg text-gray-600 font-medium">Loading mentor schedule details...</span>
                 </div>
             )}
 
