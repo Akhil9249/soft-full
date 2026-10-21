@@ -1,12 +1,14 @@
 import { useState } from "react";
 import Sidebar, { Navbar } from "../../user/UserNavBar"
 import { Menu } from "lucide-react";
+import Footer from "../../user/Footer";
 
 
 const UserLayout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
+    <>
     <div className="flex bg-gray-100 font-sans antialiased h-screen overflow-hidden">
       {/* Sidebar */}
       <Sidebar isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen} />
@@ -25,12 +27,14 @@ const UserLayout = ({ children }) => {
           <span className="text-lg font-semibold text-gray-800">Softronics</span>
           <div className="w-10"></div> {/* Spacer for centering */}
         </div>
-        
+
         <div className="flex-1 overflow-y-auto ">
           {children}
         </div>
       </main>
     </div>
+    <Footer/>
+    </>
   )
 }
 
