@@ -5,7 +5,7 @@ import useAuth from "../../hooks/useAuth";
 import { useAppDispatch } from "../../redux/hooks";
 import { logoutUser, clearCredentials } from "../../redux/slices/authSlice";
 import AdminService from "../../services/admin-api-service/AdminService";
-import logo from "../../assets/image/soft-log.png";
+import logo from "../../assets/image/soft-log.svg";
 
 import {
   BellRing,
@@ -158,11 +158,11 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <div className="overflow-y-auto flex-1 scrollbar-hide">
-          <div className="flex items-center mb-6 md:mb-8">
+          <div className="flex items-center justify-center mb-6 md:mb-8">
             <img
               src={logo}
               alt="Softroniics Logo"
-              className="h-10 w-auto object-contain"
+              className="h-10 w-auto object-contain mx-auto"
             />
           </div>
           <nav className="space-y-3 md:space-y-4">

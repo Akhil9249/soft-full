@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AdminService from "../../services/admin-api-service/AdminService";
 import useAuth from "../../hooks/useAuth";
-import logo from "../../assets/image/soft-log.png";
+import logo from "../../assets/image/soft-log.svg";
 
 // Mocking lucide-react icons as per single-file requirement
 const Eye = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>;

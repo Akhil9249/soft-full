@@ -281,8 +281,27 @@ export default function Dashboard() {
                 <span className="text-xl sm:text-2xl lg:text-3xl font-medium text-slate-500">
                   Welcome back,
                 </span>
-                <span className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600">
-                  Softroniics
+                <span className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 inline-flex items-center">
+                  Softronii
+                  <svg
+                    className="inline-block h-[0.78em] w-auto ml-1"
+                    viewBox="530 0 111 98"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fill="#231f20"
+                      d="m533.84,8.89l34.88,37.52c1.41,1.52,1.41,3.88-.02,5.39l-34.76,36.86c-2.37,2.52-.59,6.65,2.87,6.65h16.14c1.13,0,2.21-.49,2.96-1.34l37.41-42.54c1.32-1.51,1.31-3.77-.04-5.25l-38.69-42.62c-.75-.82-1.81-1.29-2.92-1.29h-14.94c-3.44,0-5.23,4.1-2.89,6.63Z"
+                    />
+                    <path
+                      fill="#ff6f3c"
+                      d="m592.65,29.07l10.42,10.87c1.35,1.41,3.6,1.4,4.94,0l30.32-31.89c2.07-2.18.53-5.77-2.48-5.77h-20.29c-.92,0-1.81.37-2.45,1.03l-20.45,21.02c-1.28,1.32-1.29,3.42-.02,4.75Z"
+                    />
+                    <path
+                      fill="#ff6f3c"
+                      d="m593.97,67.64l10.42-10.87c1.35-1.41,3.6-1.4,4.94,0l30.32,31.89c2.07,2.18.53,5.77-2.48,5.77h-20.29c-.92,0-1.81-.37-2.45-1.03l-20.45-21.02c-1.28-1.32-1.29-3.42-.02-4.75Z"
+                    />
+                  </svg>
                 </span>
               </h1>
             </div>
