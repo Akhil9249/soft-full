@@ -139,7 +139,6 @@ const addStaff = async (req, res) => {
       return res.status(400).json({ message: "Employment status must be Active or Inactive" });
     }
 
-
     // Validate role ObjectId if provided
     if (role && !mongoose.Types.ObjectId.isValid(role)) {
       return res.status(400).json({ message: "Invalid role ID format" });
@@ -268,12 +267,32 @@ const getStaff = async (req, res) => {
     // Build query object
     let query = { isDeleted: { $ne: true } };
 
-    // Restrict branch and exclude own details for admin
+    // Restrict branch based on user role and branch assignment
     if (req.userId) {
-      const loggedInUser = await Staff.findById(req.userId).populate('role');
-      if (loggedInUser && loggedInUser.role && (loggedInUser.role.role.toLowerCase() === 'admin' || loggedInUser.role.role.toLowerCase() === 'branch admin')) {
-        branch = loggedInUser.branch; // Override to admin's branch
-        query._id = { $ne: req.userId };
+      let loggedInUser = await Staff.findById(req.userId).populate('role');
+      if (!loggedInUser) {
+        loggedInUser = await User.findById(req.userId).populate('role');
+      }
+      if (loggedInUser && loggedInUser.role) {
+        const userRoleName = (loggedInUser.role.role || '').toLowerCase().trim();
+        // Super admin has universal access to all branches
+        if (userRoleName !== 'super admin') {
+          if (loggedInUser.branch) {
+            if (loggedInUser.isMultipleBranch && Array.isArray(loggedInUser.multipleBranches) && loggedInUser.multipleBranches.length > 0) {
+              const allowedBranches = [loggedInUser.branch.toString(), ...loggedInUser.multipleBranches.map(b => b.toString())];
+              if (branch && allowedBranches.includes(branch.toString())) {
+                // Requested branch is within staff's allowed branches
+              } else {
+                branch = allowedBranches;
+              }
+            } else {
+              branch = loggedInUser.branch.toString();
+            }
+          }
+          if (userRoleName === 'admin' || userRoleName === 'branch admin') {
+            query._id = { $ne: req.userId };
+          }
+        }
       }
     }
 
@@ -297,8 +316,29 @@ const getStaff = async (req, res) => {
       query.employmentStatus = employmentStatus;
     }
     if (branch) {
-      // Validate that branch is a valid ObjectId
-      if (mongoose.Types.ObjectId.isValid(branch)) {
+      if (Array.isArray(branch)) {
+        const validBranchIds = branch
+          .filter(b => mongoose.Types.ObjectId.isValid(b))
+          .map(b => new mongoose.Types.ObjectId(b));
+
+        if (validBranchIds.length > 0) {
+          const branchCondition = {
+            $or: [
+              { branch: { $in: validBranchIds } },
+              { isMultipleBranch: true, multipleBranches: { $in: validBranchIds } }
+            ]
+          };
+          if (query.$or) {
+            query.$and = [
+              { $or: query.$or },
+              branchCondition
+            ];
+            delete query.$or;
+          } else {
+            query.$or = branchCondition.$or;
+          }
+        }
+      } else if (mongoose.Types.ObjectId.isValid(branch)) {
         const branchObjId = new mongoose.Types.ObjectId(branch);
         const branchCondition = {
           $or: [
@@ -354,14 +394,50 @@ const getStaff = async (req, res) => {
 const getAllStaff = async (req, res) => {
   try {
     let query = { isDeleted: { $ne: true } };
+    let branch = req.query.branch || '';
+
     if (req.userId) {
-      const loggedInUser = await Staff.findById(req.userId).populate('role');
-      if (loggedInUser && loggedInUser.role && (loggedInUser.role.role.toLowerCase() === 'admin' || loggedInUser.role.role.toLowerCase() === 'branch admin')) {
+      let loggedInUser = await Staff.findById(req.userId).populate('role');
+      if (!loggedInUser) {
+        loggedInUser = await User.findById(req.userId).populate('role');
+      }
+      if (loggedInUser && loggedInUser.role) {
+        const userRoleName = (loggedInUser.role.role || '').toLowerCase().trim();
+        if (userRoleName !== 'super admin') {
+          if (loggedInUser.branch) {
+            if (loggedInUser.isMultipleBranch && Array.isArray(loggedInUser.multipleBranches) && loggedInUser.multipleBranches.length > 0) {
+              const allowedBranches = [loggedInUser.branch.toString(), ...loggedInUser.multipleBranches.map(b => b.toString())];
+              if (branch && allowedBranches.includes(branch.toString())) {
+                // Requested branch is within staff's allowed branches
+              } else {
+                branch = allowedBranches;
+              }
+            } else {
+              branch = loggedInUser.branch.toString();
+            }
+          }
+          if (userRoleName === 'admin' || userRoleName === 'branch admin') {
+            query._id = { $ne: req.userId };
+          }
+        }
+      }
+    }
+
+    if (branch) {
+      if (Array.isArray(branch)) {
+        const validBranchIds = branch.filter(b => mongoose.Types.ObjectId.isValid(b)).map(b => new mongoose.Types.ObjectId(b));
+        if (validBranchIds.length > 0) {
+          query.$or = [
+            { branch: { $in: validBranchIds } },
+            { isMultipleBranch: true, multipleBranches: { $in: validBranchIds } }
+          ];
+        }
+      } else if (mongoose.Types.ObjectId.isValid(branch)) {
+        const branchObjId = new mongoose.Types.ObjectId(branch);
         query.$or = [
-          { branch: loggedInUser.branch },
-          { isMultipleBranch: true, multipleBranches: loggedInUser.branch }
+          { branch: branchObjId },
+          { isMultipleBranch: true, multipleBranches: branchObjId }
         ];
-        query._id = { $ne: req.userId };
       }
     }
 
@@ -386,20 +462,50 @@ const getAllStaff = async (req, res) => {
 const getAllActiveStaff = async (req, res) => {
   try {
     let query = { isActive: true, isDeleted: { $ne: true } };
+    let branch = req.query.branch || '';
+
     if (req.userId) {
       let loggedInUser = await Staff.findById(req.userId).populate('role');
       if (!loggedInUser) {
         loggedInUser = await User.findById(req.userId).populate('role');
       }
       if (loggedInUser && loggedInUser.role) {
-        const roleName = loggedInUser.role.role.toLowerCase();
-        if (roleName !== 'super admin') {
+        const userRoleName = (loggedInUser.role.role || '').toLowerCase().trim();
+        if (userRoleName !== 'super admin') {
+          if (loggedInUser.branch) {
+            if (loggedInUser.isMultipleBranch && Array.isArray(loggedInUser.multipleBranches) && loggedInUser.multipleBranches.length > 0) {
+              const allowedBranches = [loggedInUser.branch.toString(), ...loggedInUser.multipleBranches.map(b => b.toString())];
+              if (branch && allowedBranches.includes(branch.toString())) {
+                // Requested branch is within staff's allowed branches
+              } else {
+                branch = allowedBranches;
+              }
+            } else {
+              branch = loggedInUser.branch.toString();
+            }
+          }
+          if (userRoleName === 'admin' || userRoleName === 'branch admin') {
+            query._id = { $ne: req.userId };
+          }
+        }
+      }
+    }
+
+    if (branch) {
+      if (Array.isArray(branch)) {
+        const validBranchIds = branch.filter(b => mongoose.Types.ObjectId.isValid(b)).map(b => new mongoose.Types.ObjectId(b));
+        if (validBranchIds.length > 0) {
           query.$or = [
-            { branch: loggedInUser.branch },
-            { isMultipleBranch: true, multipleBranches: loggedInUser.branch }
+            { branch: { $in: validBranchIds } },
+            { isMultipleBranch: true, multipleBranches: { $in: validBranchIds } }
           ];
         }
-        query._id = { $ne: req.userId };
+      } else if (mongoose.Types.ObjectId.isValid(branch)) {
+        const branchObjId = new mongoose.Types.ObjectId(branch);
+        query.$or = [
+          { branch: branchObjId },
+          { isMultipleBranch: true, multipleBranches: branchObjId }
+        ];
       }
     }
 
@@ -481,7 +587,6 @@ const updateStaff = async (req, res) => {
     if (employmentStatus && !["Active", "Inactive"].includes(employmentStatus)) {
       return res.status(400).json({ message: "Employment status must be Active or Inactive" });
     }
-
 
     // Validate role ObjectId if provided
     if (role && !mongoose.Types.ObjectId.isValid(role)) {
@@ -697,10 +802,12 @@ const searchStaff = async (req, res) => {
     };
 
     if (req.userId) {
-      const loggedInUser = await Staff.findById(req.userId).populate('role');
-      if (loggedInUser && loggedInUser.role && (loggedInUser.role.role.toLowerCase() === 'admin' || loggedInUser.role.role.toLowerCase() === 'branch admin')) {
+      let loggedInUser = await Staff.findById(req.userId).populate('role');
+      if (!loggedInUser) {
+        loggedInUser = await User.findById(req.userId).populate('role');
+      }
+      if (loggedInUser && loggedInUser.role) {
         query.branch = loggedInUser.branch;
-        query._id = { $ne: req.userId };
       }
     }
 

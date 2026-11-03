@@ -54,6 +54,21 @@ export const StaffManagement = () => {
     const [success, setSuccess] = useState("");
     const [staff, setStaff] = useState([]);
     const [branches, setBranches] = useState([]);
+
+    const isMultipleBranchUser = auth?.isMultipleBranch || localStorage.getItem("isMultipleBranch") === "true";
+    const userAllowedBranches = branches.filter((b) => {
+        if (userRole === 'super admin') return true;
+        const primaryBranchId = localStorage.getItem("branch") || (typeof auth?.branch === 'object' ? auth?.branch?._id : auth?.branch);
+        let mbIds = [];
+        try {
+            const rawMb = auth?.multipleBranches || JSON.parse(localStorage.getItem("multipleBranches") || "[]");
+            mbIds = (Array.isArray(rawMb) ? rawMb : []).map(item => typeof item === 'object' ? item._id : item).filter(Boolean);
+        } catch {
+            mbIds = [];
+        }
+        const allowedIds = new Set([String(primaryBranchId), ...mbIds.map(String)]);
+        return allowedIds.has(String(b._id));
+    });
     const [roles, setRoles] = useState([]);
     const [rolesLoading, setRolesLoading] = useState(false);
     const [timings, setTimings] = useState([]);
@@ -106,7 +121,7 @@ export const StaffManagement = () => {
 
         // Professional Details
         department: "",
-        branch: "",
+        branch: (localStorage.getItem("role") || "").toLowerCase().trim() !== 'super admin' ? (localStorage.getItem("branch") || "") : "",
         isMultipleBranch: false,
         multipleBranches: [],
         role: "",
@@ -251,8 +266,44 @@ export const StaffManagement = () => {
             setBranches(branchesList);
 
             let initialBranchId = '';
-            if (auth?.role?.toLowerCase() === 'super admin') {
+            const userRoleLower = (auth?.role || localStorage.getItem("role") || "").toLowerCase().trim();
+
+            if (userRoleLower === 'super admin') {
                 const calicutBranch = branchesList.find(b => b.branchName?.toLowerCase().includes('calicut'));
+
+                if (calicutBranch) {
+                    initialBranchId = calicutBranch._id;
+                } else if (branchesList.length > 0) {
+                    initialBranchId = branchesList[0]._id;
+                }
+            } else {
+                // When a staff gets in the page, default to their branch
+                let staffBranchId = localStorage.getItem("branch") || (typeof auth?.branch === 'object' ? auth?.branch?._id : auth?.branch);
+                if (!staffBranchId || staffBranchId === "undefined" || staffBranchId === "null") {
+                    try {
+                        const profileRes = await getUserProfile();
+                        const profileBranch = profileRes?.data?.user?.branch;
+                        if (profileBranch) {
+                            staffBranchId = typeof profileBranch === 'object' ? profileBranch._id : profileBranch;
+                            if (staffBranchId) {
+                                localStorage.setItem("branch", staffBranchId.toString());
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Failed to fetch staff profile for branch selection:", e);
+                    }
+                }
+                if (staffBranchId) {
+                    initialBranchId = staffBranchId;
+                }
+            }
+
+            if (initialBranchId) {
+                setFilters(prev => ({ ...prev, branch: initialBranchId }));
+            }
+            /* old branch check */
+            if (false) {
+
                 if (calicutBranch) {
                     initialBranchId = calicutBranch._id;
                     setFilters(prev => ({ ...prev, branch: initialBranchId }));
@@ -526,7 +577,7 @@ export const StaffManagement = () => {
             state: "",
             photo: null,
             department: "",
-            branch: "",
+            branch: (localStorage.getItem("role") || "").toLowerCase().trim() !== 'super admin' ? (localStorage.getItem("branch") || "") : "",
             isMultipleBranch: false,
             multipleBranches: [],
             role: "",
@@ -581,7 +632,11 @@ export const StaffManagement = () => {
             // Fetch all staff for export (no pagination)
             const queryParams = new URLSearchParams({
                 page: '1',
-                limit: '10000' // High limit to get all staff
+                limit: '10000',
+                ...(filters.branch ? { branch: filters.branch } : {}),
+                ...(filters.department ? { department: filters.department } : {}),
+                ...(filters.employmentStatus ? { employmentStatus: filters.employmentStatus } : {}),
+                ...(searchTerm ? { search: searchTerm } : {})
             });
 
             const res = await getStaffData(queryParams.toString());
@@ -878,7 +933,7 @@ export const StaffManagement = () => {
                 state: "",
                 photo: null,
                 department: "",
-                branch: "",
+                branch: (localStorage.getItem("role") || "").toLowerCase().trim() !== 'super admin' ? (localStorage.getItem("branch") || "") : "",
                 isMultipleBranch: false,
                 multipleBranches: [],
                 role: "",
@@ -940,7 +995,7 @@ export const StaffManagement = () => {
                             <option key={dept} value={dept}>{dept}</option>
                         ))}
                     </select>
-                    {auth?.role?.toLowerCase() === 'super admin' && (
+                    {auth?.role?.toLowerCase() === 'super admin' ? (
                         <select
                             value={filters.branch}
                             onChange={(e) => handleFilterChange('branch', e.target.value)}
@@ -951,6 +1006,18 @@ export const StaffManagement = () => {
                                 <option key={branch._id} value={branch._id}>{branch.branchName}</option>
                             ))}
                         </select>
+                    ) : (isMultipleBranchUser && userAllowedBranches.length > 1 ? (
+                        <select
+                            value={filters.branch}
+                            onChange={(e) => handleFilterChange('branch', e.target.value)}
+                            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        >
+                            <option value="">All My Branches</option>
+                            {userAllowedBranches.map(branch => (
+                                <option key={branch._id} value={branch._id}>{branch.branchName}</option>
+                            ))}
+                        </select>
+                    ) : null
                     )}
                     <select
                         value={filters.employmentStatus}
@@ -1392,7 +1459,7 @@ export const StaffManagement = () => {
                     <label className="block text-gray-700 font-medium mb-2">Branch <span className="text-red-500">*</span></label>
                     <select name="branch" value={formData.branch} onChange={handleInputChange} className={`w-full px-4 py-2 border rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.branch ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}>
                         <option value="">Choose Branch</option>
-                        {branches.map((branch) => (
+                        {userAllowedBranches.map((branch) => (
                             <option key={branch._id} value={branch._id}>
                                 {branch.branchName}
                             </option>
@@ -1672,6 +1739,21 @@ export const StaffManagement = () => {
                                                     );
                                                 })}
                                         </select>
+                                        {/*
+
+                    ) : (isMultipleBranchUser && userAllowedBranches.length > 1 ? (
+                        <select
+                            value={filters.branch}
+                            onChange={(e) => handleFilterChange('branch', e.target.value)}
+                            className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        >
+                            <option value="">All My Branches</option>
+                            {userAllowedBranches.map(branch => (
+                                <option key={branch._id} value={branch._id}>{branch.branchName}</option>
+                            ))}
+                        </select>
+                    ) : null
+                                        */}
                                         {timings.filter(t => {
                                             const timingBranchId = typeof t.branch === 'object' && t.branch ? t.branch._id : t.branch;
                                             const allowedBranchIds = [formData.branch, ...(formData.isMultipleBranch ? formData.multipleBranches : [])].map(String);
