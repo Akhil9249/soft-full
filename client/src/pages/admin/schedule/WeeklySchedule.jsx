@@ -1189,7 +1189,7 @@ export const WeeklySchedule = () => {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col lg:flex-row space-y-4 sm:space-y-6 lg:space-y-0 lg:space-x-6 overflow-y-auto p-2 sm:p-4 lg:p-6">
+          <div className="flex-1 flex flex-col lg:flex-row space-y-4 sm:space-y-6 lg:space-y-0 lg:space-x-6 overflow-y-auto lg:overflow-hidden p-2 sm:p-4 lg:p-6 min-h-0">
           <div className="w-full lg:w-1/6 bg-white p-4 sm:p-6 rounded-lg sm:rounded-xl shadow-sm flex flex-col h-auto lg:h-full max-h-[400px] lg:max-h-none">
             <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-4">Batch's</h3>
             <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">Drag batches to the weekly live schedule (classes.)</p>
@@ -1250,7 +1250,7 @@ export const WeeklySchedule = () => {
             </div>
           </div>
 
-          <div className="flex-1 bg-white p-4 sm:p-6 rounded-lg sm:rounded-xl flex flex-col h-full min-w-0">
+          <div className="flex-1 bg-white p-4 sm:p-6 rounded-lg sm:rounded-xl flex flex-col h-full min-w-0 min-h-0">
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-6 gap-4">
               <div className="flex-1 min-w-0">
@@ -1307,7 +1307,7 @@ export const WeeklySchedule = () => {
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-gray-200 flex-1 -mx-2 sm:mx-0">
+            <div className="overflow-auto rounded-lg border border-gray-200 flex-1 min-h-0 -mx-2 sm:mx-0 max-h-[calc(100vh-280px)] lg:max-h-none">
               {scheduleLoading ? (
                 <div className="flex items-center justify-center p-12 min-h-[350px]">
                   <div className="text-center">
@@ -1317,14 +1317,14 @@ export const WeeklySchedule = () => {
                 </div>
               ) : (
                 <table className="min-w-full">
-                  <thead className="bg-orange-500 text-white">
+                  <thead className="bg-orange-500 text-white sticky top-0 z-20">
                     <tr>
-                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky left-0 bg-orange-500 z-20 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px]">Mentors</th>
-                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky left-[120px] sm:left-[150px] bg-orange-500 z-20 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] border-r border-orange-400 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]">Time</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky top-0 left-0 bg-orange-500 z-30 w-[120px] min-w-[120px] sm:w-[150px] sm:min-w-[150px]">Mentors</th>
+                      <th className="px-2 sm:px-4 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky top-0 left-[120px] sm:left-[150px] bg-orange-500 z-30 w-[100px] min-w-[100px] sm:w-[120px] sm:min-w-[120px] border-r border-orange-400 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.2)]">Time</th>
                       {displayedDayCombinations.map((dayCombo) => (
                         <React.Fragment key={dayCombo._id}>
-                          <th className="px-2 sm:px-4 py-2 sm:py-3 text-left w-[150px] min-w-[150px] max-w-[150px] text-[10px] sm:text-xs font-medium uppercase tracking-wider">{dayCombo.name}</th>
-                          <th className="px-2 sm:px-4 py-2 sm:py-3 text-left w-[150px] min-w-[150px] text-[10px] sm:text-xs font-medium uppercase tracking-wider">Subject</th>
+                          <th className="px-2 sm:px-4 py-2 sm:py-3 text-left w-[150px] min-w-[150px] max-w-[150px] text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky top-0 bg-orange-500 z-20">{dayCombo.name}</th>
+                          <th className="px-2 sm:px-4 py-2 sm:py-3 text-left w-[150px] min-w-[150px] text-[10px] sm:text-xs font-medium uppercase tracking-wider sticky top-0 bg-orange-500 z-20">Subject</th>
                         </React.Fragment>
                       ))}
                     </tr>

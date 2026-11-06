@@ -14,6 +14,8 @@ export const Modules = () => {
   // State to manage the active tab. 'modules-list' is the default.
   const [activeTab, setActiveTab] = useState('modules-list');
   const [courses, setCourses] = useState([]);
+  const [courseDropdownOpen, setCourseDropdownOpen] = useState(false);
+  const courseDropdownRef = useRef(null);
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,8 +88,11 @@ export const Modules = () => {
       setLoading(true);
       setError('');
       // const res = await axiosPrivate.get('http://localhost:3000/api/course');
-      const res = await getCoursesData();
-      setCourses(res.data || []);
+      const res = await getCoursesData('all=true&limit=10000');
+      const fetchedCourses = (res.data || []).sort((a, b) => 
+        (a.courseName || '').localeCompare(b.courseName || '')
+      );
+      setCourses(fetchedCourses);
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to load courses');
     } finally {
@@ -309,6 +314,17 @@ export const Modules = () => {
       }
     };
   }, [moduleImagePreview]);
+
+  // Close course dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (courseDropdownRef.current && !courseDropdownRef.current.contains(event.target)) {
+        setCourseDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const formatFileSize = (bytes) => {
     if (!bytes) return '';
@@ -727,18 +743,69 @@ export const Modules = () => {
                 </div>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2 sm:space-y-0">
-                <select 
-                  value={filters.course}
-                  onChange={(e) => handleFilterChange('course', e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                >
-                  <option value="">All Courses</option>
-                  {courses.map(course => (
-                    <option key={course._id} value={course._id}>
-                      {course.courseName}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative" ref={courseDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setCourseDropdownOpen(prev => !prev)}
+                    className="flex items-center justify-between w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-gray-400 transition-colors"
+                  >
+                    <span className="truncate">
+                      {filters.course ? (courses.find(c => c._id === filters.course)?.courseName || 'All Courses') : 'All Courses'}
+                    </span>
+                    <svg className={`w-4 h-4 ml-2 text-gray-400 flex-shrink-0 transition-transform duration-200 ${courseDropdownOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {courseDropdownOpen && (
+                    <div className="absolute right-0 sm:left-0 z-30 mt-1 w-full sm:w-64 bg-white border border-gray-200 rounded-md shadow-lg py-1 max-h-56 overflow-y-auto">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleFilterChange('course', '');
+                          setCourseDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-4 py-2 text-sm transition-colors ${!filters.course ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-600'}`}
+                      >
+                        All Courses
+                      </button>
+                      {courses.length === 0 ? (
+                        <div className="px-4 py-2 text-sm text-gray-400 italic">No courses available</div>
+                      ) : (
+                        courses.map(course => (
+                          <button
+                            key={course._id}
+                            type="button"
+                            onClick={() => {
+                              handleFilterChange('course', course._id);
+                              setCourseDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm transition-colors truncate block ${filters.course === course._id ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-600'}`}
+                            title={course.courseName}
+                          >
+                            {course.courseName}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {/* Accessible select for form compatibility and test automation */}
+                  <select
+                    value={filters.course}
+                    onChange={(e) => handleFilterChange('course', e.target.value)}
+                    className="sr-only"
+                    tabIndex={-1}
+                    aria-hidden="true"
+                  >
+                    <option value="">All Courses</option>
+                    {courses.map(course => (
+                      <option key={course._id} value={course._id}>
+                        {course.courseName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
