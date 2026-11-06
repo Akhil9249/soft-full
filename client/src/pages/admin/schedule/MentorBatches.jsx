@@ -9,18 +9,38 @@ import autoTable from 'jspdf-autotable'
 const getDefaultDates = () => {
   const today = new Date();
   const day = today.getDay();
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() - day);
+  const sunday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - day);
+  const saturday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - day + 6);
 
-  const saturday = new Date(sunday);
-  saturday.setDate(sunday.getDate() + 6);
-
-  const getLocalYYYYMMDD = (date) => {
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-    return localDate.toISOString().split('T')[0];
+  const formatToYYYYMMDD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dt = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dt}`;
   };
-  return { startDate: getLocalYYYYMMDD(sunday), endDate: getLocalYYYYMMDD(saturday) };
+  return { startDate: formatToYYYYMMDD(sunday), endDate: formatToYYYYMMDD(saturday) };
+};
+
+const getWeekRange = (dateString) => {
+  if (!dateString) return { startDate: '', endDate: '' };
+  const [year, month, day] = dateString.split('-').map(Number);
+  const dateObj = new Date(year, month - 1, day);
+  const dayOfWeek = dateObj.getDay();
+
+  const sunday = new Date(year, month - 1, day - dayOfWeek);
+  const saturday = new Date(year, month - 1, day - dayOfWeek + 6);
+
+  const formatToYYYYMMDD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dt = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dt}`;
+  };
+
+  return {
+    startDate: formatToYYYYMMDD(sunday),
+    endDate: formatToYYYYMMDD(saturday)
+  };
 };
 
 const formatDate = (dateInput) => {
@@ -220,17 +240,17 @@ export const MentorBatches = () => {
   }, [selectedMentor]);
 
   const handleDateChange = (e) => {
-    const newStartDate = e.target.value;
-    setStartDate(newStartDate);
-
-    if (newStartDate) {
-      const date = new Date(newStartDate);
-      date.setDate(date.getDate() + 6);
-
-      // Format to YYYY-MM-DD for input compatibility
-      const endDateString = date.toISOString().split('T')[0];
-      setEndDate(endDateString);
+    const selectedDate = e.target.value;
+    if (selectedDate) {
+      // Automatically select the Sunday of the chosen week
+      const { startDate: sundayDate, endDate: saturdayDate } = getWeekRange(selectedDate);
+      if (e.target) {
+        e.target.value = sundayDate;
+      }
+      setStartDate(sundayDate);
+      setEndDate(saturdayDate);
     } else {
+      setStartDate('');
       setEndDate('');
     }
   };
@@ -574,6 +594,7 @@ export const MentorBatches = () => {
             {/* Date Range Selector */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <input
+                key={startDate}
                 type="date"
                 className="px-3 py-2 border border-gray-200 rounded-xl text-sm bg-white text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent shadow-sm hover:border-gray-300 transition-colors cursor-pointer flex-shrink-0 min-w-[135px]"
                 value={startDate}

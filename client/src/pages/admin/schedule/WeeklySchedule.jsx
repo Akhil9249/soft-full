@@ -6,19 +6,17 @@ import { IoEyeOutline } from "react-icons/io5";
 const getDefaultDates = () => {
   const today = new Date();
   const day = today.getDay();
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() - day);
+  const sunday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - day);
+  const saturday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - day + 6);
 
-  const saturday = new Date(sunday);
-  saturday.setDate(sunday.getDate() + 6);
-
-  const getLocalYYYYMMDD = (date) => {
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-    return localDate.toISOString().split('T')[0];
+  const formatToYYYYMMDD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dt = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dt}`;
   };
 
-  return { startDate: getLocalYYYYMMDD(sunday), endDate: getLocalYYYYMMDD(saturday) };
+  return { startDate: formatToYYYYMMDD(sunday), endDate: formatToYYYYMMDD(saturday) };
 };
 
 export const WeeklySchedule = () => {
@@ -117,50 +115,57 @@ export const WeeklySchedule = () => {
   };
 
   const getWeekRange = (dateString) => {
-    const dateObj = new Date(dateString);
-    const day = dateObj.getDay();
+    if (!dateString) return { startDate: '', endDate: '' };
+    const [year, month, day] = dateString.split('-').map(Number);
+    const dateObj = new Date(year, month - 1, day);
+    const dayOfWeek = dateObj.getDay();
 
-    const sunday = new Date(dateObj);
-    sunday.setDate(dateObj.getDate() - day);
+    const sunday = new Date(year, month - 1, day - dayOfWeek);
+    const saturday = new Date(year, month - 1, day - dayOfWeek + 6);
 
-    const saturday = new Date(sunday);
-    saturday.setDate(sunday.getDate() + 6);
-
-    const getLocalYYYYMMDD = (date) => {
-      const offset = date.getTimezoneOffset();
-      const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-      return localDate.toISOString().split('T')[0];
+    const formatToYYYYMMDD = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dt = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${dt}`;
     };
 
     return {
-      startDate: getLocalYYYYMMDD(sunday),
-      endDate: getLocalYYYYMMDD(saturday)
+      startDate: formatToYYYYMMDD(sunday),
+      endDate: formatToYYYYMMDD(saturday)
     };
   };
 
   const openCloneModal = () => {
     if (startDate) {
-      const nextWeekDate = new Date(startDate);
-      nextWeekDate.setDate(nextWeekDate.getDate() + 7);
-      setCloneTargetDate(nextWeekDate.toISOString().split('T')[0]);
+      const [year, month, day] = startDate.split('-').map(Number);
+      const nextWeekSunday = new Date(year, month - 1, day + 7);
+      const formatToYYYYMMDD = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dt = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dt}`;
+      };
+      setCloneTargetDate(formatToYYYYMMDD(nextWeekSunday));
     } else {
-      const today = new Date();
-      setCloneTargetDate(today.toISOString().split('T')[0]);
+      const { startDate: currentSunday } = getDefaultDates();
+      setCloneTargetDate(currentSunday);
     }
     setCloneError('');
     setShowCloneModal(true);
   };
 
   const handleTargetDateChange = (val) => {
-    setCloneTargetDate(val);
-    if (val && startDate) {
+    if (val) {
       const { startDate: targetStart } = getWeekRange(val);
+      setCloneTargetDate(targetStart);
       if (targetStart === startDate) {
         setCloneError('Target date cannot be within the current week!');
       } else {
         setCloneError('');
       }
     } else {
+      setCloneTargetDate('');
       setCloneError('');
     }
   };
@@ -653,17 +658,17 @@ export const WeeklySchedule = () => {
   }, []);
 
   const handleDateChange = (e) => {
-    const newStartDate = e.target.value;
-    setStartDate(newStartDate);
-
-    if (newStartDate) {
-      const date = new Date(newStartDate);
-      date.setDate(date.getDate() + 6);
-
-      // Format to YYYY-MM-DD for input compatibility
-      const endDateString = date.toISOString().split('T')[0];
-      setEndDate(endDateString);
+    const selectedDate = e.target.value;
+    if (selectedDate) {
+      // Automatically select the Sunday of the chosen week
+      const { startDate: sundayDate, endDate: saturdayDate } = getWeekRange(selectedDate);
+      if (e.target) {
+        e.target.value = sundayDate;
+      }
+      setStartDate(sundayDate);
+      setEndDate(saturdayDate);
     } else {
+      setStartDate('');
       setEndDate('');
     }
   };
@@ -1271,15 +1276,10 @@ export const WeeklySchedule = () => {
                     <option key={branch._id} value={branch._id}>{branch.branchName}</option>
                   ))}
                 </select>
-                {/* <select className="w-full sm:w-auto p-2 text-sm border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500">
-                  <option>Alternative</option>
-                  <option>Regular</option>
-                  <option>Special</option>
-                  <option>Custom</option>
-                  <option>Weekend</option>
-                </select> */}
+        
                 <div className="flex items-center space-x-2">
                   <input
+                    key={startDate}
                     type="date"
                     disabled={scheduleLoading}
                     className="w-full sm:w-auto p-2 text-sm border border-gray-300 rounded-lg shadow-sm disabled:opacity-75 disabled:cursor-not-allowed"
