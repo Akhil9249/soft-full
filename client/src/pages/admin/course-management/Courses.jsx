@@ -43,6 +43,8 @@ export const Courses = () => {
   const roles = ['Choose Role', 'super admin', 'admin', 'mentor', 'intern'];
   const courseTypes = ['Regular', 'Offer', 'Online'];
   const [categories, setCategories] = useState([]);
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef(null);
   const [courseList, setCourseList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -119,10 +121,11 @@ export const Courses = () => {
       setLoading(true);
       setError('');
       // const res = await axiosPrivate.get('http://localhost:3000/api/category');
-      const res = await getCategoriesData();
+      const res = await getCategoriesData("all=true&limit=10000");
       console.log("categories==", res);
 
-      setCategories(res?.data || []);
+      const fetchedCategories = (res?.data || []).sort((a, b) => (a.categoryName || "").localeCompare(b.categoryName || ""));
+      setCategories(fetchedCategories);
       // setCategories(res);
     } catch (err) {
       setError(err?.response?.data?.message || 'Failed to load categories');
@@ -205,6 +208,19 @@ export const Courses = () => {
     setError('');
     setSuccess('');
   }, [activeTab]);
+
+  // Handle click outside to close category dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
+        setCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Cleanup object URLs for syllabus preview
   useEffect(() => {
@@ -1417,15 +1433,69 @@ export const Courses = () => {
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-2">Category Name <span className="text-red-500">*</span></label>
-          <select 
-            name="category" 
-            value={formData.category || ''}
-            onChange={handleInputChange}
-            className={`w-full px-4 py-2 border rounded-md bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${errors.category ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`} 
-          >
-            <option value="">Choose Category</option>
-            {categories.map(c => <option key={c._id} value={c._id}>{c.categoryName}</option>)}
-          </select>
+          <div className="relative" ref={categoryDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setCategoryDropdownOpen(prev => !prev)}
+              className={`w-full flex items-center justify-between px-4 py-2 border rounded-md bg-white text-left focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent cursor-pointer shadow-sm hover:border-gray-400 transition-colors ${errors.category ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'}`}
+            >
+              <span className={`truncate ${formData.category ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
+                {formData.category ? (categories.find(c => c._id === formData.category)?.categoryName || 'Choose Category') : 'Choose Category'}
+              </span>
+              <svg className={`w-4 h-4 ml-2 text-gray-400 flex-shrink-0 transition-transform duration-200 ${categoryDropdownOpen ? 'transform rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {categoryDropdownOpen && (
+              <div className="absolute left-0 z-30 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg py-1 max-h-56 overflow-y-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleInputChange({ target: { name: 'category', value: '' } });
+                    setCategoryDropdownOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-2 text-sm transition-colors ${!formData.category ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-600'}`}
+                >
+                  Choose Category
+                </button>
+                {categories.length === 0 ? (
+                  <div className="px-4 py-2 text-sm text-gray-400 italic">No categories available</div>
+                ) : (
+                  categories.map(c => (
+                    <button
+                      key={c._id}
+                      type="button"
+                      onClick={() => {
+                        handleInputChange({ target: { name: 'category', value: c._id } });
+                        setCategoryDropdownOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors truncate block ${formData.category === c._id ? 'bg-orange-50 text-orange-600 font-semibold' : 'text-gray-700 hover:bg-orange-50 hover:text-orange-600'}`}
+                      title={c.categoryName}
+                    >
+                      {c.categoryName}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+
+            <select
+              name="category"
+              value={formData.category || ''}
+              onChange={handleInputChange}
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden="true"
+            >
+              <option value="">Choose Category</option>
+              {categories.map(c => (
+                <option key={c._id} value={c._id}>
+                  {c.categoryName}
+                </option>
+              ))}
+            </select>
+          </div>
           {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
         </div>
         <div>

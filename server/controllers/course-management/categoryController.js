@@ -42,8 +42,9 @@ const getCategories = async (req, res) => {
   try {
     // Pagination parameters
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 5;
-    const skip = (page - 1) * limit;
+    const isAll = req.query.all === 'true' || req.query.limit === 'all';
+    const limit = isAll ? 0 : (parseInt(req.query.limit) || 5);
+    const skip = isAll ? 0 : (page - 1) * limit;
 
     // Search parameters
     const search = req.query.search || '';
@@ -93,7 +94,7 @@ const getCategories = async (req, res) => {
 
     // Get total count for pagination
     const totalCount = await Category.countDocuments(query);
-    const totalPages = Math.ceil(totalCount / limit);
+    const totalPages = isAll ? 1 : Math.ceil(totalCount / (limit || 1));
 
     // Get paginated results
     const categories = await Category.find(query)
@@ -110,9 +111,9 @@ const getCategories = async (req, res) => {
         currentPage: page,
         totalPages,
         totalCount,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
-        limit
+        hasNextPage: isAll ? false : page < totalPages,
+        hasPrevPage: isAll ? false : page > 1,
+        limit: isAll ? totalCount : limit
       }
     });
   } catch (error) {
